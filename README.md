@@ -37,7 +37,7 @@ make flash
 ```
 
 ## iOS demo
-`host/ios/` inneholder Swift-filer du kan droppe inn i en ny SwiftUI-app i Xcode.
+`host/apple/` inneholder Swift-filer du kan droppe inn i en ny SwiftUI-app i Xcode (iOS + macOS).
 
 ## Neste steg
 - Integrere ekte libDaisy audio + USB MIDI i `main.cpp`

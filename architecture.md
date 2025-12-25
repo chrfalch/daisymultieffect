@@ -193,7 +193,7 @@ Not implemented yet, but recommended:
 ## 4. iOS/iPad app architecture
 
 ### 4.1 MIDI layer
-`host/ios/MidiController.swift`
+`host/apple/MidiController.swift`
 - Uses CoreMIDI
 - Sends SysEx messages
 - Receives SysEx and parses:

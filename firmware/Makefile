@@ -8,7 +8,18 @@ DAISYSP_DIR  ?= ../lib/DaisySP
 # BOOT_NONE uses the internal flash script (128KB) which is too small.
 APP_TYPE ?= BOOT_QSPI
 
-CPP_SOURCES = $(wildcard src/*.cpp)
+# Build-time debug: compile a pure passthrough patch at boot.
+# Usage: `make clean && make -j DEBUG_PATCH=1 && make flash DEBUG_PATCH=1`
+DEBUG_PATCH ?= 0
+ifeq ($(DEBUG_PATCH),1)
+C_DEFS += -DDEBUG_PATCH_PASSTHROUGH
+endif
+
+CPP_SOURCES = src/main.cpp \
+              $(wildcard src/audio/*.cpp) \
+              $(wildcard src/effects/*.cpp) \
+              $(wildcard src/midi/*.cpp) \
+              $(wildcard src/patch/*.cpp)
 C_INCLUDES += -Isrc
 CFLAGS   += -O2
 CXXFLAGS += -O2
@@ -17,8 +28,11 @@ CXXFLAGS += -O2
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
 include $(SYSTEM_FILES_DIR)/Makefile
 
-.PHONY: flash program clean_all
-flash: program-dfu
+.PHONY: flash program dfu-list clean_all
+# Ensure we rebuild before flashing (libDaisy's `program-dfu` target does not depend on the binary).
+flash: $(BUILD_DIR)/$(TARGET_BIN) program-dfu
 program: program-dfu
+dfu-list:
+	dfu-util -l
 clean_all: clean
 	rm -f $(TARGET).bin $(TARGET).elf
