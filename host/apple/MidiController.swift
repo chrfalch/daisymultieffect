@@ -85,64 +85,93 @@ final class MidiController: ObservableObject {
         // Disconnect previous sources by recreating the input port connection state.
         // (CoreMIDI doesn't provide a simple 'disconnect all' on the port.)
 
-        // Pick destination - look for Daisy, network sessions, or fall back to first available
+        // Pick destination - look for Daisy, IAC Driver, network sessions, or fall back to first available
         destination = nil
         let numDests = MIDIGetNumberOfDestinations()
+        print("MIDI: Scanning \(numDests) destinations...")
         if numDests > 0 {
-            var best: MIDIEndpointRef?
+            var daisyEndpoint: MIDIEndpointRef?
+            var iacEndpoint: MIDIEndpointRef?
             var networkEndpoint: MIDIEndpointRef?
+            var firstEndpoint: MIDIEndpointRef?
+
             for i in 0..<numDests {
                 let d = MIDIGetDestination(i)
                 let name = endpointName(d)
                 let lname = name.lowercased()
-                // Prefer Daisy device
-                if lname.contains("daisy") || lname.contains("seed") {
-                    best = d
+                print("  Dest \(i): \(name)")
+
+                // Prefer Daisy device or DaisyMultiFX VST/standalone
+                if lname.contains("daisy") || lname.contains("seed") || lname.contains("multifx") {
+                    daisyEndpoint = d
+                }
+                // IAC Driver for virtual MIDI (connecting to VST/standalone)
+                else if lname.contains("iac") {
+                    if iacEndpoint == nil { iacEndpoint = d }
                 }
                 // Remember network sessions as fallback
-                if lname.contains("network") || lname.contains("session")
+                else if lname.contains("network") || lname.contains("session")
                     || lname.contains("rtpmidi")
                 {
                     if networkEndpoint == nil { networkEndpoint = d }
                 }
-                if best == nil && networkEndpoint == nil { best = d }
+                // Remember first as last resort
+                else if firstEndpoint == nil {
+                    firstEndpoint = d
+                }
             }
-            // Use Daisy if found, otherwise try network, otherwise first available
-            destination = best ?? networkEndpoint
+            // Priority: Daisy > IAC > network > first available
+            destination = daisyEndpoint ?? iacEndpoint ?? networkEndpoint ?? firstEndpoint
         }
 
-        // Pick source - same logic
+        // Pick source - same logic (Daisy > IAC > network > first available)
         let numSrcs = MIDIGetNumberOfSources()
-        var pickedSrc: MIDIEndpointRef?
+        print("MIDI: Scanning \(numSrcs) sources...")
+        var daisySrc: MIDIEndpointRef?
+        var iacSrc: MIDIEndpointRef?
         var networkSrc: MIDIEndpointRef?
+        var firstSrc: MIDIEndpointRef?
+
         if numSrcs > 0 {
             for i in 0..<numSrcs {
                 let s = MIDIGetSource(i)
                 let name = endpointName(s)
                 let lname = name.lowercased()
-                if lname.contains("daisy") || lname.contains("seed") {
-                    pickedSrc = s
-                }
-                if lname.contains("network") || lname.contains("session")
+                print("  Src \(i): \(name)")
+
+                if lname.contains("daisy") || lname.contains("seed") || lname.contains("multifx") {
+                    daisySrc = s
+                } else if lname.contains("iac") {
+                    if iacSrc == nil { iacSrc = s }
+                } else if lname.contains("network") || lname.contains("session")
                     || lname.contains("rtpmidi")
                 {
                     if networkSrc == nil { networkSrc = s }
+                } else if firstSrc == nil {
+                    firstSrc = s
                 }
-                if pickedSrc == nil && networkSrc == nil { pickedSrc = s }
             }
         }
 
-        let src = pickedSrc ?? networkSrc
+        let src = daisySrc ?? iacSrc ?? networkSrc ?? firstSrc
         if let src = src {
             MIDIPortConnectSource(inPort, src, nil)
+            print("MIDI: Connected to source: \(endpointName(src))")
         }
 
         if let dest = destination {
             let destName = endpointName(dest)
+            print("MIDI: Selected destination: \(destName)")
             DispatchQueue.main.async {
                 self.status = "MIDI: connected to \(destName)"
             }
         } else {
+            print("MIDI: No destinations found!")
+            print("Available destinations:")
+            for i in 0..<MIDIGetNumberOfDestinations() {
+                let d = MIDIGetDestination(i)
+                print("  - \(endpointName(d))")
+            }
             DispatchQueue.main.async {
                 self.status = "MIDI: no destinations"
             }
@@ -196,14 +225,31 @@ final class MidiController: ObservableObject {
     // MARK: Parse
 
     private func handle(packetList: MIDIPacketList) {
-        var packet = packetList.packet
-        for _ in 0..<packetList.numPackets {
-            let bytes = Mirror(reflecting: packet.data).children
-                .prefix(Int(packet.length))
-                .compactMap { $0.value as? UInt8 }
-            handle(bytes: bytes)
-            packet = MIDIPacketNext(&packet).pointee
+        // MIDIPacketList is variable-length, so we need to work with it carefully
+        // Access packet data directly from the first packet
+        let packet = packetList.packet
+        let length = Int(packet.length)
+
+        guard length > 0 && length <= 256 else { return }
+
+        // Extract bytes from the tuple using reflection (safe for single packet)
+        let mirror = Mirror(reflecting: packet.data)
+        var bytes = [UInt8]()
+        bytes.reserveCapacity(length)
+
+        for (index, child) in mirror.children.enumerated() {
+            if index >= length { break }
+            if let byte = child.value as? UInt8 {
+                bytes.append(byte)
+            }
         }
+
+        if !bytes.isEmpty {
+            handle(bytes: bytes)
+        }
+
+        // Note: For simplicity, we only handle the first packet.
+        // SysEx messages from our VST should fit in a single packet.
     }
 
     private func unpackQ16_16(_ five: ArraySlice<UInt8>) -> Float? {

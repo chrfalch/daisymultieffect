@@ -1,7 +1,9 @@
 # Architecture (DaisyMultiFX)
 
 This document describes the overall architecture of the **DaisyMultiFX** system:
+- **Core DSP library** (platform-agnostic effects and audio processing)
 - **Daisy Seed firmware** (real-time audio + MIDI SysEx endpoint)
+- **VST Plugin** (for testing and development in a DAW)
 - **iOS/iPad controller app** (SwiftUI) that configures patches and receives state updates
 - The **SysEx protocol** that ties them together
 
@@ -10,6 +12,22 @@ It also marks which parts are **starter/skeleton** and still need finishing.
 ---
 
 ## 1. System overview
+
+### Code Organization
+
+```
+daisyseed-multi-effect/
+├── core/                    # Platform-agnostic DSP (shared code)
+│   ├── audio/               # AudioProcessor, pedalboard, tempo
+│   ├── effects/             # All effect implementations
+│   ├── patch/               # Patch protocol definitions
+│   └── midi/                # SysEx utilities (no transport)
+├── firmware/                # Daisy Seed specific code
+│   └── src/                 # main.cpp, hardware I/O, SDRAM buffers
+├── vst/                     # VST3 plugin for DAW testing
+│   └── src/                 # Plugin processor, buffer manager
+└── host/                    # iOS/macOS controller apps
+```
 
 ### Components
 1. **Daisy Seed Pedal (Firmware)**

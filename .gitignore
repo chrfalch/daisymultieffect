@@ -3,3 +3,4 @@ lib
 
 # Build folders
 firmware/build/
+vst/build/
