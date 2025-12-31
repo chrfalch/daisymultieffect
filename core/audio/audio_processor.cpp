@@ -167,9 +167,9 @@ void AudioProcessor::ProcessFrame(float inL, float inR, float &outL, float &outR
         if (s.enabledFade > 0.0f)
         {
             s.effect->ProcessStereo(procL, procR);
-            
+
             // Apply channel policy - mono effects should duplicate output to both channels
-            if (s.policy == ChannelPolicy::ForceMono || 
+            if (s.policy == ChannelPolicy::ForceMono ||
                 (s.policy == ChannelPolicy::Auto && s.sumToMono))
             {
                 float mono = 0.5f * (procL + procR);

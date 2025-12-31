@@ -105,7 +105,7 @@ void DaisyMultiFXProcessor::initializeDefaultPatch()
     currentPatch_.slots[0].enabled = 1;
     currentPatch_.slots[0].inputL = ROUTE_INPUT;
     currentPatch_.slots[0].inputR = ROUTE_INPUT;
-    currentPatch_.slots[0].sumToMono = 1;  // Sum to mono for mono effect
+    currentPatch_.slots[0].sumToMono = 1; // Sum to mono for mono effect
     currentPatch_.slots[0].dry = 0;
     currentPatch_.slots[0].wet = 127;
     currentPatch_.slots[0].channelPolicy = 0;
@@ -275,7 +275,7 @@ void DaisyMultiFXProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
                   << " isPrepared=" << isPrepared_
                   << " processor=" << (processor_ ? "valid" : "NULL") << std::endl;
     }
-    
+
     // Safety check
     if (!isPrepared_ || !processor_)
         return;
@@ -335,7 +335,7 @@ void DaisyMultiFXProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
         if (outMax > maxOut)
             maxOut = outMax;
     }
-    
+
     // Debug: Log levels periodically
     if (debugCount % 1000 == 1 && (maxIn > 0.001f || maxOut > 0.001f))
     {
@@ -404,7 +404,7 @@ void DaisyMultiFXProcessor::parameterChanged(const juce::String &parameterID, fl
                     break;
                 case 10: // Distortion (mono effect)
                     slot.numParams = 2;
-                    slot.sumToMono = 1;  // Distortion is a mono effect
+                    slot.sumToMono = 1;       // Distortion is a mono effect
                     slot.params[0] = {0, 40}; // Drive
                     slot.params[1] = {1, 64}; // Tone
                     break;
