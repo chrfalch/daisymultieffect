@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Pressable,
 } from "react-native";
 import { useDaisyMultiFX } from "../../hooks/useDaisyMultiFX";
 
@@ -16,6 +17,7 @@ export const EditorScreen: React.FC = () => {
     effectMeta,
     refreshPatch,
     refreshEffectMeta,
+    setSlotEnabled,
     getEffectName,
     getParamName,
   } = useDaisyMultiFX();
@@ -68,16 +70,23 @@ export const EditorScreen: React.FC = () => {
         <View key={slot.slotIndex} style={styles.card}>
           <View style={styles.slotHeader}>
             <Text style={styles.slotTitle}>Slot {slot.slotIndex + 1}</Text>
-            <View
-              style={[
-                styles.enabledBadge,
-                { backgroundColor: slot.enabled ? "#4CAF50" : "#9E9E9E" },
-              ]}
+            <Pressable
+              onPress={() => setSlotEnabled(slot.slotIndex, !slot.enabled)}
             >
-              <Text style={styles.enabledText}>
-                {slot.enabled ? "ON" : "OFF"}
-              </Text>
-            </View>
+              {({ pressed }) => (
+                <View
+                  style={[
+                    styles.enabledBadge,
+                    { backgroundColor: slot.enabled ? "#4CAF50" : "#9E9E9E" },
+                    pressed && { opacity: 0.7 },
+                  ]}
+                >
+                  <Text style={styles.enabledText}>
+                    {slot.enabled ? "ON" : "OFF"}
+                  </Text>
+                </View>
+              )}
+            </Pressable>
           </View>
 
           <View style={styles.infoRow}>
