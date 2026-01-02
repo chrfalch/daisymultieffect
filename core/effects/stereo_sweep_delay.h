@@ -1,6 +1,6 @@
 
 #pragma once
-#include "core/effects/time_synced_effect.h"
+#include "effects/time_synced_effect.h"
 #include <cmath>
 
 struct StereoSweepDelayEffect : TimeSyncedEffect

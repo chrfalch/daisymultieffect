@@ -1,6 +1,6 @@
 
 #pragma once
-#include "core/effects/base_effect.h"
+#include "effects/base_effect.h"
 #include <cmath>
 
 struct SimpleReverbEffect : BaseEffect

@@ -1,7 +1,7 @@
 
 #pragma once
-#include "core/effects/base_effect.h"
-#include "core/audio/tempo.h"
+#include "effects/base_effect.h"
+#include "audio/tempo.h"
 #include <cmath>
 
 struct TimeSyncedEffect : BaseEffect

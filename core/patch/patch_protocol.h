@@ -2,7 +2,7 @@
 #pragma once
 
 // Include the shared protocol definitions
-#include "core/protocol/sysex_protocol.h"
+#include "protocol/sysex_protocol.h"
 
 // Re-export commonly used types and constants at global scope for VST compatibility
 using DaisyMultiFX::Protocol::ROUTE_INPUT;

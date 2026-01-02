@@ -1,7 +1,7 @@
 #include "patch/patch_protocol.h"
 
 #include "effects/delay.h"
-#include "effects/distortion.h"
+#include "effects/overdrive.h"
 #include "effects/stereo_sweep_delay.h"
 #include "effects/stereo_mixer.h"
 

@@ -9,7 +9,7 @@
 #include "audio/tempo.h"
 
 #include "effects/delay.h"
-#include "effects/distortion.h"
+#include "effects/overdrive.h"
 #include "effects/reverb.h"
 #include "effects/stereo_mixer.h"
 #include "effects/stereo_sweep_delay.h"

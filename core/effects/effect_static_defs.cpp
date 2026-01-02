@@ -1,13 +1,13 @@
 // Static definitions for effect metadata
 // These are shared between all platforms (firmware, VST, etc.)
 
-#include "core/effects/delay.h"
-#include "core/effects/overdrive.h"
-#include "core/effects/reverb.h"
-#include "core/effects/stereo_mixer.h"
-#include "core/effects/stereo_sweep_delay.h"
-#include "core/effects/compressor.h"
-#include "core/effects/chorus.h"
+#include "effects/delay.h"
+#include "effects/overdrive.h"
+#include "effects/reverb.h"
+#include "effects/stereo_mixer.h"
+#include "effects/stereo_sweep_delay.h"
+#include "effects/compressor.h"
+#include "effects/chorus.h"
 
 // ---- DelayEffect ----
 const NumberParamRange DelayEffect::kFbRange = {0.0f, 0.95f, 0.01f};

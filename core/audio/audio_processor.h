@@ -4,17 +4,17 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "core/patch/patch_protocol.h"
-#include "core/audio/pedalboard.h"
-#include "core/audio/tempo.h"
+#include "patch/patch_protocol.h"
+#include "audio/pedalboard.h"
+#include "audio/tempo.h"
 
-#include "core/effects/delay.h"
-#include "core/effects/overdrive.h"
-#include "core/effects/reverb.h"
-#include "core/effects/stereo_mixer.h"
-#include "core/effects/stereo_sweep_delay.h"
-#include "core/effects/compressor.h"
-#include "core/effects/chorus.h"
+#include "effects/delay.h"
+#include "effects/overdrive.h"
+#include "effects/reverb.h"
+#include "effects/stereo_mixer.h"
+#include "effects/stereo_sweep_delay.h"
+#include "effects/compressor.h"
+#include "effects/chorus.h"
 
 // Platform-agnostic audio processor.
 // Manages effect instances and processes audio frames.

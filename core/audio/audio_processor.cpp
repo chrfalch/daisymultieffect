@@ -1,5 +1,5 @@
 
-#include "core/audio/audio_processor.h"
+#include "audio/audio_processor.h"
 
 AudioProcessor::AudioProcessor(TempoSource &tempo)
     : tempo_(tempo),

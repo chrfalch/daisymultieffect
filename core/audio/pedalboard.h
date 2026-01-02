@@ -1,6 +1,6 @@
 
 #pragma once
-#include "core/patch/patch_protocol.h"
+#include "patch/patch_protocol.h"
 #include <cstddef>
 
 struct BaseEffect;

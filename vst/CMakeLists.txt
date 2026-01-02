@@ -34,6 +34,7 @@ add_library(core_dsp STATIC
 
 target_include_directories(core_dsp PUBLIC
     ${CMAKE_SOURCE_DIR}/..
+    ${CORE_DIR}
 )
 
 # JUCE Plugin

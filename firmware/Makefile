@@ -20,7 +20,7 @@ CPP_SOURCES = src/main.cpp \
               $(wildcard src/effects/*.cpp) \
               $(wildcard src/midi/*.cpp) \
               $(wildcard src/patch/*.cpp)
-C_INCLUDES += -Isrc
+C_INCLUDES += -Isrc -I../core
 CFLAGS   += -O2
 CXXFLAGS += -O2
 
