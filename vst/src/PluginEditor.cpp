@@ -215,8 +215,8 @@ DaisyMultiFXEditor::DaisyMultiFXEditor(DaisyMultiFXProcessor &p)
     outputLevelLabel_.setFont(juce::FontOptions(14.0f));
     addAndMakeVisible(outputLevelLabel_);
 
-    // Create 4 slot components
-    for (int i = 0; i < 4; ++i)
+    // Create slot components based on kNumSlots constant
+    for (int i = 0; i < kNumSlots; ++i)
     {
         auto slot = std::make_unique<SlotComponent>(processor_, i);
         addAndMakeVisible(*slot);
@@ -331,7 +331,8 @@ void DaisyMultiFXEditor::resized()
     // Slots area
     bounds.reduce(10, 10);
 
-    int slotWidth = (bounds.getWidth() - 30) / 4; // 4 slots with 10px gaps
+    int numGaps = kNumSlots - 1;
+    int slotWidth = (bounds.getWidth() - numGaps * 10) / kNumSlots;
     int slotHeight = bounds.getHeight();
 
     for (int i = 0; i < (int)slots_.size(); ++i)
