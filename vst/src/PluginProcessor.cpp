@@ -1,6 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-#include "core/effects/effect_registry.h"
+#include "core/effects/effect_metadata.h"
 #include <iostream>
 
 using namespace daisyfx;
@@ -56,6 +56,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout DaisyMultiFXProcessor::creat
         [](float value, int)
         { return juce::String(value, 1) + " BPM"; }));
 
+    // Build effect type choices from shared metadata
+    juce::StringArray effectNames;
+    for (size_t i = 0; i < Effects::kNumEffects; ++i)
+    {
+        effectNames.add(Effects::kAllEffects[i].meta->name);
+    }
+
     // Per-slot parameters (4 slots for GUI)
     for (int slot = 0; slot < 4; ++slot)
     {
@@ -68,7 +75,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout DaisyMultiFXProcessor::creat
         params.push_back(std::make_unique<juce::AudioParameterChoice>(
             juce::ParameterID(prefix + "_type", 1),
             "Slot " + juce::String(slot + 1) + " Type",
-            juce::StringArray{"Off", "Delay", "Distortion", "Sweep Delay", "Mixer", "Reverb", "Compressor", "Chorus"},
+            effectNames,
             0));
 
         params.push_back(std::make_unique<juce::AudioParameterFloat>(
@@ -441,53 +448,38 @@ void DaisyMultiFXProcessor::sendEffectMeta()
     double now = juce::Time::getMillisecondCounterHiRes();
     if (now - lastEffectMetaTime_ < kMinResponseIntervalMs)
     {
-        std::cout << "[VST] sendEffectMeta rate-limited" << std::endl;
         return;
     }
     lastEffectMetaTime_ = now;
 
-    std::cout << "[VST] Sending EFFECT_META response" << std::endl;
-    // Effect metadata (same as before)
+    // Build EFFECT_META response from the shared metadata
     std::vector<uint8_t> sysex;
     sysex.push_back(0xF0);
     sysex.push_back(MidiProtocol::MANUFACTURER_ID);
     sysex.push_back(MidiProtocol::Sender::VST);
     sysex.push_back(MidiProtocol::Resp::EFFECT_META);
 
-    struct EffectInfo
+    sysex.push_back(static_cast<uint8_t>(Effects::kNumEffects));
+
+    for (size_t i = 0; i < Effects::kNumEffects; ++i)
     {
-        uint8_t typeId;
-        const char *name;
-        std::vector<std::pair<uint8_t, const char *>> params;
-    };
+        const auto &entry = Effects::kAllEffects[i];
+        const auto *meta = entry.meta;
 
-    std::vector<EffectInfo> effects = {
-        {0, "Off", {}},
-        {1, "Delay", {{0, "Time"}, {1, "Division"}, {2, "Sync"}, {3, "Feedback"}, {4, "Mix"}}},
-        {10, "Distortion", {{0, "Drive"}, {1, "Tone"}}},
-        {12, "Sweep Delay", {{0, "Time"}, {1, "Division"}, {2, "Sync"}, {3, "Feedback"}, {4, "Mix"}, {5, "Pan Depth"}, {6, "Pan Rate"}}},
-        {13, "Mixer", {{0, "Mix A"}, {1, "Mix B"}, {2, "Cross"}}},
-        {14, "Reverb", {{0, "Mix"}, {1, "Decay"}, {2, "Damp"}, {3, "Pre-delay"}, {4, "Size"}}},
-        {15, "Compressor", {{0, "Threshold"}, {1, "Ratio"}, {2, "Attack"}, {3, "Release"}, {4, "Makeup"}}},
-        {16, "Chorus", {{0, "Rate"}, {1, "Depth"}, {2, "Feedback"}, {3, "Delay"}, {4, "Mix"}}}};
-
-    sysex.push_back(static_cast<uint8_t>(effects.size()));
-
-    for (const auto &fx : effects)
-    {
-        sysex.push_back(fx.typeId);
-        size_t nameLen = strlen(fx.name);
+        sysex.push_back(entry.typeId);
+        size_t nameLen = strlen(meta->name);
         sysex.push_back(static_cast<uint8_t>(nameLen));
         for (size_t c = 0; c < nameLen; ++c)
-            sysex.push_back(static_cast<uint8_t>(fx.name[c]) & 0x7F);
-        sysex.push_back(static_cast<uint8_t>(fx.params.size()));
-        for (const auto &param : fx.params)
+            sysex.push_back(static_cast<uint8_t>(meta->name[c]) & 0x7F);
+        sysex.push_back(meta->numParams);
+        for (uint8_t p = 0; p < meta->numParams; ++p)
         {
-            sysex.push_back(param.first);
-            size_t pnameLen = strlen(param.second);
+            const auto &param = meta->params[p];
+            sysex.push_back(param.id);
+            size_t pnameLen = strlen(param.name);
             sysex.push_back(static_cast<uint8_t>(pnameLen));
             for (size_t c = 0; c < pnameLen; ++c)
-                sysex.push_back(static_cast<uint8_t>(param.second[c]) & 0x7F);
+                sysex.push_back(static_cast<uint8_t>(param.name[c]) & 0x7F);
         }
     }
 

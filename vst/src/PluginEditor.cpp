@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "core/effects/effect_metadata.h"
 #include <cmath>
 
 //==============================================================================
@@ -23,15 +24,11 @@ SlotComponent::SlotComponent(DaisyMultiFXProcessor &processor, int slotIndex)
     enableAttachment_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
         vts, prefix + "_enabled", enableButton_);
 
-    // Type combo - add items but DON'T add listener yet
-    typeCombo_.addItem("Off", 1);
-    typeCombo_.addItem("Delay", 2);
-    typeCombo_.addItem("Distortion", 3);
-    typeCombo_.addItem("Sweep Delay", 4);
-    typeCombo_.addItem("Mixer", 5);
-    typeCombo_.addItem("Reverb", 6);
-    typeCombo_.addItem("Compressor", 7);
-    typeCombo_.addItem("Chorus", 8);
+    // Type combo - add items from shared metadata (DON'T add listener yet)
+    for (size_t i = 0; i < Effects::kNumEffects; ++i)
+    {
+        typeCombo_.addItem(Effects::kAllEffects[i].meta->name, static_cast<int>(i + 1));
+    }
     addAndMakeVisible(typeCombo_);
 
     // Mix slider
@@ -97,86 +94,25 @@ void SlotComponent::comboBoxChanged(juce::ComboBox *comboBoxThatHasChanged)
 
 void SlotComponent::updateParameterLabels(int effectTypeIndex)
 {
-    // Parameter names for each effect type (index matches combo box item ID - 1)
-    // 0=Off, 1=Delay, 2=Distortion, 3=Sweep Delay, 4=Mixer, 5=Reverb, 6=Compressor, 7=Chorus
-
-    struct ParamInfo
+    // Get effect metadata from shared source
+    const ::EffectMeta *meta = nullptr;
+    if (effectTypeIndex >= 0 && static_cast<size_t>(effectTypeIndex) < Effects::kNumEffects)
     {
-        const char *name;
-        bool visible;
-    };
-
-    ParamInfo params[5] = {{"---", false}, {"---", false}, {"---", false}, {"---", false}, {"---", false}};
-
-    switch (effectTypeIndex)
-    {
-    case 0: // Off
-        break;
-
-    case 1: // Delay
-        params[0] = {"Time", true};
-        params[1] = {"Division", true};
-        params[2] = {"Sync", true};
-        params[3] = {"Feedback", true};
-        params[4] = {"Delay Mix", true};
-        break;
-
-    case 2: // Distortion
-        params[0] = {"Drive", true};
-        params[1] = {"Tone", true};
-        break;
-
-    case 3: // Sweep Delay
-        params[0] = {"Time", true};
-        params[1] = {"Division", true};
-        params[2] = {"Sync", true};
-        params[3] = {"Feedback", true};
-        params[4] = {"Pan Depth", true};
-        break;
-
-    case 4: // Mixer
-        params[0] = {"Mix A", true};
-        params[1] = {"Mix B", true};
-        params[2] = {"Cross", true};
-        break;
-
-    case 5: // Reverb
-        params[0] = {"Reverb Mix", true};
-        params[1] = {"Decay", true};
-        params[2] = {"Damping", true};
-        params[3] = {"Pre-Delay", true};
-        params[4] = {"Size", true};
-        break;
-
-    case 6: // Compressor
-        params[0] = {"Threshold", true};
-        params[1] = {"Ratio", true};
-        params[2] = {"Attack", true};
-        params[3] = {"Release", true};
-        params[4] = {"Makeup", true};
-        break;
-
-    case 7: // Chorus
-        params[0] = {"Rate", true};
-        params[1] = {"Depth", true};
-        params[2] = {"Feedback", true};
-        params[3] = {"Delay", true};
-        params[4] = {"Chorus Mix", true};
-        break;
-
-    default:
-        break;
+        meta = Effects::kAllEffects[effectTypeIndex].meta;
     }
 
-    // Update labels and visibility
+    // Update labels and visibility based on effect's parameter count
     for (int i = 0; i < 5; ++i)
     {
-        paramLabels_[i]->setText(params[i].name, juce::dontSendNotification);
-        paramSliders_[i]->setVisible(params[i].visible);
-        paramLabels_[i]->setVisible(params[i].visible);
+        bool hasParam = meta && i < meta->numParams;
+        const char *paramName = hasParam ? meta->params[i].name : "---";
+
+        paramLabels_[i]->setText(paramName, juce::dontSendNotification);
+        paramSliders_[i]->setVisible(hasParam);
+        paramLabels_[i]->setVisible(hasParam);
 
         // Dim unused params
-        float alpha = params[i].visible ? 1.0f : 0.3f;
+        float alpha = hasParam ? 1.0f : 0.3f;
         paramSliders_[i]->setAlpha(alpha);
         paramLabels_[i]->setAlpha(alpha);
     }
