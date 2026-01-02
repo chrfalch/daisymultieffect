@@ -135,7 +135,8 @@ cd firmware && make
 | 14-16 | Reverb, Compressor, Chorus |
 | 17 | Noise Gate |
 | 18 | Graphic EQ |
-| 19+ | New effects |
+| 19 | Flanger |
+| 20+ | New effects |
 
 ## Tips
 

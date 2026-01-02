@@ -208,6 +208,27 @@ namespace Effects
     }
 
     //=========================================================================
+    // Flanger
+    //=========================================================================
+    namespace Flanger
+    {
+        constexpr uint8_t TypeId = 19;
+        inline const NumberParamRange kRateRange = {0.05f, 5.0f, 0.01f};
+        inline const NumberParamRange kDepthRange = {0.0f, 1.0f, 0.01f};
+        inline const NumberParamRange kFeedbackRange = {-0.95f, 0.95f, 0.01f};
+        inline const NumberParamRange kDelayRange = {0.1f, 10.0f, 0.1f};
+        inline const NumberParamRange kMixRange = {0.0f, 1.0f, 0.01f};
+        inline const ParamInfo kParams[] = {
+            {0, "Rate", "LFO rate (Hz)", ParamValueKind::Number, &kRateRange, nullptr},
+            {1, "Depth", "Modulation depth", ParamValueKind::Number, &kDepthRange, nullptr},
+            {2, "Feedback", "Feedback (-95% to +95%)", ParamValueKind::Number, &kFeedbackRange, nullptr},
+            {3, "Delay", "Base delay (ms)", ParamValueKind::Number, &kDelayRange, nullptr},
+            {4, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
+        };
+        inline const ::EffectMeta kMeta = {"Flanger", "Classic jet/swoosh flanger.", kParams, 5};
+    }
+
+    //=========================================================================
     // Master list of all effects (ordered for UI display)
     //=========================================================================
 
@@ -229,6 +250,7 @@ namespace Effects
         {Chorus::TypeId, &Chorus::kMeta},
         {NoiseGate::TypeId, &NoiseGate::kMeta},
         {GraphicEQ::TypeId, &GraphicEQ::kMeta},
+        {Flanger::TypeId, &Flanger::kMeta},
     };
 
     constexpr size_t kNumEffects = sizeof(kAllEffects) / sizeof(kAllEffects[0]);
