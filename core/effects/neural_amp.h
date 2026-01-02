@@ -116,11 +116,23 @@ struct NeuralAmpEffect : BaseEffect
     std::string modelName_ = "No Model";
     std::string modelPath_;
 
-    // Simple tone stack state (post-model EQ)
-    float lpfState_ = 0.0f;
-    float hpfState_ = 0.0f;
-    float bpfState1_ = 0.0f;
-    float bpfState2_ = 0.0f;
+    // 3-band EQ using biquad filters
+    // Low shelf (~200Hz), Mid peak (~800Hz), High shelf (~3kHz)
+    struct BiquadState
+    {
+        float x1 = 0, x2 = 0; // Input history
+        float y1 = 0, y2 = 0; // Output history
+    };
+
+    struct BiquadCoeffs
+    {
+        float b0 = 1, b1 = 0, b2 = 0;
+        float a1 = 0, a2 = 0; // a0 normalized to 1
+    };
+
+    BiquadState bassState_, midState_, trebleState_;
+    BiquadCoeffs bassCoeffs_, midCoeffs_, trebleCoeffs_;
+    bool eqNeedsUpdate_ = true;
 
 #if HAS_RTNEURAL
 // Use LSTM-12 which is compatible with AIDA-X models
@@ -139,7 +151,8 @@ struct NeuralAmpEffect : BaseEffect
     void Init(float sampleRate) override
     {
         sampleRate_ = sampleRate;
-        lpfState_ = hpfState_ = bpfState1_ = bpfState2_ = 0.0f;
+        bassState_ = midState_ = trebleState_ = {};
+        eqNeedsUpdate_ = true;
 
 #if HAS_RTNEURAL
         model_.reset();
@@ -159,12 +172,15 @@ struct NeuralAmpEffect : BaseEffect
             break;
         case 2:
             bass_ = v;
+            eqNeedsUpdate_ = true;
             break;
         case 3:
             mid_ = v;
+            eqNeedsUpdate_ = true;
             break;
         case 4:
             treble_ = v;
+            eqNeedsUpdate_ = true;
             break;
         }
     }
@@ -201,8 +217,95 @@ struct NeuralAmpEffect : BaseEffect
         return std::pow(10.0f, dB / 20.0f);
     }
 
+    // Calculate low shelf biquad coefficients
+    // freq: center frequency, gainDb: boost/cut in dB, Q: quality factor
+    void calcLowShelf(BiquadCoeffs &c, float freq, float gainDb, float Q = 0.707f)
+    {
+        float A = dBToLinear(gainDb / 2.0f); // sqrt of linear gain
+        float w0 = 2.0f * 3.14159265f * freq / sampleRate_;
+        float cosw0 = std::cos(w0);
+        float sinw0 = std::sin(w0);
+        float alpha = sinw0 / (2.0f * Q);
+        float sqrtA = std::sqrt(A);
+
+        float a0 = (A + 1) + (A - 1) * cosw0 + 2 * sqrtA * alpha;
+        c.b0 = (A * ((A + 1) - (A - 1) * cosw0 + 2 * sqrtA * alpha)) / a0;
+        c.b1 = (2 * A * ((A - 1) - (A + 1) * cosw0)) / a0;
+        c.b2 = (A * ((A + 1) - (A - 1) * cosw0 - 2 * sqrtA * alpha)) / a0;
+        c.a1 = (-2 * ((A - 1) + (A + 1) * cosw0)) / a0;
+        c.a2 = ((A + 1) + (A - 1) * cosw0 - 2 * sqrtA * alpha) / a0;
+    }
+
+    // Calculate high shelf biquad coefficients
+    void calcHighShelf(BiquadCoeffs &c, float freq, float gainDb, float Q = 0.707f)
+    {
+        float A = dBToLinear(gainDb / 2.0f);
+        float w0 = 2.0f * 3.14159265f * freq / sampleRate_;
+        float cosw0 = std::cos(w0);
+        float sinw0 = std::sin(w0);
+        float alpha = sinw0 / (2.0f * Q);
+        float sqrtA = std::sqrt(A);
+
+        float a0 = (A + 1) - (A - 1) * cosw0 + 2 * sqrtA * alpha;
+        c.b0 = (A * ((A + 1) + (A - 1) * cosw0 + 2 * sqrtA * alpha)) / a0;
+        c.b1 = (-2 * A * ((A - 1) + (A + 1) * cosw0)) / a0;
+        c.b2 = (A * ((A + 1) + (A - 1) * cosw0 - 2 * sqrtA * alpha)) / a0;
+        c.a1 = (2 * ((A - 1) - (A + 1) * cosw0)) / a0;
+        c.a2 = ((A + 1) - (A - 1) * cosw0 - 2 * sqrtA * alpha) / a0;
+    }
+
+    // Calculate peaking EQ biquad coefficients
+    void calcPeakingEQ(BiquadCoeffs &c, float freq, float gainDb, float Q = 1.0f)
+    {
+        float A = dBToLinear(gainDb / 2.0f);
+        float w0 = 2.0f * 3.14159265f * freq / sampleRate_;
+        float cosw0 = std::cos(w0);
+        float sinw0 = std::sin(w0);
+        float alpha = sinw0 / (2.0f * Q);
+
+        float a0 = 1 + alpha / A;
+        c.b0 = (1 + alpha * A) / a0;
+        c.b1 = (-2 * cosw0) / a0;
+        c.b2 = (1 - alpha * A) / a0;
+        c.a1 = (-2 * cosw0) / a0;
+        c.a2 = (1 - alpha / A) / a0;
+    }
+
+    // Process a sample through a biquad filter
+    float processBiquad(BiquadState &s, const BiquadCoeffs &c, float x)
+    {
+        float y = c.b0 * x + c.b1 * s.x1 + c.b2 * s.x2 - c.a1 * s.y1 - c.a2 * s.y2;
+        s.x2 = s.x1;
+        s.x1 = x;
+        s.y2 = s.y1;
+        s.y1 = y;
+        return y;
+    }
+
+    // Update EQ coefficients when parameters change
+    void updateEQCoeffs()
+    {
+        // Bass: Low shelf at 200Hz, ±12dB range
+        float bassDb = (bass_ - 0.5f) * 24.0f; // 0→-12dB, 0.5→0dB, 1→+12dB
+        calcLowShelf(bassCoeffs_, 200.0f, bassDb, 0.7f);
+
+        // Mid: Peaking at 800Hz, ±12dB range, Q=1.0 for moderate width
+        float midDb = (mid_ - 0.5f) * 24.0f;
+        calcPeakingEQ(midCoeffs_, 800.0f, midDb, 1.0f);
+
+        // Treble: High shelf at 3kHz, ±12dB range
+        float trebleDb = (treble_ - 0.5f) * 24.0f;
+        calcHighShelf(trebleCoeffs_, 3000.0f, trebleDb, 0.7f);
+
+        eqNeedsUpdate_ = false;
+    }
+
     void ProcessStereo(float &l, float &r) override
     {
+        // Update EQ if parameters changed
+        if (eqNeedsUpdate_)
+            updateEQCoeffs();
+
         // Convert to mono for neural network (amp models are typically mono)
         float mono = 0.5f * (l + r);
 
@@ -227,27 +330,20 @@ struct NeuralAmpEffect : BaseEffect
         mono = std::tanh(mono * 2.0f) * 0.7f;
 #endif
 
-        // Simple 3-band EQ (Baxandall-style)
-        // This is a simple post-model tone shaping
-        float bassCoeff = 0.05f + 0.15f * bass_;
-        float trebCoeff = 0.1f + 0.4f * treble_;
+        // Apply 3-band EQ (only process if not at neutral)
+        float output = mono;
 
-        // Low shelf
-        lpfState_ += bassCoeff * (mono - lpfState_);
-        float bassBoost = (bass_ - 0.5f) * 2.0f; // -1 to +1
-        float lowShelf = mono + bassBoost * (lpfState_ - mono);
+        // Bass shelf
+        if (std::fabs(bass_ - 0.5f) > 0.01f)
+            output = processBiquad(bassState_, bassCoeffs_, output);
 
-        // High shelf
-        hpfState_ += trebCoeff * (lowShelf - hpfState_);
-        float trebBoost = (treble_ - 0.5f) * 2.0f;
-        float highShelf = lowShelf + trebBoost * (lowShelf - hpfState_);
+        // Mid peak
+        if (std::fabs(mid_ - 0.5f) > 0.01f)
+            output = processBiquad(midState_, midCoeffs_, output);
 
-        // Mid band (simple bandpass)
-        float midFreq = 800.0f / sampleRate_;
-        bpfState1_ += midFreq * (highShelf - bpfState1_);
-        bpfState2_ += midFreq * (bpfState1_ - bpfState2_);
-        float midBoost = (mid_ - 0.5f) * 2.0f;
-        float output = highShelf + midBoost * (bpfState1_ - bpfState2_);
+        // Treble shelf
+        if (std::fabs(treble_ - 0.5f) > 0.01f)
+            output = processBiquad(trebleState_, trebleCoeffs_, output);
 
         // Apply output gain (-20dB to +20dB range)
         float outGain = dBToLinear((outputGain_ - 0.5f) * 40.0f);

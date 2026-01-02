@@ -282,8 +282,8 @@ namespace Effects
         inline const ParamInfo kParams[] = {
             {0, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
             {1, "Output", "Output level (-20dB to +20dB)", ParamValueKind::Number, &kOutputRange, nullptr},
-            {2, "Low Cut", "High-pass filter (20-500Hz)", ParamValueKind::Number, &kLowCutRange, nullptr},
-            {3, "High Cut", "Low-pass filter (2-20kHz)", ParamValueKind::Number, &kHighCutRange, nullptr},
+            {2, "Low Cut", "Cuts bass (0=off, 1=800Hz)", ParamValueKind::Number, &kLowCutRange, nullptr},
+            {3, "High Cut", "Cuts treble (0=bright, 1=dark)", ParamValueKind::Number, &kHighCutRange, nullptr},
         };
         inline const ::EffectMeta kMeta = {"Cabinet IR", "Impulse response convolution for speaker cabinet simulation. Load WAV files.", kParams, 4};
     }
