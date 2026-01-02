@@ -16,8 +16,8 @@ const EffectMeta *EffectRegistry::Lookup(uint8_t typeId)
         return &DelayEffect::kMeta;
     case StereoSweepDelayEffect::TypeId:
         return &StereoSweepDelayEffect::kMeta;
-    case DistortionEffect::TypeId:
-        return &DistortionEffect::kMeta;
+    case OverdriveEffect::TypeId:
+        return &OverdriveEffect::kMeta;
     case StereoMixerEffect::TypeId:
         return &StereoMixerEffect::kMeta;
     case SimpleReverbEffect::TypeId:

@@ -9,7 +9,7 @@
 #include "core/audio/tempo.h"
 
 #include "core/effects/delay.h"
-#include "core/effects/distortion.h"
+#include "core/effects/overdrive.h"
 #include "core/effects/reverb.h"
 #include "core/effects/stereo_mixer.h"
 #include "core/effects/stereo_sweep_delay.h"
@@ -95,7 +95,7 @@ private:
 
     DelayEffect fx_delays_[kMaxDelays];
     StereoSweepDelayEffect fx_sweeps_[kMaxSweeps];
-    DistortionEffect fx_dists_[kMaxDistortions];
+    OverdriveEffect fx_dists_[kMaxDistortions];
     StereoMixerEffect fx_mixers_[kMaxMixers];
     SimpleReverbEffect fx_reverbs_[kMaxReverbs];
     CompressorEffect fx_compressors_[kMaxCompressors];

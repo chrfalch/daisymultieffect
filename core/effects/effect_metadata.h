@@ -56,13 +56,13 @@ namespace Effects
     namespace Distortion
     {
         constexpr uint8_t TypeId = 10;
-        inline const NumberParamRange kDriveRange = {1.0f, 20.0f, 0.1f};
+        inline const NumberParamRange kDriveRange = {0.0f, 1.0f, 0.01f};
         inline const NumberParamRange kToneRange = {0.0f, 1.0f, 0.01f};
         inline const ParamInfo kParams[] = {
-            {0, "Drive", "Input drive amount", ParamValueKind::Number, &kDriveRange, nullptr},
-            {1, "Tone", "Darker/brighter blend", ParamValueKind::Number, &kToneRange, nullptr},
+            {0, "Drive", "Overdrive amount", ParamValueKind::Number, &kDriveRange, nullptr},
+            {1, "Tone", "Dark to bright", ParamValueKind::Number, &kToneRange, nullptr},
         };
-        inline const ::EffectMeta kMeta = {"Distortion", "Simple tanh distortion + tone.", kParams, 2};
+        inline const ::EffectMeta kMeta = {"Overdrive", "Musical overdrive with auto-leveling.", kParams, 2};
     }
 
     //=========================================================================

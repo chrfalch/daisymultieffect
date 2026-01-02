@@ -1,12 +1,12 @@
 
 #pragma once
-#include "effects/base_effect.h"
+#include "core/effects/base_effect.h"
 #include <cmath>
 
 /**
  * Overdrive Effect
- * Ported from DaisySP/Mutable Instruments Plaits overdrive algorithm.
- * Features musical gain staging with automatic output leveling.
+ * Exact port of DaisySP/Mutable Instruments Plaits overdrive.
+ * Musical gain staging with automatic output leveling.
  */
 struct OverdriveEffect : BaseEffect
 {
@@ -43,6 +43,7 @@ struct OverdriveEffect : BaseEffect
         return x < min ? min : (x > max ? max : x);
     }
 
+    // Exact DaisySP SetDrive implementation
     void SetDrive(float drive)
     {
         drive = fclamp(drive, 0.0f, 1.0f);
@@ -93,12 +94,12 @@ struct OverdriveEffect : BaseEffect
 
     void ProcessStereo(float &l, float &r) override
     {
-        // Apply overdrive with auto-leveling
+        // Exact DaisySP process: pre_gain -> SoftClip -> post_gain
         float xL = SoftClip(l * pre_gain_) * post_gain_;
         float xR = SoftClip(r * pre_gain_) * post_gain_;
 
-        // Tone: one-pole lowpass, crossfade between filtered and direct
-        // Low tone = darker (more lowpass), high tone = brighter (more direct)
+        // Tone: one-pole lowpass for warmth control
+        // Low tone = warmer (more lowpass), high tone = brighter (more direct)
         float coeff = 0.05f + 0.4f * (1.0f - tone_);
         lpL_ += coeff * (xL - lpL_);
         lpR_ += coeff * (xR - lpR_);

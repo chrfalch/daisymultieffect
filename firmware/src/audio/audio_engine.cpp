@@ -48,7 +48,7 @@ BaseEffect *AudioEngine::Instantiate(uint8_t typeId, int slotIndex)
         if (sweep_next_ < kMaxSweeps)
             return &fx_sweeps_[sweep_next_++];
         return nullptr;
-    case DistortionEffect::TypeId:
+    case OverdriveEffect::TypeId:
         if (dist_next_ < kMaxDistortions)
             return &fx_dists_[dist_next_++];
         return nullptr;

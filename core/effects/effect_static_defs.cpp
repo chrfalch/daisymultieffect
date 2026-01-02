@@ -2,7 +2,7 @@
 // These are shared between all platforms (firmware, VST, etc.)
 
 #include "core/effects/delay.h"
-#include "core/effects/distortion.h"
+#include "core/effects/overdrive.h"
 #include "core/effects/reverb.h"
 #include "core/effects/stereo_mixer.h"
 #include "core/effects/stereo_sweep_delay.h"
@@ -42,15 +42,15 @@ const ParamInfo StereoSweepDelayEffect::kParams[7] = {
 const EffectMeta StereoSweepDelayEffect::kMeta = {"Stereo Sweep", "Panning delay.", StereoSweepDelayEffect::kParams, 7};
 
 // ---- DistortionEffect ----
-const NumberParamRange DistortionEffect::kDriveRange = {1.0f, 20.0f, 0.1f};
-const NumberParamRange DistortionEffect::kToneRange = {0.0f, 1.0f, 0.01f};
+const NumberParamRange OverdriveEffect::kDriveRange = {0.0f, 1.0f, 0.01f};
+const NumberParamRange OverdriveEffect::kToneRange = {0.0f, 1.0f, 0.01f};
 
-const ParamInfo DistortionEffect::kParams[2] = {
-    {0, "Drive", "Drive amount", ParamValueKind::Number, &DistortionEffect::kDriveRange, nullptr},
-    {1, "Tone", "Brightness", ParamValueKind::Number, &DistortionEffect::kToneRange, nullptr},
+const ParamInfo OverdriveEffect::kParams[2] = {
+    {0, "Drive", "Overdrive amount", ParamValueKind::Number, &OverdriveEffect::kDriveRange, nullptr},
+    {1, "Tone", "Dark to bright", ParamValueKind::Number, &OverdriveEffect::kToneRange, nullptr},
 };
 
-const EffectMeta DistortionEffect::kMeta = {"Distortion", "Soft-clip distortion.", DistortionEffect::kParams, 2};
+const EffectMeta OverdriveEffect::kMeta = {"Overdrive", "Musical overdrive with auto-leveling.", OverdriveEffect::kParams, 2};
 
 // ---- StereoMixerEffect ----
 const NumberParamRange StereoMixerEffect::kMixRange = {0.0f, 1.0f, 0.01f};

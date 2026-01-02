@@ -163,7 +163,7 @@ void MidiControl::SendEffectList()
     const uint8_t types[] = {
         DelayEffect::TypeId,
         StereoSweepDelayEffect::TypeId,
-        DistortionEffect::TypeId,
+        OverdriveEffect::TypeId,
         StereoMixerEffect::TypeId,
         SimpleReverbEffect::TypeId,
         CompressorEffect::TypeId,

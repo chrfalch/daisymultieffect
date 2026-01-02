@@ -52,7 +52,7 @@ private:
 
     DelayEffect fx_delays_[kMaxDelays];
     StereoSweepDelayEffect fx_sweeps_[kMaxSweeps];
-    DistortionEffect fx_dists_[kMaxDistortions];
+    OverdriveEffect fx_dists_[kMaxDistortions];
     StereoMixerEffect fx_mixers_[kMaxMixers];
     SimpleReverbEffect fx_reverbs_[kMaxReverbs];
     CompressorEffect fx_compressors_[kMaxCompressors];

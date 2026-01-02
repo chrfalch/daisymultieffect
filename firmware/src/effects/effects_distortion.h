@@ -3,7 +3,7 @@
 #include "effects/base_effect.h"
 #include <cmath>
 
-struct DistortionEffect : BaseEffect
+struct OverdriveEffect : BaseEffect
 {
     static constexpr uint8_t TypeId = 10;
 

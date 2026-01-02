@@ -83,15 +83,15 @@ const ParamInfo StereoSweepDelayEffect::kParams[7] = {
 const EffectMeta StereoSweepDelayEffect::kMeta = {"Sweep Delay", "Stereo delay with pan sweep.", kParams, 7};
 
 // ---- DistortionEffect ----
-const NumberParamRange DistortionEffect::kDriveRange = {1.0f, 20.0f, 0.1f};
-const NumberParamRange DistortionEffect::kToneRange = {0.0f, 1.0f, 0.01f};
+const NumberParamRange OverdriveEffect::kDriveRange = {0.0f, 1.0f, 0.01f};
+const NumberParamRange OverdriveEffect::kToneRange = {0.0f, 1.0f, 0.01f};
 
-const ParamInfo DistortionEffect::kParams[2] = {
-    {0, "Drive", "Input drive amount", ParamValueKind::Number, &kDriveRange, nullptr},
-    {1, "Tone", "Darker/brighter blend", ParamValueKind::Number, &kToneRange, nullptr},
+const ParamInfo OverdriveEffect::kParams[2] = {
+    {0, "Drive", "Overdrive amount", ParamValueKind::Number, &OverdriveEffect::kDriveRange, nullptr},
+    {1, "Tone", "Dark to bright", ParamValueKind::Number, &OverdriveEffect::kToneRange, nullptr},
 };
 
-const EffectMeta DistortionEffect::kMeta = {"Distortion", "Simple tanh distortion + tone.", kParams, 2};
+const EffectMeta OverdriveEffect::kMeta = {"Overdrive", "Musical overdrive with auto-leveling.", OverdriveEffect::kParams, 2};
 
 // ---- StereoMixerEffect ----
 const NumberParamRange StereoMixerEffect::kMixRange = {0.0f, 1.0f, 0.01f};
