@@ -415,16 +415,17 @@ final class DaisyMidiController: @unchecked Sendable {
         let msgTypeByte = umpData[3]
         let messageType = (msgTypeByte >> 4) & 0x0F
 
+        // Message type 3 = Data Messages (SysEx)
         if messageType == 0x03 {
-            var payload: [UInt8] = []
+            // Process each 64-bit packet within this event
             var offset = 0
-            var isComplete = false
 
-            while offset + 8 <= umpData.count && !isComplete {
+            while offset + 8 <= umpData.count {
                 let statusByte = umpData[offset + 2]
-                let status = (statusByte >> 4) & 0x0F
+                let status = (statusByte >> 4) & 0x0F  // 0=complete, 1=start, 2=continue, 3=end
                 let numBytes = Int(statusByte & 0x0F)
 
+                // Extract data bytes from this 64-bit packet
                 var packetData: [UInt8] = []
                 if numBytes >= 1 { packetData.append(umpData[offset + 1]) }
                 if numBytes >= 2 { packetData.append(umpData[offset + 0]) }
@@ -441,27 +442,26 @@ final class DaisyMidiController: @unchecked Sendable {
                     packetData.append(umpData[offset + 4])
                 }
 
-                payload.append(contentsOf: packetData)
+                // Use the accumulator for multi-packet SysEx
+                if let completeSysex = sysexAccumulator.process(status: status, payload: packetData)
+                {
+                    print("[DaisyMidi] Accumulated complete SysEx: \(completeSysex.count) bytes")
+                    return completeSysex
+                }
 
-                if status == 0x03 {
-                    isComplete = true
-                } else if status == 0x00 {
-                    if numBytes > 0 {
-                        isComplete = true
-                    } else {
-                        break
-                    }
+                // Check if we should stop (padding/invalid)
+                if status == 0x00 && numBytes == 0 {
+                    break
                 }
 
                 offset += 8
             }
 
-            if !payload.isEmpty {
-                return payload
-            }
+            // SysEx not complete yet (waiting for more packets)
+            return nil
         }
 
-        // Legacy format
+        // Legacy format (direct F0...F7)
         if umpData[0] == 0xF0 {
             if let endIndex = umpData.firstIndex(of: 0xF7) {
                 return Array(umpData[1..<endIndex])
