@@ -45,6 +45,11 @@ public:
     void SendTempoUpdate(float bpm);
     void SendButtonStateChange(uint8_t btn, uint8_t slot, bool enabled);
 
+    // Send individual state changes (for bidirectional sync)
+    void SendSetParam(uint8_t slot, uint8_t paramId, uint8_t value);
+    void SendSetEnabled(uint8_t slot, bool enabled);
+    void SendSetType(uint8_t slot, uint8_t typeId);
+
 private:
     static void OnUsbMidiRx(uint8_t *data, size_t size, void *context);
 
@@ -74,6 +79,11 @@ private:
 
     // When true, the main loop will transmit a patch dump (set by audio thread).
     volatile bool tx_patch_dump_pending_ = false;
+
+    // Pending individual state changes to send (more efficient than full patch dump)
+    volatile uint32_t tx_pending_param_ = 0;   // Pack: slot<<24 | paramId<<16 | value<<8 | 1
+    volatile uint32_t tx_pending_enabled_ = 0; // Pack: slot<<24 | enabled<<8 | 2
+    volatile uint32_t tx_pending_type_ = 0;    // Pack: slot<<24 | typeId<<8 | 3
 
     // Scratch storage used when re-applying patches.
     PatchWireDesc pending_patch_{};

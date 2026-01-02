@@ -62,6 +62,8 @@ void UiControl::HandleButtonPress(int buttonIndex)
 
             midi_->SetCurrentPatch(currentPatch_);
             midi_->SendButtonStateChange((uint8_t)buttonIndex, slot, s.enabled);
+            // Also send SetEnabled for bidirectional sync with VST/app
+            midi_->SendSetEnabled(slot, s.enabled);
         }
     }
     else if (binding.mode == ButtonMode::TapTempo)

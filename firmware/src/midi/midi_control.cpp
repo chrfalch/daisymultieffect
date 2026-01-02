@@ -81,6 +81,27 @@ void MidiControl::SendButtonStateChange(uint8_t btn, uint8_t slot, bool enabled)
     SendSysEx(msg, sizeof(msg));
 }
 
+void MidiControl::SendSetParam(uint8_t slot, uint8_t paramId, uint8_t value)
+{
+    // SysEx: F0 7D 20 <slot> <paramId> <value> F7
+    uint8_t msg[] = {0xF0, 0x7D, 0x20, (uint8_t)(slot & 0x7F), (uint8_t)(paramId & 0x7F), (uint8_t)(value & 0x7F), 0xF7};
+    SendSysEx(msg, sizeof(msg));
+}
+
+void MidiControl::SendSetEnabled(uint8_t slot, bool enabled)
+{
+    // SysEx: F0 7D 21 <slot> <enabled> F7
+    uint8_t msg[] = {0xF0, 0x7D, 0x21, (uint8_t)(slot & 0x7F), (uint8_t)(enabled ? 1 : 0), 0xF7};
+    SendSysEx(msg, sizeof(msg));
+}
+
+void MidiControl::SendSetType(uint8_t slot, uint8_t typeId)
+{
+    // SysEx: F0 7D 22 <slot> <typeId> F7
+    uint8_t msg[] = {0xF0, 0x7D, 0x22, (uint8_t)(slot & 0x7F), (uint8_t)(typeId & 0x7F), 0xF7};
+    SendSysEx(msg, sizeof(msg));
+}
+
 void MidiControl::QueueSysexIfFree(const uint8_t *data, size_t len)
 {
     daisy::ScopedIrqBlocker lock;
@@ -394,7 +415,8 @@ void MidiControl::ApplyPendingInAudioThread()
                 sw.params[sw.numParams++] = {pid, value};
             }
         }
-        tx_patch_dump_pending_ = true;
+        // Queue individual param change for TX (no echo - this came from external)
+        // Note: We don't send back since this was received via SysEx
     }
     else if (kind == PendingKind::SetSlotEnabled)
     {
@@ -402,7 +424,7 @@ void MidiControl::ApplyPendingInAudioThread()
         (*board_).slots[slot].enabled = en;
         if (slot < current_patch_.numSlots)
             current_patch_.slots[slot].enabled = en ? 1 : 0;
-        tx_patch_dump_pending_ = true;
+        // Note: We don't send back since this was received via SysEx
     }
     else if (kind == PendingKind::SetSlotType)
     {
@@ -450,6 +472,6 @@ void MidiControl::ApplyPendingInAudioThread()
                 sw.params[i].value = (i < n) ? snap[i].value : 0;
             }
         }
-        tx_patch_dump_pending_ = true;
+        // Note: We don't send back since this was received via SysEx
     }
 }

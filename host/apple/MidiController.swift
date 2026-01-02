@@ -2,419 +2,663 @@ import Combine
 import CoreMIDI
 import Foundation
 
-private let kManuf: UInt8 = 0x7D
+// MARK: - Data Models
 
-struct EffectParamMeta: Identifiable, Hashable {
-    let id: UInt8
-    let kind: UInt8
-    let name: String
+struct PatchSlot: Equatable {
+    var slotIndex: UInt8 = 0
+    var typeId: UInt8 = 0
+    var enabled: Bool = false
+    var inputL: UInt8 = 0
+    var inputR: UInt8 = 0
+    var sumToMono: Bool = false
+    var dry: UInt8 = 0
+    var wet: UInt8 = 127
+    var params: [UInt8: UInt8] = [:]
 }
 
-struct EffectMetaV2: Identifiable, Hashable {
-    var id: UInt8 { typeId }
-    let typeId: UInt8
-    let name: String
-    let params: [EffectParamMeta]
+struct Patch: Equatable {
+    var numSlots: UInt8 = 0
+    var slots: [PatchSlot] = []
 }
 
-struct PatchSlot: Identifiable, Hashable {
-    var id: UInt8 { slotIndex }
-    let slotIndex: UInt8
+struct EffectParamMeta: Equatable {
+    var id: UInt8
+    var name: String
+}
+
+struct EffectMeta: Equatable {
     var typeId: UInt8
-    var enabled: Bool
-    var dry: UInt8
-    var wet: UInt8
-    var params: [UInt8: UInt8]  // paramId -> 0..127
+    var name: String
+    var params: [EffectParamMeta]
 }
 
-struct PatchDump: Hashable {
-    var numSlots: UInt8
-    var slots: [PatchSlot]  // always 12 entries as sent by firmware
+// MARK: - MIDI Protocol (matching C++ MidiProtocol)
+
+enum MidiProtocol {
+    static let manufacturerId: UInt8 = 0x7D
+
+    // Sender IDs - each client type has a unique ID
+    enum Sender {
+        static let firmware: UInt8 = 0x01
+        static let vst: UInt8 = 0x02
+        static let swift: UInt8 = 0x03
+    }
+
+    enum Cmd {
+        static let requestPatch: UInt8 = 0x12
+        static let setParam: UInt8 = 0x20
+        static let setEnabled: UInt8 = 0x21
+        static let setType: UInt8 = 0x22
+        static let requestMeta: UInt8 = 0x32
+    }
+
+    enum Resp {
+        static let patchDump: UInt8 = 0x13
+        static let effectMeta: UInt8 = 0x33
+    }
+
+    // Encoders (all include sender ID)
+    static func encodeSetEnabled(slot: UInt8, enabled: Bool) -> [UInt8] {
+        [0xF0, manufacturerId, Sender.swift, Cmd.setEnabled, slot & 0x7F, enabled ? 1 : 0, 0xF7]
+    }
+
+    static func encodeSetType(slot: UInt8, typeId: UInt8) -> [UInt8] {
+        [0xF0, manufacturerId, Sender.swift, Cmd.setType, slot & 0x7F, typeId & 0x7F, 0xF7]
+    }
+
+    static func encodeSetParam(slot: UInt8, paramId: UInt8, value: UInt8) -> [UInt8] {
+        [
+            0xF0, manufacturerId, Sender.swift, Cmd.setParam, slot & 0x7F, paramId & 0x7F,
+            value & 0x7F, 0xF7,
+        ]
+    }
+
+    static func encodeRequestPatch() -> [UInt8] {
+        [0xF0, manufacturerId, Sender.swift, Cmd.requestPatch, 0xF7]
+    }
+
+    static func encodeRequestMeta() -> [UInt8] {
+        [0xF0, manufacturerId, Sender.swift, Cmd.requestMeta, 0xF7]
+    }
 }
 
-final class MidiController: ObservableObject {
-    var onTempoUpdate: ((Float) -> Void)?
-    var onButtonStateChange: ((UInt8, UInt8, Bool) -> Void)?
-    var onEffectDiscovered: ((UInt8, String) -> Void)?
+// MARK: - PatchState (Single Source of Truth)
 
-    @Published var status: String = "MIDI: initializing…"
+/// PatchState - The single source of truth for all patch data.
+///
+/// All changes go through this class, which:
+/// 1. Deduplicates (ignores if value unchanged)
+/// 2. Updates internal state
+/// 3. Publishes changes to UI via @Published
+/// 4. Optionally broadcasts via MIDI (if sendMidi closure is set)
+@MainActor
+class PatchState: ObservableObject {
+    @Published private(set) var patch: Patch?
+    @Published private(set) var effectsById: [UInt8: EffectMeta] = [:]
+    @Published private(set) var status: String = "Initializing..."
 
-    @Published private(set) var effectsById: [UInt8: EffectMetaV2] = [:]
-    @Published private(set) var patch: PatchDump?
+    /// Closure to send MIDI - set by MidiTransport
+    var sendMidi: (([UInt8]) -> Void)?
 
-    private var client = MIDIClientRef()
-    private var inPort = MIDIPortRef()
-    private var outPort = MIDIPortRef()
-    private var destination: MIDIEndpointRef?
-
-    private let midiQueue = DispatchQueue(label: "MidiController.midi")
-
-    private var inSysex = false
-    private var sysexBuffer: [UInt8] = []
-
-    init() { setup() }
-
-    private func setup() {
-        MIDIClientCreateWithBlock("DaisyMultiFX" as CFString, &client) { [weak self] _ in
-            // Device list changed, rebind.
-            self?.midiQueue.async {
-                self?.selectEndpointsAndConnect()
-            }
-        }
-        MIDIInputPortCreateWithBlock(client, "In" as CFString, &inPort) {
-            [weak self] packetList, _ in
-            self?.handle(packetList: packetList.pointee)
-        }
-        MIDIOutputPortCreate(client, "Out" as CFString, &outPort)
-
-        midiQueue.async {
-            self.selectEndpointsAndConnect()
-        }
-    }
-
-    private func endpointName(_ endpoint: MIDIEndpointRef) -> String {
-        var str: Unmanaged<CFString>?
-        let err = MIDIObjectGetStringProperty(endpoint, kMIDIPropertyDisplayName, &str)
-        if err == noErr, let s = str?.takeRetainedValue() {
-            return s as String
-        }
-        return "(unknown)"
-    }
-
-    private func selectEndpointsAndConnect() {
-        // Disconnect previous sources by recreating the input port connection state.
-        // (CoreMIDI doesn't provide a simple 'disconnect all' on the port.)
-
-        // Pick destination - look for Daisy, IAC Driver, network sessions, or fall back to first available
-        destination = nil
-        let numDests = MIDIGetNumberOfDestinations()
-        print("MIDI: Scanning \(numDests) destinations...")
-        if numDests > 0 {
-            var daisyEndpoint: MIDIEndpointRef?
-            var iacEndpoint: MIDIEndpointRef?
-            var networkEndpoint: MIDIEndpointRef?
-            var firstEndpoint: MIDIEndpointRef?
-
-            for i in 0..<numDests {
-                let d = MIDIGetDestination(i)
-                let name = endpointName(d)
-                let lname = name.lowercased()
-                print("  Dest \(i): \(name)")
-
-                // Prefer Daisy device or DaisyMultiFX VST/standalone
-                if lname.contains("daisy") || lname.contains("seed") || lname.contains("multifx") {
-                    daisyEndpoint = d
-                }
-                // IAC Driver for virtual MIDI (connecting to VST/standalone)
-                else if lname.contains("iac") {
-                    if iacEndpoint == nil { iacEndpoint = d }
-                }
-                // Remember network sessions as fallback
-                else if lname.contains("network") || lname.contains("session")
-                    || lname.contains("rtpmidi")
-                {
-                    if networkEndpoint == nil { networkEndpoint = d }
-                }
-                // Remember first as last resort
-                else if firstEndpoint == nil {
-                    firstEndpoint = d
-                }
-            }
-            // Priority: Daisy > IAC > network > first available
-            destination = daisyEndpoint ?? iacEndpoint ?? networkEndpoint ?? firstEndpoint
-        }
-
-        // Pick source - same logic (Daisy > IAC > network > first available)
-        let numSrcs = MIDIGetNumberOfSources()
-        print("MIDI: Scanning \(numSrcs) sources...")
-        var daisySrc: MIDIEndpointRef?
-        var iacSrc: MIDIEndpointRef?
-        var networkSrc: MIDIEndpointRef?
-        var firstSrc: MIDIEndpointRef?
-
-        if numSrcs > 0 {
-            for i in 0..<numSrcs {
-                let s = MIDIGetSource(i)
-                let name = endpointName(s)
-                let lname = name.lowercased()
-                print("  Src \(i): \(name)")
-
-                if lname.contains("daisy") || lname.contains("seed") || lname.contains("multifx") {
-                    daisySrc = s
-                } else if lname.contains("iac") {
-                    if iacSrc == nil { iacSrc = s }
-                } else if lname.contains("network") || lname.contains("session")
-                    || lname.contains("rtpmidi")
-                {
-                    if networkSrc == nil { networkSrc = s }
-                } else if firstSrc == nil {
-                    firstSrc = s
-                }
-            }
-        }
-
-        let src = daisySrc ?? iacSrc ?? networkSrc ?? firstSrc
-        if let src = src {
-            MIDIPortConnectSource(inPort, src, nil)
-            print("MIDI: Connected to source: \(endpointName(src))")
-        }
-
-        if let dest = destination {
-            let destName = endpointName(dest)
-            print("MIDI: Selected destination: \(destName)")
-            DispatchQueue.main.async {
-                self.status = "MIDI: connected to \(destName)"
-            }
-        } else {
-            print("MIDI: No destinations found!")
-            print("Available destinations:")
-            for i in 0..<MIDIGetNumberOfDestinations() {
-                let d = MIDIGetDestination(i)
-                print("  - \(endpointName(d))")
-            }
-            DispatchQueue.main.async {
-                self.status = "MIDI: no destinations"
-            }
-        }
-    }
-
-    func sendSysex(_ bytes: [UInt8]) {
-        midiQueue.async {
-            guard let dest = self.destination else { return }
-            let data = bytes
-            // Allocate an actual packet list buffer (MIDIPacketList is variable-length).
-            let bufferSize = max(1024, data.count + 64)
-            var packetBytes = [UInt8](repeating: 0, count: bufferSize)
-            packetBytes.withUnsafeMutableBytes { raw in
-                guard let plist = raw.baseAddress?.assumingMemoryBound(to: MIDIPacketList.self)
-                else {
-                    return
-                }
-                var pkt = MIDIPacketListInit(plist)
-                data.withUnsafeBytes { syx in
-                    guard let base = syx.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                        return
-                    }
-                    pkt = MIDIPacketListAdd(plist, bufferSize, pkt, 0, data.count, base)
-                }
-                // With our buffer sizing, MIDIPacketListAdd is expected to succeed.
-                MIDISend(self.outPort, dest, plist)
-            }
-        }
-    }
-
-    // Commands
-    func requestAllEffectMeta() { sendSysex([0xF0, kManuf, 0x32, 0xF7]) }
-    func requestPatchDump() { sendSysex([0xF0, kManuf, 0x12, 0xF7]) }
-
-    func setParam(slot: UInt8, paramId: UInt8, value: UInt8) {
-        // F0 7D 20 <slot> <paramId> <value> F7
-        sendSysex([0xF0, kManuf, 0x20, slot & 0x7F, paramId & 0x7F, value & 0x7F, 0xF7])
-    }
+    // MARK: - Commands (mutators)
 
     func setSlotEnabled(slot: UInt8, enabled: Bool) {
-        // F0 7D 21 <slot> <enabled> F7
-        sendSysex([0xF0, kManuf, 0x21, slot & 0x7F, enabled ? 1 : 0, 0xF7])
+        guard var p = patch, Int(slot) < p.slots.count else { return }
+
+        // Deduplicate
+        if p.slots[Int(slot)].enabled == enabled { return }
+
+        // Update state
+        p.slots[Int(slot)].enabled = enabled
+        patch = p
+
+        // Broadcast
+        sendMidi?(MidiProtocol.encodeSetEnabled(slot: slot, enabled: enabled))
     }
 
     func setSlotType(slot: UInt8, typeId: UInt8) {
-        // F0 7D 22 <slot> <typeId> F7
-        sendSysex([0xF0, kManuf, 0x22, slot & 0x7F, typeId & 0x7F, 0xF7])
+        guard var p = patch, Int(slot) < p.slots.count else { return }
+
+        // Deduplicate
+        if p.slots[Int(slot)].typeId == typeId { return }
+
+        // Update state
+        p.slots[Int(slot)].typeId = typeId
+        patch = p
+
+        // Broadcast
+        sendMidi?(MidiProtocol.encodeSetType(slot: slot, typeId: typeId))
     }
 
-    // MARK: Parse
+    func setSlotParam(slot: UInt8, paramId: UInt8, value: UInt8) {
+        guard var p = patch, Int(slot) < p.slots.count else { return }
 
-    private func handle(packetList: MIDIPacketList) {
-        // MIDIPacketList is variable-length, so we need to work with it carefully
-        // Access packet data directly from the first packet
-        let packet = packetList.packet
-        let length = Int(packet.length)
+        // Deduplicate
+        if p.slots[Int(slot)].params[paramId] == value { return }
 
-        guard length > 0 && length <= 256 else { return }
+        // Update state
+        p.slots[Int(slot)].params[paramId] = value
+        patch = p
 
-        // Extract bytes from the tuple using reflection (safe for single packet)
-        let mirror = Mirror(reflecting: packet.data)
-        var bytes = [UInt8]()
-        bytes.reserveCapacity(length)
+        // Broadcast
+        sendMidi?(MidiProtocol.encodeSetParam(slot: slot, paramId: paramId, value: value))
+    }
 
-        for (index, child) in mirror.children.enumerated() {
-            if index >= length { break }
-            if let byte = child.value as? UInt8 {
-                bytes.append(byte)
+    func loadPatch(_ newPatch: Patch) {
+        patch = newPatch
+    }
+
+    func loadEffectMeta(_ effects: [EffectMeta]) {
+        var byId: [UInt8: EffectMeta] = [:]
+        for fx in effects {
+            byId[fx.typeId] = fx
+        }
+        effectsById = byId
+    }
+
+    func updateStatus(_ newStatus: String) {
+        status = newStatus
+    }
+}
+
+// MARK: - MidiTransport (CoreMIDI wrapper)
+
+/// MidiTransport - Handles CoreMIDI send/receive.
+///
+/// This is a pure transport layer:
+/// - Receives raw MIDI, decodes, routes to PatchState
+/// - Sends raw MIDI when PatchState.sendMidi is called
+///
+/// No state management here - just bytes in/out.
+// Thread-safe SysEx accumulator for multi-packet UMP messages
+private final class SysExAccumulator: @unchecked Sendable {
+    private var buffer: [UInt8] = []
+    private var isAccumulating = false
+    private let lock = NSLock()
+
+    func process(status: UInt8, payload: [UInt8]) -> [UInt8]? {
+        lock.lock()
+        defer { lock.unlock() }
+
+        switch status {
+        case 0x00:  // Complete SysEx in one packet
+            return payload
+
+        case 0x01:  // Start of multi-packet SysEx
+            buffer = payload
+            isAccumulating = true
+            return nil
+
+        case 0x02:  // Continue
+            if isAccumulating {
+                buffer.append(contentsOf: payload)
             }
-        }
+            return nil
 
-        if !bytes.isEmpty {
-            handle(bytes: bytes)
-        }
+        case 0x03:  // End
+            if isAccumulating {
+                buffer.append(contentsOf: payload)
+                let complete = buffer
+                buffer = []
+                isAccumulating = false
+                return complete
+            }
+            return nil
 
-        // Note: For simplicity, we only handle the first packet.
-        // SysEx messages from our VST should fit in a single packet.
+        default:
+            return nil
+        }
     }
 
-    private func unpackQ16_16(_ five: ArraySlice<UInt8>) -> Float? {
-        let b = Array(five.prefix(5))
-        guard b.count == 5 else { return nil }
-        var u: UInt32 = 0
-        u |= UInt32(b[0])
-        u |= UInt32(b[1]) << 7
-        u |= UInt32(b[2]) << 14
-        u |= UInt32(b[3]) << 21
-        u |= UInt32(b[4]) << 28
-        let s = Int32(bitPattern: u)
-        return Float(s) / 65536.0
+    func reset() {
+        lock.lock()
+        defer { lock.unlock() }
+        buffer = []
+        isAccumulating = false
+    }
+}
+
+@MainActor
+class MidiTransport: ObservableObject {
+    private var client = MIDIClientRef()
+    private var inPort = MIDIPortRef()
+    private var outPort = MIDIPortRef()
+    private var destination: MIDIEndpointRef = 0
+
+    private weak var patchState: PatchState?
+    private var isSetup = false
+
+    // Thread-safe SysEx accumulator
+    private let sysexAccumulator = SysExAccumulator()
+
+    // Rate limiting
+    private var lastRequestTime: Date = .distantPast
+    private let minRequestInterval: TimeInterval = 0.5  // 500ms between requests
+
+    // Callbacks for non-patch events
+    var onTempoUpdate: ((Float) -> Void)?
+    var onButtonStateChange: ((UInt8, UInt8, Bool) -> Void)?
+
+    init() {}
+
+    /// Returns true if this is the first setup call
+    func setup(patchState: PatchState) -> Bool {
+        guard !isSetup else {
+            print("[Swift] setup() called again - ignoring")
+            return false
+        }
+        isSetup = true
+
+        self.patchState = patchState
+
+        // Wire up sendMidi
+        patchState.sendMidi = { [weak self] data in
+            self?.sendSysex(data)
+        }
+
+        setupCoreMidi()
+        return true
     }
 
-    private func handle(bytes: [UInt8]) {
-        // Reassemble SysEx across CoreMIDI packets.
-        for b in bytes {
-            if !inSysex {
-                if b == 0xF0 {
-                    inSysex = true
-                    sysexBuffer.removeAll(keepingCapacity: true)
-                    sysexBuffer.append(b)
+    private func setupCoreMidi() {
+        let status = MIDIClientCreate("DaisyMultiFX" as CFString, nil, nil, &client)
+        guard status == noErr else {
+            Task { @MainActor in
+                patchState?.updateStatus("MIDI client creation failed: \(status)")
+            }
+            return
+        }
+
+        // Create input port with block-based callback
+        var inputStatus: OSStatus = noErr
+        inputStatus = MIDIInputPortCreateWithProtocol(
+            client,
+            "Input" as CFString,
+            ._1_0,
+            &inPort
+        ) { [weak self] eventList, _ in
+            self?.handleMidiEventList(eventList)
+        }
+
+        guard inputStatus == noErr else {
+            Task { @MainActor in
+                patchState?.updateStatus("MIDI input port failed: \(inputStatus)")
+            }
+            return
+        }
+
+        // Create output port
+        MIDIOutputPortCreate(client, "Output" as CFString, &outPort)
+
+        // Connect to all sources
+        let sourceCount = MIDIGetNumberOfSources()
+        for i in 0..<sourceCount {
+            let src = MIDIGetSource(i)
+            MIDIPortConnectSource(inPort, src, nil)
+        }
+
+        // Find destination (IAC Driver or virtual port)
+        let destCount = MIDIGetNumberOfDestinations()
+        var destNames: [String] = []
+        for i in 0..<destCount {
+            let dest = MIDIGetDestination(i)
+            var name: Unmanaged<CFString>?
+            MIDIObjectGetStringProperty(dest, kMIDIPropertyName, &name)
+            if let n = name?.takeRetainedValue() as String? {
+                destNames.append(n)
+                // Match IAC Driver (may appear as "IAC Driver Bus 1" or just "Bus 1")
+                if n.contains("IAC") || n.contains("Bus") || n.contains("Daisy") {
+                    destination = dest
+                    print("[Swift] Selected destination: \(n)")
+                    break
                 }
-                continue
             }
-            sysexBuffer.append(b)
-            if b == 0xF7 {
-                inSysex = false
-                handleSysexMessage(sysexBuffer)
-                sysexBuffer.removeAll(keepingCapacity: true)
-            }
+        }
+
+        if destination == 0 && destCount > 0 {
+            destination = MIDIGetDestination(0)
+            print("[Swift] Fallback to first destination")
+        }
+
+        print("[Swift] Available destinations: \(destNames)")
+
+        Task { @MainActor in
+            let destName = destNames.first { $0.contains("IAC") || $0.contains("Bus") } ?? "unknown"
+            patchState?.updateStatus("MIDI ready - \(sourceCount) sources, dest: \(destName)")
         }
     }
 
-    private func handleSysexMessage(_ bytes: [UInt8]) {
-        guard bytes.count >= 4 else { return }
-        guard bytes.first == 0xF0, bytes.last == 0xF7 else { return }
-        guard bytes[1] == kManuf else { return }
+    private func handleMidiEventList(_ eventList: UnsafePointer<MIDIEventList>) {
+        // Safety check
+        guard eventList.pointee.numPackets > 0 else { return }
 
-        let type = bytes[2]
-        switch type {
-        case 0x40:
-            // F0 7D 40 <btn> <slot> <enabled> F7
-            guard bytes.count >= 7 else { return }
-            let btn = bytes[3]
-            let slot = bytes[4]
-            let enabled = bytes[5] != 0
-            onButtonStateChange?(btn, slot, enabled)
+        print("[Swift] handleMidiEventList: \(eventList.pointee.numPackets) packets")
 
-        case 0x41:
-            // F0 7D 41 <bpmQ16_16_5bytes> F7
-            guard bytes.count >= 3 + 5 + 1 else { return }
-            if let bpm = unpackQ16_16(bytes[3..<(3 + 5)]) {
+        var packet: UnsafePointer<MIDIEventPacket> = UnsafePointer(
+            UnsafeRawPointer(eventList).advanced(
+                by: MemoryLayout<MIDIEventList>.offset(of: \MIDIEventList.packet)!
+            )
+            .assumingMemoryBound(to: MIDIEventPacket.self)
+        )
+
+        for pktIdx in 0..<Int(eventList.pointee.numPackets) {
+            let p = packet.pointee
+            let wordCount = Int(p.wordCount)
+
+            print("[Swift] Packet \(pktIdx): wordCount=\(wordCount)")
+
+            if wordCount > 0 {
+                // Extract bytes from UMP words - handle any size
+                var bytes: [UInt8] = []
+                withUnsafeBytes(of: p.words) { rawBuffer in
+                    let umpBytes = rawBuffer.bindMemory(to: UInt8.self)
+                    // For large packets, we need to read all the bytes
+                    let byteCount = min(wordCount * 4, rawBuffer.count)
+                    bytes = Array(umpBytes.prefix(byteCount))
+                }
+
+                // Log raw bytes
+                let hexStr = bytes.prefix(20).map { String(format: "%02X", $0) }.joined(
+                    separator: " ")
+                print("[Swift] Raw bytes (first 20): \(hexStr)")
+
+                // Extract SysEx from Universal MIDI Packet
+                if let sysex = extractSysex(from: bytes) {
+                    let capturedSysex = sysex
+                    print("[Swift] Extracted SysEx, size=\(sysex.count)")
+                    Task { @MainActor in
+                        self.handleSysex(capturedSysex)
+                    }
+                } else {
+                    print("[Swift] extractSysex returned nil")
+                }
+            }
+
+            packet = UnsafePointer(MIDIEventPacketNext(packet))
+        }
+    }
+
+    private func extractSysex(from umpData: [UInt8]) -> [UInt8]? {
+        guard umpData.count >= 4 else { return nil }
+
+        // UMP data is stored as 32-bit words in little-endian on macOS
+        // Each 64-bit UMP SysEx packet contains:
+        // Word 0: [data1, data0, numBytes/status, msgType/group]
+        // Word 1: [data5, data4, data3, data2]
+
+        // Read first word to check message type
+        // In memory: byte0=LSB, byte3=MSB
+        // So byte3 contains message type in high nibble
+        let msgTypeByte = umpData[3]
+        let messageType = (msgTypeByte >> 4) & 0x0F
+
+        print(
+            "[Swift] extractSysex: msgTypeByte=0x\(String(format: "%02X", msgTypeByte)), messageType=\(messageType)"
+        )
+
+        // Message type 3 = Data Messages (SysEx)
+        if messageType == 0x03 {
+            // This is UMP SysEx - accumulate from 64-bit packets
+            var payload: [UInt8] = []
+            var offset = 0
+            var isComplete = false
+
+            while offset + 8 <= umpData.count && !isComplete {
+                // Read 64-bit packet (2 x 32-bit words)
+                // Word layout (little-endian): [b0, b1, b2, b3] [b4, b5, b6, b7]
+                // Where b3 = msgType/group, b2 = status/numBytes, b1 = data0, b0 = data1
+                // And b7-b4 = data2-data5
+
+                let statusByte = umpData[offset + 2]
+                let status = (statusByte >> 4) & 0x0F  // 0=complete, 1=start, 2=continue, 3=end
+                let numBytes = Int(statusByte & 0x0F)
+
+                print("[Swift] UMP packet at \(offset): status=\(status), numBytes=\(numBytes)")
+
+                // Extract data bytes from this 64-bit packet
+                // Data is in: offset+1, offset+0, offset+7, offset+6, offset+5, offset+4
+                var packetData: [UInt8] = []
+                if numBytes >= 1 { packetData.append(umpData[offset + 1]) }
+                if numBytes >= 2 { packetData.append(umpData[offset + 0]) }
+                if numBytes >= 3 && offset + 7 < umpData.count {
+                    packetData.append(umpData[offset + 7])
+                }
+                if numBytes >= 4 && offset + 6 < umpData.count {
+                    packetData.append(umpData[offset + 6])
+                }
+                if numBytes >= 5 && offset + 5 < umpData.count {
+                    packetData.append(umpData[offset + 5])
+                }
+                if numBytes >= 6 && offset + 4 < umpData.count {
+                    packetData.append(umpData[offset + 4])
+                }
+
+                payload.append(contentsOf: packetData)
+
+                // Check if this is the last packet
+                if status == 0x00 || status == 0x03 {  // Complete or End
+                    isComplete = true
+                }
+
+                offset += 8  // Move to next 64-bit packet
+            }
+
+            if !payload.isEmpty {
+                print(
+                    "[Swift] Extracted UMP SysEx payload: \(payload.prefix(20).map { String(format: "%02X", $0) }.joined(separator: " "))"
+                )
+                return payload
+            }
+        }
+
+        // Legacy format (direct F0...F7)
+        if umpData[0] == 0xF0 {
+            if let endIndex = umpData.firstIndex(of: 0xF7) {
+                return Array(umpData[1..<endIndex])
+            }
+        }
+
+        return nil
+    }
+
+    private func handleSysex(_ data: [UInt8]) {
+        // Format: 7D <sender> <cmd> <data...>
+        guard data.count >= 3, data[0] == MidiProtocol.manufacturerId else { return }
+
+        let sender = data[1]
+        let cmd = data[2]
+
+        // Ignore our own messages (prevents loopback via IAC)
+        if sender == MidiProtocol.Sender.swift { return }
+
+        print(
+            "[Swift] Received SysEx from sender=0x\(String(format: "%02X", sender)), cmd=0x\(String(format: "%02X", cmd))"
+        )
+
+        switch cmd {
+        case MidiProtocol.Resp.patchDump:
+            print("[Swift] Decoding PATCH_DUMP...")
+            if let patch = decodePatchDump(data) {
+                print("[Swift] Decoded patch with \(patch.slots.count) slots")
+                patchState?.loadPatch(patch)
+            } else {
+                print("[Swift] Failed to decode patch dump")
+            }
+
+        case MidiProtocol.Resp.effectMeta:
+            print("[Swift] Decoding EFFECT_META...")
+            let effects = decodeEffectMeta(data)
+            print("[Swift] Decoded \(effects.count) effects")
+            patchState?.loadEffectMeta(effects)
+
+        case MidiProtocol.Cmd.setEnabled:
+            // Incoming command - route to PatchState (offset by 1 due to sender byte)
+            if data.count >= 5 {
+                let slot = data[3]
+                let enabled = data[4] != 0
+                patchState?.setSlotEnabled(slot: slot, enabled: enabled)
+            }
+
+        case MidiProtocol.Cmd.setType:
+            if data.count >= 5 {
+                let slot = data[3]
+                let typeId = data[4]
+                patchState?.setSlotType(slot: slot, typeId: typeId)
+            }
+
+        case MidiProtocol.Cmd.setParam:
+            if data.count >= 6 {
+                let slot = data[3]
+                let paramId = data[4]
+                let value = data[5]
+                patchState?.setSlotParam(slot: slot, paramId: paramId, value: value)
+            }
+
+        case 0x40:  // Tempo broadcast
+            if data.count >= 5 {
+                let bpmHigh = UInt16(data[3])
+                let bpmLow = UInt16(data[4])
+                let bpm10x = (bpmHigh << 7) | bpmLow
+                let bpm = Float(bpm10x) / 10.0
                 onTempoUpdate?(bpm)
             }
 
-        case 0x34:
-            // Effect discovered: F0 7D 34 <typeId> <nameLen> <name...> F7
-            guard bytes.count >= 6 else { return }
-            let typeId = bytes[3]
-            let nameLen = Int(bytes[4])
-            let start = 5
-            let end = min(start + nameLen, bytes.count - 1)
-            if end > start {
-                let nameBytes = bytes[start..<end]
-                let name = String(bytes: nameBytes, encoding: .ascii) ?? "(invalid)"
-                onEffectDiscovered?(typeId, name)
-            }
-
-        case 0x35:
-            // Effect meta v2:
-            // F0 7D 35 <typeId> <nameLen> <name...> <numParams>
-            //   (paramId kind nameLen name...)xN
-            // F7
-            guard bytes.count >= 7 else { return }
-            let typeId = bytes[3]
-            let nameLen = Int(bytes[4])
-            var idx = 5
-            let nameEnd = min(idx + nameLen, bytes.count - 1)
-            let name = String(bytes: bytes[idx..<nameEnd], encoding: .ascii) ?? "(invalid)"
-            idx = nameEnd
-            guard idx < bytes.count - 1 else { return }
-            let numParams = Int(bytes[idx])
-            idx += 1
-            var params: [EffectParamMeta] = []
-            params.reserveCapacity(numParams)
-            for _ in 0..<numParams {
-                guard idx + 3 <= bytes.count - 1 else { break }
-                let pid = bytes[idx]
-                idx += 1
-                let kind = bytes[idx]
-                idx += 1
-                let pNameLen = Int(bytes[idx])
-                idx += 1
-                let pNameEnd = min(idx + pNameLen, bytes.count - 1)
-                let pName = String(bytes: bytes[idx..<pNameEnd], encoding: .ascii) ?? "Param \(pid)"
-                idx = pNameEnd
-                params.append(EffectParamMeta(id: pid, kind: kind, name: pName))
-            }
-
-            let meta = EffectMetaV2(typeId: typeId, name: name, params: params)
-            DispatchQueue.main.async {
-                self.effectsById[typeId] = meta
-            }
-
-        case 0x13:
-            // Patch dump:
-            // F0 7D 13 <numSlots>
-            //  12x slots: slotIndex typeId enabled inputL inputR sumToMono dry wet policy numParams (id val)x8
-            //  2x buttons: slotIndex mode
-            // F7
-            guard bytes.count >= 5 else { return }
-            let numSlots = bytes[3]
-            var idx = 4
-            var slots: [PatchSlot] = []
-            slots.reserveCapacity(12)
-
-            for _ in 0..<12 {
-                guard idx + 10 <= bytes.count - 1 else { break }
-                let slotIndex = bytes[idx]
-                idx += 1
-                let typeId = bytes[idx]
-                idx += 1
-                let enabled = bytes[idx] != 0
-                idx += 1
-                _ = bytes[idx]
-                idx += 1  // inputL
-                _ = bytes[idx]
-                idx += 1  // inputR
-                _ = bytes[idx]
-                idx += 1  // sumToMono
-                let dry = bytes[idx]
-                idx += 1
-                let wet = bytes[idx]
-                idx += 1
-                _ = bytes[idx]
-                idx += 1  // policy
-                let nParams = Int(bytes[idx])
-                idx += 1
-                var p: [UInt8: UInt8] = [:]
-                p.reserveCapacity(min(nParams, 8))
-                for k in 0..<8 {
-                    guard idx + 2 <= bytes.count - 1 else { break }
-                    let pid = bytes[idx]
-                    idx += 1
-                    let val = bytes[idx]
-                    idx += 1
-                    if k < nParams {
-                        p[pid] = val
-                    }
-                }
-                slots.append(
-                    PatchSlot(
-                        slotIndex: slotIndex, typeId: typeId, enabled: enabled, dry: dry, wet: wet,
-                        params: p))
-            }
-
-            let pd = PatchDump(numSlots: numSlots, slots: slots)
-            DispatchQueue.main.async {
-                self.patch = pd
+        case 0x41:  // Button state
+            if data.count >= 6 {
+                onButtonStateChange?(data[3], data[4], data[5] != 0)
             }
 
         default:
             break
         }
+    }
+
+    private func decodePatchDump(_ data: [UInt8]) -> Patch? {
+        // Format: 7D <sender> 13 <numSlots> [slot data...]
+        guard data.count > 4 else { return nil }
+
+        var patch = Patch()
+        patch.numSlots = data[3]  // offset by 1 for sender byte
+
+        var offset = 4  // start after numSlots
+        for _ in 0..<12 {
+            guard offset + 26 <= data.count else { break }
+
+            var slot = PatchSlot()
+            slot.slotIndex = data[offset]
+            offset += 1
+            slot.typeId = data[offset]
+            offset += 1
+            slot.enabled = data[offset] != 0
+            offset += 1
+            slot.inputL = data[offset]
+            offset += 1
+            slot.inputR = data[offset]
+            offset += 1
+            slot.sumToMono = data[offset] != 0
+            offset += 1
+            slot.dry = data[offset]
+            offset += 1
+            slot.wet = data[offset]
+            offset += 1
+            offset += 1  // policy
+            let numParams = data[offset]
+            offset += 1
+
+            for p in 0..<8 {
+                let paramId = data[offset]
+                offset += 1
+                let paramVal = data[offset]
+                offset += 1
+                if p < numParams {
+                    slot.params[paramId] = paramVal
+                }
+            }
+
+            patch.slots.append(slot)
+        }
+
+        return patch
+    }
+
+    private func decodeEffectMeta(_ data: [UInt8]) -> [EffectMeta] {
+        // Format: 7D <sender> 33 <numEffects> [effect data...]
+        guard data.count > 4 else { return [] }
+
+        var effects: [EffectMeta] = []
+        let numEffects = Int(data[3])  // offset by 1 for sender byte
+        var offset = 4
+
+        for _ in 0..<numEffects {
+            guard offset < data.count else { break }
+
+            let typeId = data[offset]
+            offset += 1
+            guard offset < data.count else { break }
+
+            let nameLen = Int(data[offset])
+            offset += 1
+            guard offset + nameLen <= data.count else { break }
+
+            let name = String(bytes: data[offset..<(offset + nameLen)], encoding: .ascii) ?? "?"
+            offset += nameLen
+
+            guard offset < data.count else { break }
+            let numParams = Int(data[offset])
+            offset += 1
+
+            var params: [EffectParamMeta] = []
+            for _ in 0..<numParams {
+                guard offset < data.count else { break }
+                let paramId = data[offset]
+                offset += 1
+                guard offset < data.count else { break }
+                let paramNameLen = Int(data[offset])
+                offset += 1
+                guard offset + paramNameLen <= data.count else { break }
+                let paramName =
+                    String(bytes: data[offset..<(offset + paramNameLen)], encoding: .ascii) ?? "?"
+                offset += paramNameLen
+                params.append(EffectParamMeta(id: paramId, name: paramName))
+            }
+
+            effects.append(EffectMeta(typeId: typeId, name: name, params: params))
+        }
+
+        return effects
+    }
+
+    func sendSysex(_ data: [UInt8]) {
+        guard destination != 0 else {
+            print("[Swift] sendSysex: No destination!")
+            return
+        }
+
+        // Command is at data[3] (after F0, manufacturer, sender)
+        let cmdByte = data.count > 3 ? String(format: "0x%02X", data[3]) : "?"
+        print("[Swift] Sending SysEx, size=\(data.count), cmd=\(cmdByte)")
+
+        let bufferSize = 1024
+        var buffer = [UInt8](repeating: 0, count: bufferSize)
+
+        buffer.withUnsafeMutableBufferPointer { ptr in
+            let plist = UnsafeMutablePointer<MIDIPacketList>(OpaquePointer(ptr.baseAddress!))
+            var pkt = MIDIPacketListInit(plist)
+
+            data.withUnsafeBufferPointer { dataPtr in
+                if let base = dataPtr.baseAddress {
+                    pkt = MIDIPacketListAdd(plist, bufferSize, pkt, 0, data.count, base)
+                }
+                MIDISend(outPort, destination, plist)
+            }
+        }
+    }
+
+    func requestPatch() {
+        sendSysex(MidiProtocol.encodeRequestPatch())
+    }
+
+    func requestEffectMeta() {
+        sendSysex(MidiProtocol.encodeRequestMeta())
     }
 }

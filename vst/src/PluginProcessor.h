@@ -1,34 +1,43 @@
 #pragma once
 
-#include <atomic>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "core/audio/audio_processor.h"
 #include "core/audio/tempo.h"
-#include "core/patch/patch_protocol.h"
+#include "core/state/patch_state.h"
+#include "core/protocol/midi_protocol.h"
 #include "BufferManager.h"
+#include <atomic>
 
 // Rename to avoid conflict with juce::AudioProcessor
 using CoreAudioProcessor = ::AudioProcessor;
 
+/**
+ * DaisyMultiFXProcessor - VST/AU Plugin Processor
+ *
+ * Architecture:
+ * - PatchState is the single source of truth
+ * - This class observes PatchState to update DSP and broadcast MIDI
+ * - UI changes go through PatchState (not directly to MIDI)
+ * - Incoming MIDI commands go to PatchState (which deduplicates and notifies)
+ */
 class DaisyMultiFXProcessor : public juce::AudioProcessor,
-                              public juce::AudioProcessorValueTreeState::Listener
+                              public juce::AudioProcessorValueTreeState::Listener,
+                              public daisyfx::PatchObserver
 {
 public:
     DaisyMultiFXProcessor();
     ~DaisyMultiFXProcessor() override;
 
+    // AudioProcessor interface
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
-
     bool isBusesLayoutSupported(const BusesLayout &layouts) const override;
-
     void processBlock(juce::AudioBuffer<float> &, juce::MidiBuffer &) override;
 
     juce::AudioProcessorEditor *createEditor() override;
     bool hasEditor() const override;
 
     const juce::String getName() const override;
-
     bool acceptsMidi() const override;
     bool producesMidi() const override;
     bool isMidiEffect() const override;
@@ -43,56 +52,60 @@ public:
     void getStateInformation(juce::MemoryBlock &destData) override;
     void setStateInformation(const void *data, int sizeInBytes) override;
 
-    // Parameter listener
+    // Parameter listener (for APVTS -> PatchState)
     void parameterChanged(const juce::String &parameterID, float newValue) override;
 
-    // Access for editor
-    juce::AudioProcessorValueTreeState &getValueTreeState() { return parameters_; }
+    // PatchObserver interface (for PatchState -> DSP/MIDI/UI)
+    void onSlotEnabledChanged(uint8_t slot, bool enabled) override;
+    void onSlotTypeChanged(uint8_t slot, uint8_t typeId) override;
+    void onSlotParamChanged(uint8_t slot, uint8_t paramId, uint8_t value) override;
+    void onSlotMixChanged(uint8_t slot, uint8_t wet, uint8_t dry) override;
+    void onPatchLoaded() override;
+    void onTempoChanged(float bpm) override;
 
-    // Level metering
+    // Accessors
+    juce::AudioProcessorValueTreeState &getValueTreeState() { return parameters_; }
+    daisyfx::PatchState &getPatchState() { return patchState_; }
     float getInputLevel() const { return inputLevel_.load(); }
     float getOutputLevel() const { return outputLevel_.load(); }
 
-    // Patch management
-    void applyPatch(const PatchWireDesc &patch);
-    void setSlotEnabled(int slotIndex, bool enabled);
-    void setSlotParam(int slotIndex, int paramId, float value);
-
-    // SysEx handling
-    void handleSysEx(const uint8_t *data, int size);
-
-    // Send SysEx responses (patch dump, effect meta)
-    void sendPatchDump(juce::MidiBuffer &midiOut);
-    void sendEffectMeta(juce::MidiBuffer &midiOut);
-
 private:
-    // Core DSP
-    TempoSource tempo_;
+    juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+    void initializeDefaultPatch();
+    void syncParametersFromPatch();
+
+    // MIDI handling
+    void handleIncomingMidi(const juce::MidiMessage &message);
+    void sendPatchDump();
+    void sendEffectMeta();
+
+    // Core state - THE source of truth
+    daisyfx::PatchState patchState_;
+
+    // DSP
     std::unique_ptr<CoreAudioProcessor> processor_;
     std::unique_ptr<BufferManager> buffers_;
+    TempoSource tempo_;
     bool isPrepared_ = false;
 
-    // Pending MIDI output (for SysEx responses)
+    // JUCE parameter system (for DAW automation)
+    juce::AudioProcessorValueTreeState parameters_;
+
+    // MIDI output buffer
     juce::MidiBuffer pendingMidiOut_;
 
-    // Current patch
-    PatchWireDesc currentPatch_;
+    // Rate limiting for MIDI responses
+    double lastPatchDumpTime_ = 0.0;
+    double lastEffectMetaTime_ = 0.0;
+    static constexpr double kMinResponseIntervalMs = 500.0; // 500ms between responses
 
-    // Level metering (atomic for thread-safe access from UI)
+    // Level meters
     std::atomic<float> inputLevel_{0.0f};
     std::atomic<float> outputLevel_{0.0f};
 
-    // Parameters
-    juce::AudioProcessorValueTreeState parameters_;
-
-    // Create parameter layout
-    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-
-    // Initialize default patch
-    void initializeDefaultPatch();
-
-    // Sync GUI parameters from current patch
-    void syncParametersFromPatch();
+    // Flag to prevent circular updates (APVTS -> PatchState -> APVTS)
+    bool isUpdatingFromPatchState_ = false;
+    bool isUpdatingFromAPVTS_ = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DaisyMultiFXProcessor)
 };
