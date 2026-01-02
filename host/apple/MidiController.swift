@@ -329,10 +329,7 @@ class MidiTransport: ObservableObject {
     }
 
     private func handleMidiEventList(_ eventList: UnsafePointer<MIDIEventList>) {
-        // Safety check
         guard eventList.pointee.numPackets > 0 else { return }
-
-        print("[Swift] handleMidiEventList: \(eventList.pointee.numPackets) packets")
 
         var packet: UnsafePointer<MIDIEventPacket> = UnsafePointer(
             UnsafeRawPointer(eventList).advanced(
@@ -341,36 +338,29 @@ class MidiTransport: ObservableObject {
             .assumingMemoryBound(to: MIDIEventPacket.self)
         )
 
-        for pktIdx in 0..<Int(eventList.pointee.numPackets) {
-            let p = packet.pointee
-            let wordCount = Int(p.wordCount)
-
-            print("[Swift] Packet \(pktIdx): wordCount=\(wordCount)")
+        for _ in 0..<Int(eventList.pointee.numPackets) {
+            let wordCount = Int(packet.pointee.wordCount)
 
             if wordCount > 0 {
-                // Extract bytes from UMP words - handle any size
-                var bytes: [UInt8] = []
-                withUnsafeBytes(of: p.words) { rawBuffer in
-                    let umpBytes = rawBuffer.bindMemory(to: UInt8.self)
-                    // For large packets, we need to read all the bytes
-                    let byteCount = min(wordCount * 4, rawBuffer.count)
-                    bytes = Array(umpBytes.prefix(byteCount))
-                }
+                // Extract bytes from UMP words
+                // IMPORTANT: MIDIEventPacket.words is variable-length, but Swift's tuple only holds 64 UInt32.
+                // We must read directly from the packet pointer, not from packet.pointee which truncates.
+                let byteCount = wordCount * 4
+                var bytes = [UInt8](repeating: 0, count: byteCount)
 
-                // Log raw bytes
-                let hexStr = bytes.prefix(20).map { String(format: "%02X", $0) }.joined(
-                    separator: " ")
-                print("[Swift] Raw bytes (first 20): \(hexStr)")
+                // MIDIEventPacket layout: timeStamp (8 bytes) + wordCount (4 bytes) + words (variable)
+                let wordsOffset = MemoryLayout<MIDITimeStamp>.size + MemoryLayout<UInt32>.size
+                let wordsPtr = UnsafeRawPointer(packet).advanced(by: wordsOffset)
+                for i in 0..<byteCount {
+                    bytes[i] = wordsPtr.load(fromByteOffset: i, as: UInt8.self)
+                }
 
                 // Extract SysEx from Universal MIDI Packet
                 if let sysex = extractSysex(from: bytes) {
                     let capturedSysex = sysex
-                    print("[Swift] Extracted SysEx, size=\(sysex.count)")
                     Task { @MainActor in
                         self.handleSysex(capturedSysex)
                     }
-                } else {
-                    print("[Swift] extractSysex returned nil")
                 }
             }
 
@@ -413,8 +403,6 @@ class MidiTransport: ObservableObject {
                 let status = (statusByte >> 4) & 0x0F  // 0=complete, 1=start, 2=continue, 3=end
                 let numBytes = Int(statusByte & 0x0F)
 
-                print("[Swift] UMP packet at \(offset): status=\(status), numBytes=\(numBytes)")
-
                 // Extract data bytes from this 64-bit packet
                 // Data is in: offset+1, offset+0, offset+7, offset+6, offset+5, offset+4
                 var packetData: [UInt8] = []
@@ -436,17 +424,23 @@ class MidiTransport: ObservableObject {
                 payload.append(contentsOf: packetData)
 
                 // Check if this is the last packet
-                if status == 0x00 || status == 0x03 {  // Complete or End
+                // status=0 with numBytes>0 means complete single-packet SysEx
+                // status=3 means end of multi-packet SysEx
+                // status=0 with numBytes=0 is padding/invalid - stop processing
+                if status == 0x03 {  // End of multi-packet
                     isComplete = true
+                } else if status == 0x00 {
+                    if numBytes > 0 {
+                        isComplete = true  // Complete single-packet
+                    } else {
+                        break  // Padding/invalid - stop
+                    }
                 }
 
                 offset += 8  // Move to next 64-bit packet
             }
 
             if !payload.isEmpty {
-                print(
-                    "[Swift] Extracted UMP SysEx payload: \(payload.prefix(20).map { String(format: "%02X", $0) }.joined(separator: " "))"
-                )
                 return payload
             }
         }
@@ -477,18 +471,12 @@ class MidiTransport: ObservableObject {
 
         switch cmd {
         case MidiProtocol.Resp.patchDump:
-            print("[Swift] Decoding PATCH_DUMP...")
             if let patch = decodePatchDump(data) {
-                print("[Swift] Decoded patch with \(patch.slots.count) slots")
                 patchState?.loadPatch(patch)
-            } else {
-                print("[Swift] Failed to decode patch dump")
             }
 
         case MidiProtocol.Resp.effectMeta:
-            print("[Swift] Decoding EFFECT_META...")
             let effects = decodeEffectMeta(data)
-            print("[Swift] Decoded \(effects.count) effects")
             patchState?.loadEffectMeta(effects)
 
         case MidiProtocol.Cmd.setEnabled:
@@ -629,14 +617,7 @@ class MidiTransport: ObservableObject {
     }
 
     func sendSysex(_ data: [UInt8]) {
-        guard destination != 0 else {
-            print("[Swift] sendSysex: No destination!")
-            return
-        }
-
-        // Command is at data[3] (after F0, manufacturer, sender)
-        let cmdByte = data.count > 3 ? String(format: "0x%02X", data[3]) : "?"
-        print("[Swift] Sending SysEx, size=\(data.count), cmd=\(cmdByte)")
+        guard destination != 0 else { return }
 
         let bufferSize = 1024
         var buffer = [UInt8](repeating: 0, count: bufferSize)
