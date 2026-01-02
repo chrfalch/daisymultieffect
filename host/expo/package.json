@@ -1,0 +1,27 @@
+{
+  "name": "daisymultieffect",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "expo": "^55.0.0-canary-20251230-fc48ddc",
+    "expo-constants": "18.1.0-canary-20251230-fc48ddc",
+    "expo-linking": "8.0.12-canary-20251230-fc48ddc",
+    "expo-router": "7.0.0-canary-20251230-fc48ddc",
+    "expo-status-bar": "3.0.10-canary-20251230-fc48ddc",
+    "react": "19.2.0",
+    "react-native": "0.83.1",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-screens": "~4.19.0"
+  },
+  "private": true,
+  "devDependencies": {
+    "@types/react": "^19.2.7",
+    "typescript": "^5.9.3"
+  }
+}
