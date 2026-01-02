@@ -14,6 +14,7 @@ AudioProcessor::AudioProcessor(TempoSource &tempo)
       fx_noisegates_{},
       fx_eqs_{},
       fx_flangers_{},
+      fx_phasers_{},
       delay_next_(0),
       sweep_next_(0),
       dist_next_(0),
@@ -23,7 +24,8 @@ AudioProcessor::AudioProcessor(TempoSource &tempo)
       chorus_next_(0),
       noisegate_next_(0),
       eq_next_(0),
-      flanger_next_(0)
+      flanger_next_(0),
+      phaser_next_(0)
 {
 }
 
@@ -82,6 +84,10 @@ BaseEffect *AudioProcessor::Instantiate(uint8_t typeId, int slotIndex)
         if (flanger_next_ < kMaxFlangers)
             return &fx_flangers_[flanger_next_++];
         return nullptr;
+    case PhaserEffect::TypeId:
+        if (phaser_next_ < kMaxPhasers)
+            return &fx_phasers_[phaser_next_++];
+        return nullptr;
     default:
         return nullptr;
     }
@@ -100,6 +106,7 @@ void AudioProcessor::ApplyPatch(const PatchWireDesc &pw)
     noisegate_next_ = 0;
     eq_next_ = 0;
     flanger_next_ = 0;
+    phaser_next_ = 0;
 
     // Clear all slots
     for (int i = 0; i < 12; i++)

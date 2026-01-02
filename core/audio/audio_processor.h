@@ -18,6 +18,7 @@
 #include "effects/noise_gate.h"
 #include "effects/eq.h"
 #include "effects/flanger.h"
+#include "effects/phaser.h"
 
 // Platform-agnostic audio processor.
 // Manages effect instances and processes audio frames.
@@ -98,6 +99,7 @@ private:
     static constexpr int kMaxNoiseGates = 4;
     static constexpr int kMaxEQs = 4;
     static constexpr int kMaxFlangers = 4;
+    static constexpr int kMaxPhasers = 4;
 
     DelayEffect fx_delays_[kMaxDelays];
     StereoSweepDelayEffect fx_sweeps_[kMaxSweeps];
@@ -109,6 +111,7 @@ private:
     NoiseGateEffect fx_noisegates_[kMaxNoiseGates];
     GraphicEQEffect fx_eqs_[kMaxEQs];
     FlangerEffect fx_flangers_[kMaxFlangers];
+    PhaserEffect fx_phasers_[kMaxPhasers];
 
     // Pool counters
     int delay_next_ = 0;
@@ -121,4 +124,5 @@ private:
     int noisegate_next_ = 0;
     int eq_next_ = 0;
     int flanger_next_ = 0;
+    int phaser_next_ = 0;
 };

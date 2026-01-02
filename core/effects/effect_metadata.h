@@ -229,6 +229,27 @@ namespace Effects
     }
 
     //=========================================================================
+    // Phaser
+    //=========================================================================
+    namespace Phaser
+    {
+        constexpr uint8_t TypeId = 20;
+        inline const NumberParamRange kRateRange = {0.1f, 2.0f, 0.01f};
+        inline const NumberParamRange kDepthRange = {0.0f, 1.0f, 0.01f};
+        inline const NumberParamRange kFeedbackRange = {0.0f, 0.75f, 0.01f};
+        inline const NumberParamRange kFreqRange = {100.0f, 1600.0f, 1.0f};
+        inline const NumberParamRange kMixRange = {0.0f, 1.0f, 0.01f};
+        inline const ParamInfo kParams[] = {
+            {0, "Rate", "LFO rate (Hz)", ParamValueKind::Number, &kRateRange, nullptr},
+            {1, "Depth", "Sweep depth", ParamValueKind::Number, &kDepthRange, nullptr},
+            {2, "Feedback", "Resonance", ParamValueKind::Number, &kFeedbackRange, nullptr},
+            {3, "Freq", "Base frequency (Hz)", ParamValueKind::Number, &kFreqRange, nullptr},
+            {4, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
+        };
+        inline const ::EffectMeta kMeta = {"Phaser", "Classic sweeping phaser.", kParams, 5};
+    }
+
+    //=========================================================================
     // Master list of all effects (ordered for UI display)
     //=========================================================================
 
@@ -251,6 +272,7 @@ namespace Effects
         {NoiseGate::TypeId, &NoiseGate::kMeta},
         {GraphicEQ::TypeId, &GraphicEQ::kMeta},
         {Flanger::TypeId, &Flanger::kMeta},
+        {Phaser::TypeId, &Phaser::kMeta},
     };
 
     constexpr size_t kNumEffects = sizeof(kAllEffects) / sizeof(kAllEffects[0]);

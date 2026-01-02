@@ -136,7 +136,8 @@ cd firmware && make
 | 17 | Noise Gate |
 | 18 | Graphic EQ |
 | 19 | Flanger |
-| 20+ | New effects |
+| 20 | Phaser |
+| 21+ | New effects |
 
 ## Tips
 
