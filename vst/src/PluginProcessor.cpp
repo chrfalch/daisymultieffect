@@ -27,7 +27,7 @@ DaisyMultiFXProcessor::DaisyMultiFXProcessor()
 
     // Add parameter listeners (APVTS -> PatchState)
     parameters_.addParameterListener("tempo", this);
-    for (int slot = 0; slot < 4; ++slot)
+    for (int slot = 0; slot < kNumSlots; ++slot)
     {
         parameters_.addParameterListener("slot" + juce::String(slot) + "_enabled", this);
         parameters_.addParameterListener("slot" + juce::String(slot) + "_type", this);
@@ -63,8 +63,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout DaisyMultiFXProcessor::creat
         effectNames.add(Effects::kAllEffects[i].meta->name);
     }
 
-    // Per-slot parameters (4 slots for GUI)
-    for (int slot = 0; slot < 4; ++slot)
+    // Per-slot parameters
+    for (int slot = 0; slot < kNumSlots; ++slot)
     {
         juce::String prefix = "slot" + juce::String(slot);
 
@@ -99,7 +99,7 @@ void DaisyMultiFXProcessor::initializeDefaultPatch()
 {
     // Create default patch and load into PatchState
     PatchWireDesc patch = {};
-    patch.numSlots = 4;
+    patch.numSlots = kNumSlots;
 
     // Slot 0: Distortion
     patch.slots[0].slotIndex = 0;
@@ -188,7 +188,7 @@ void DaisyMultiFXProcessor::syncParametersFromPatch()
 
     const auto &patch = patchState_.getPatch();
 
-    for (int slot = 0; slot < 4; ++slot)
+    for (int slot = 0; slot < kNumSlots; ++slot)
     {
         juce::String prefix = "slot" + juce::String(slot);
         const auto &slotData = patch.slots[slot];
@@ -228,7 +228,7 @@ void DaisyMultiFXProcessor::parameterChanged(const juce::String &parameterID, fl
     if (parameterID.startsWith("slot"))
     {
         int slotIndex = parameterID.substring(4, 5).getIntValue();
-        if (slotIndex < 0 || slotIndex >= 4)
+        if (slotIndex < 0 || slotIndex >= kNumSlots)
             return;
 
         juce::String suffix = parameterID.substring(5);
@@ -269,7 +269,7 @@ void DaisyMultiFXProcessor::onSlotEnabledChanged(uint8_t slot, bool enabled)
         processor_->Board().slots[slot].enabled = enabled;
 
     // Update APVTS if needed (for UI)
-    if (!isUpdatingFromPatchState_ && slot < 4)
+    if (!isUpdatingFromPatchState_ && slot < kNumSlots)
     {
         isUpdatingFromPatchState_ = true;
         if (auto *param = parameters_.getParameter("slot" + juce::String(slot) + "_enabled"))
@@ -285,7 +285,7 @@ void DaisyMultiFXProcessor::onSlotTypeChanged(uint8_t slot, uint8_t typeId)
         processor_->ApplyPatch(patchState_.getPatch());
 
     // Update APVTS
-    if (!isUpdatingFromPatchState_ && slot < 4)
+    if (!isUpdatingFromPatchState_ && slot < kNumSlots)
     {
         isUpdatingFromPatchState_ = true;
         auto typeIdToIndex = [](uint8_t tid) -> int
@@ -333,7 +333,7 @@ void DaisyMultiFXProcessor::onSlotParamChanged(uint8_t slot, uint8_t paramId, ui
     }
 
     // Update APVTS
-    if (!isUpdatingFromPatchState_ && slot < 4 && paramId < 5)
+    if (!isUpdatingFromPatchState_ && slot < kNumSlots && paramId < 5)
     {
         isUpdatingFromPatchState_ = true;
         juce::String paramName = "slot" + juce::String(slot) + "_p" + juce::String(paramId);

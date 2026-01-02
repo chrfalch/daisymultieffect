@@ -8,6 +8,9 @@
 #include "BufferManager.h"
 #include <atomic>
 
+// Number of effect slots exposed in the UI/parameter system
+static constexpr int kNumSlots = 6;
+
 // Rename to avoid conflict with juce::AudioProcessor
 using CoreAudioProcessor = ::AudioProcessor;
 
