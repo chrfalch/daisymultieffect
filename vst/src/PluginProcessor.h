@@ -75,7 +75,8 @@ public:
 private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     void initializeDefaultPatch();
-    void syncParametersFromPatch();
+    void syncParametersFromPatch(); // PatchState -> APVTS
+    void syncPatchFromParameters(); // APVTS -> PatchState (after state restore)
 
     // MIDI handling
     void handleIncomingMidi(const juce::MidiMessage &message);

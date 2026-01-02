@@ -184,6 +184,50 @@ void DaisyMultiFXProcessor::syncParametersFromPatch()
     isUpdatingFromPatchState_ = false;
 }
 
+void DaisyMultiFXProcessor::syncPatchFromParameters()
+{
+    // Sync APVTS -> PatchState after state restoration
+    // This is needed because replaceState() doesn't trigger parameterChanged callbacks
+    isUpdatingFromAPVTS_ = true;
+
+    // Update tempo
+    float tempo = *parameters_.getRawParameterValue("tempo");
+    patchState_.setTempo(tempo);
+
+    // Update each slot
+    for (int slot = 0; slot < kNumSlots; ++slot)
+    {
+        juce::String prefix = "slot" + juce::String(slot);
+
+        // Type - read from choice parameter
+        float typeIndexFloat = *parameters_.getRawParameterValue(prefix + "_type");
+        int typeIndex = static_cast<int>(typeIndexFloat + 0.5f);
+        if (typeIndex >= 0 && typeIndex < static_cast<int>(Effects::kNumEffects))
+            patchState_.setSlotType(static_cast<uint8_t>(slot), Effects::getTypeIdByIndex(static_cast<size_t>(typeIndex)));
+
+        // Enabled
+        float enabled = *parameters_.getRawParameterValue(prefix + "_enabled");
+        patchState_.setSlotEnabled(static_cast<uint8_t>(slot), enabled > 0.5f);
+
+        // Mix
+        float mix = *parameters_.getRawParameterValue(prefix + "_mix");
+        patchState_.setSlotMix(static_cast<uint8_t>(slot), static_cast<uint8_t>(mix * 127.0f), 0);
+
+        // Parameters
+        for (int p = 0; p < 5; ++p)
+        {
+            float paramValue = *parameters_.getRawParameterValue(prefix + "_p" + juce::String(p));
+            patchState_.setSlotParam(static_cast<uint8_t>(slot), static_cast<uint8_t>(p), static_cast<uint8_t>(paramValue * 127.0f));
+        }
+    }
+
+    isUpdatingFromAPVTS_ = false;
+
+    // Now apply the patch to DSP
+    if (isPrepared_)
+        processor_->ApplyPatch(patchState_.getPatch());
+}
+
 //=============================================================================
 // Parameter Listener (APVTS -> PatchState)
 //=============================================================================
@@ -578,7 +622,11 @@ void DaisyMultiFXProcessor::setStateInformation(const void *data, int sizeInByte
 {
     std::unique_ptr<juce::XmlElement> xml(getXmlFromBinary(data, sizeInBytes));
     if (xml && xml->hasTagName(parameters_.state.getType()))
+    {
         parameters_.replaceState(juce::ValueTree::fromXml(*xml));
+        // Sync restored parameters to PatchState and DSP
+        syncPatchFromParameters();
+    }
 }
 
 juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter()
