@@ -2,6 +2,16 @@
 #include "PluginEditor.h"
 #include "core/effects/effect_metadata.h"
 #include <iostream>
+#include <fstream>
+
+// For JSON model loading with Neural Amp
+#if __has_include(<RTNeural/RTNeural.h>)
+#define HAS_RTNEURAL 1
+// Use RTNeural's bundled json (included via model_loader.h)
+#include <RTNeural/model_loader.h>
+#else
+#define HAS_RTNEURAL 0
+#endif
 
 using namespace daisyfx;
 
@@ -32,7 +42,7 @@ DaisyMultiFXProcessor::DaisyMultiFXProcessor()
         parameters_.addParameterListener("slot" + juce::String(slot) + "_enabled", this);
         parameters_.addParameterListener("slot" + juce::String(slot) + "_type", this);
         parameters_.addParameterListener("slot" + juce::String(slot) + "_mix", this);
-        for (int p = 0; p < 5; ++p)
+        for (int p = 0; p < kMaxParamsPerSlot; ++p)
         {
             parameters_.addParameterListener("slot" + juce::String(slot) + "_p" + juce::String(p), this);
         }
@@ -84,7 +94,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout DaisyMultiFXProcessor::creat
             "Slot " + juce::String(slot + 1) + " Mix",
             juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 1.0f));
 
-        for (int p = 0; p < 5; ++p)
+        for (int p = 0; p < kMaxParamsPerSlot; ++p)
         {
             params.push_back(std::make_unique<juce::AudioParameterFloat>(
                 juce::ParameterID(prefix + "_p" + juce::String(p), 1),
@@ -183,7 +193,7 @@ void DaisyMultiFXProcessor::syncPatchFromParameters()
         patchState_.setSlotMix(static_cast<uint8_t>(slot), static_cast<uint8_t>(mix * 127.0f), 0);
 
         // Parameters
-        for (int p = 0; p < 5; ++p)
+        for (int p = 0; p < kMaxParamsPerSlot; ++p)
         {
             float paramValue = *parameters_.getRawParameterValue(prefix + "_p" + juce::String(p));
             patchState_.setSlotParam(static_cast<uint8_t>(slot), static_cast<uint8_t>(p), static_cast<uint8_t>(paramValue * 127.0f));
@@ -596,6 +606,99 @@ void DaisyMultiFXProcessor::setStateInformation(const void *data, int sizeInByte
         // Sync restored parameters to PatchState and DSP
         syncPatchFromParameters();
     }
+}
+
+//=============================================================================
+// Neural Amp Model Loading
+//=============================================================================
+
+bool DaisyMultiFXProcessor::loadNeuralAmpModel(int slotIndex, const juce::File &modelFile)
+{
+#if HAS_RTNEURAL
+    if (!modelFile.existsAsFile())
+        return false;
+
+    // Find which Neural Amp instance is in this slot
+    // Neural amps share the same pool, so we need to find the right one
+    const auto &patch = patchState_.getPatch();
+    if (slotIndex < 0 || slotIndex >= kNumSlots)
+        return false;
+
+    // Check if this slot has Neural Amp effect
+    if (patch.slots[slotIndex].typeId != Effects::NeuralAmp::TypeId)
+        return false;
+
+    // Count how many Neural Amp slots come before this one to find the pool index
+    int neuralAmpIndex = 0;
+    for (int i = 0; i < slotIndex; ++i)
+    {
+        if (patch.slots[i].typeId == Effects::NeuralAmp::TypeId)
+            ++neuralAmpIndex;
+    }
+
+    // Get the Neural Amp effect from the pool
+    NeuralAmpEffect *neuralAmp = processor_->GetNeuralAmpEffect(neuralAmpIndex);
+    if (!neuralAmp)
+        return false;
+
+    try
+    {
+        // Read and parse the JSON file
+        std::ifstream file(modelFile.getFullPathName().toStdString());
+        if (!file.is_open())
+            return false;
+
+        nlohmann::json modelJson;
+        file >> modelJson;
+
+        // Extract model name from filename (without extension)
+        std::string modelName = modelFile.getFileNameWithoutExtension().toStdString();
+        std::string modelPath = modelFile.getFullPathName().toStdString();
+
+        // Load the model
+        bool success = neuralAmp->LoadModelFromJson(modelJson, modelName, modelPath);
+
+        return success;
+    }
+    catch (...)
+    {
+        return false;
+    }
+#else
+    juce::ignoreUnused(slotIndex, modelFile);
+    return false;
+#endif
+}
+
+juce::String DaisyMultiFXProcessor::getNeuralAmpModelName(int slotIndex) const
+{
+#if HAS_RTNEURAL
+    const auto &patch = patchState_.getPatch();
+    if (slotIndex < 0 || slotIndex >= kNumSlots)
+        return "Invalid Slot";
+
+    // Check if this slot has Neural Amp effect
+    if (patch.slots[slotIndex].typeId != Effects::NeuralAmp::TypeId)
+        return "Not Neural Amp";
+
+    // Count how many Neural Amp slots come before this one
+    int neuralAmpIndex = 0;
+    for (int i = 0; i < slotIndex; ++i)
+    {
+        if (patch.slots[i].typeId == Effects::NeuralAmp::TypeId)
+            ++neuralAmpIndex;
+    }
+
+    // Get the Neural Amp effect - note: processor_ is non-const, so we need const_cast
+    NeuralAmpEffect *neuralAmp = const_cast<DaisyMultiFXProcessor *>(this)->processor_->GetNeuralAmpEffect(neuralAmpIndex);
+    if (!neuralAmp)
+        return "No Effect";
+
+    return juce::String(neuralAmp->GetModelName());
+#else
+    juce::ignoreUnused(slotIndex);
+    return "RTNeural Disabled";
+#endif
 }
 
 juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter()

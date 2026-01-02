@@ -12,27 +12,30 @@
 static constexpr int kNumSlots = 6;
 
 // Default patch configuration for the guitar signal chain
+// Maximum params per effect slot (should match largest effect)
+static constexpr int kMaxParamsPerSlot = 7;
+
 struct DefaultSlotConfig
 {
-    uint8_t typeId;  // Effect type ID
-    int typeIndex;   // Index in kAllEffects array for JUCE combo box
-    float params[5]; // Normalized parameters (0-1)
+    uint8_t typeId;                  // Effect type ID
+    int typeIndex;                   // Index in kAllEffects array for JUCE combo box
+    float params[kMaxParamsPerSlot]; // Normalized parameters (0-1)
 };
 
 // Guitar signal chain: Gate -> Compressor -> Distortion -> EQ -> Chorus -> Reverb
 inline const DefaultSlotConfig kDefaultSlots[kNumSlots] = {
     // Slot 0: Noise Gate (typeId=17, index=8)
-    {17, 8, {64.0f / 127.0f, 20.0f / 127.0f, 50.0f / 127.0f, 40.0f / 127.0f, 0.0f / 127.0f}},
+    {17, 8, {64.0f / 127.0f, 20.0f / 127.0f, 50.0f / 127.0f, 40.0f / 127.0f, 0.0f / 127.0f, 0.5f, 0.5f}},
     // Slot 1: Compressor (typeId=15, index=6)
-    {15, 6, {80.0f / 127.0f, 16.0f / 127.0f, 40.0f / 127.0f, 50.0f / 127.0f, 20.0f / 127.0f}},
+    {15, 6, {80.0f / 127.0f, 16.0f / 127.0f, 40.0f / 127.0f, 50.0f / 127.0f, 20.0f / 127.0f, 0.5f, 0.5f}},
     // Slot 2: Distortion (typeId=10, index=2)
-    {10, 2, {40.0f / 127.0f, 70.0f / 127.0f, 0.5f, 0.5f, 0.5f}},
-    // Slot 3: GraphicEQ (typeId=18, index=9)
-    {18, 9, {0.5f, 0.5f, 0.5f, 0.5f, 0.5f}},
+    {10, 2, {40.0f / 127.0f, 70.0f / 127.0f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f}},
+    // Slot 3: GraphicEQ (typeId=18, index=9) - 7 bands
+    {18, 9, {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f}},
     // Slot 4: Chorus (typeId=16, index=7)
-    {16, 7, {30.0f / 127.0f, 50.0f / 127.0f, 20.0f / 127.0f, 40.0f / 127.0f, 50.0f / 127.0f}},
+    {16, 7, {30.0f / 127.0f, 50.0f / 127.0f, 20.0f / 127.0f, 40.0f / 127.0f, 50.0f / 127.0f, 0.5f, 0.5f}},
     // Slot 5: Reverb (typeId=14, index=5)
-    {14, 5, {40.0f / 127.0f, 50.0f / 127.0f, 60.0f / 127.0f, 25.0f / 127.0f, 50.0f / 127.0f}},
+    {14, 5, {40.0f / 127.0f, 50.0f / 127.0f, 60.0f / 127.0f, 25.0f / 127.0f, 50.0f / 127.0f, 0.5f, 0.5f}},
 };
 
 // Rename to avoid conflict with juce::AudioProcessor
@@ -95,6 +98,15 @@ public:
     daisyfx::PatchState &getPatchState() { return patchState_; }
     float getInputLevel() const { return inputLevel_.load(); }
     float getOutputLevel() const { return outputLevel_.load(); }
+
+    // Access to audio processor for Neural Amp model loading
+    CoreAudioProcessor *getAudioProcessor() { return processor_.get(); }
+
+    // Neural Amp model loading - returns true if successful
+    bool loadNeuralAmpModel(int slotIndex, const juce::File &modelFile);
+
+    // Get the current Neural Amp model name for a slot
+    juce::String getNeuralAmpModelName(int slotIndex) const;
 
 private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();

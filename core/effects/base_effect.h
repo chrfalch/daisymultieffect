@@ -18,7 +18,8 @@ enum class ChannelMode : uint8_t
 enum class ParamValueKind : uint8_t
 {
     Number = 0,
-    Enum = 1
+    Enum = 1,
+    File = 2 // File path selector (e.g., JSON model files)
 };
 
 struct NumberParamRange

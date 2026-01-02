@@ -31,6 +31,21 @@ SlotComponent::SlotComponent(DaisyMultiFXProcessor &processor, int slotIndex)
     }
     addAndMakeVisible(typeCombo_);
 
+    // Neural Amp model loading button
+    loadModelButton_.setButtonText("Load Model...");
+    loadModelButton_.onClick = [this]
+    { loadModelButtonClicked(); };
+    addAndMakeVisible(loadModelButton_);
+    loadModelButton_.setVisible(false); // Hidden by default
+
+    // Neural Amp model name label
+    modelNameLabel_.setText("No Model Loaded", juce::dontSendNotification);
+    modelNameLabel_.setFont(juce::FontOptions(12.0f));
+    modelNameLabel_.setJustificationType(juce::Justification::centred);
+    modelNameLabel_.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+    addAndMakeVisible(modelNameLabel_);
+    modelNameLabel_.setVisible(false);
+
     // Mix slider
     mixSlider_.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     mixSlider_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 50, 20);
@@ -41,13 +56,20 @@ SlotComponent::SlotComponent(DaisyMultiFXProcessor &processor, int slotIndex)
     mixAttachment_ = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         vts, prefix + "_mix", mixSlider_);
 
-    // Parameter sliders - create all first before any attachments trigger
-    for (int p = 0; p < 5; ++p)
+    // Parameter controls - create sliders and combo boxes for all params
+    // We'll show/hide based on parameter type when effect changes
+    for (int p = 0; p < 7; ++p)
     {
+        // Create slider (used for Number params)
         auto slider = std::make_unique<juce::Slider>();
         slider->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
         slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 50, 20);
         addAndMakeVisible(*slider);
+
+        // Create combo box (used for Enum params)
+        auto combo = std::make_unique<juce::ComboBox>();
+        addAndMakeVisible(*combo);
+        combo->setVisible(false); // Hidden by default
 
         auto label = std::make_unique<juce::Label>();
         label->setText("---", juce::dontSendNotification);
@@ -55,15 +77,17 @@ SlotComponent::SlotComponent(DaisyMultiFXProcessor &processor, int slotIndex)
         addAndMakeVisible(*label);
 
         paramSliders_.push_back(std::move(slider));
+        paramCombos_.push_back(std::move(combo));
         paramLabels_.push_back(std::move(label));
     }
 
-    // Now create param attachments after labels exist
-    for (int p = 0; p < 5; ++p)
+    // Create param attachments (sliders only initially - combos attached dynamically)
+    for (int p = 0; p < 7; ++p)
     {
         auto attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
             vts, prefix + "_p" + juce::String(p), *paramSliders_[p]);
         paramAttachments_.push_back(std::move(attachment));
+        paramComboAttachments_.push_back(nullptr); // Placeholder
     }
 
     // NOW add listener and create type attachment - this may trigger comboBoxChanged
@@ -96,25 +120,122 @@ void SlotComponent::updateParameterLabels(int effectTypeIndex)
 {
     // Get effect metadata from shared source
     const ::EffectMeta *meta = nullptr;
+    uint8_t effectTypeId = 0;
     if (effectTypeIndex >= 0 && static_cast<size_t>(effectTypeIndex) < Effects::kNumEffects)
     {
         meta = Effects::kAllEffects[effectTypeIndex].meta;
+        effectTypeId = Effects::kAllEffects[effectTypeIndex].typeId;
     }
 
-    // Update labels and visibility based on effect's parameter count
-    for (int i = 0; i < 5; ++i)
+    // Check if this is a Neural Amp effect
+    isNeuralAmpSlot_ = (effectTypeId == Effects::NeuralAmp::TypeId);
+    loadModelButton_.setVisible(isNeuralAmpSlot_);
+    modelNameLabel_.setVisible(isNeuralAmpSlot_);
+
+    if (isNeuralAmpSlot_)
+    {
+        updateModelLabel();
+    }
+
+    juce::String prefix = "slot" + juce::String(slotIndex_);
+    auto &vts = processor_.getValueTreeState();
+
+    // Update labels and visibility based on effect's parameter count and type
+    for (int i = 0; i < 7; ++i)
     {
         bool hasParam = meta && i < meta->numParams;
         const char *paramName = hasParam ? meta->params[i].name : "---";
+        bool isEnum = hasParam && meta->params[i].kind == ParamValueKind::Enum;
 
         paramLabels_[i]->setText(paramName, juce::dontSendNotification);
-        paramSliders_[i]->setVisible(hasParam);
         paramLabels_[i]->setVisible(hasParam);
+
+        if (isEnum && meta->params[i].enumeration)
+        {
+            // Use combo box for enum params
+            paramSliders_[i]->setVisible(false);
+            paramCombos_[i]->setVisible(true);
+
+            // Clear and populate combo box
+            paramCombos_[i]->clear();
+            const auto *enumInfo = meta->params[i].enumeration;
+            for (int opt = 0; opt < enumInfo->numOptions; ++opt)
+            {
+                paramCombos_[i]->addItem(enumInfo->options[opt].name, opt + 1);
+            }
+
+            // Remove old attachment and create new combo attachment
+            paramAttachments_[i].reset();
+            paramComboAttachments_[i] = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+                vts, prefix + "_p" + juce::String(i), *paramCombos_[i]);
+        }
+        else
+        {
+            // Use slider for number params
+            paramSliders_[i]->setVisible(hasParam);
+            paramCombos_[i]->setVisible(false);
+
+            // Remove combo attachment and restore slider attachment if needed
+            if (paramComboAttachments_[i])
+            {
+                paramComboAttachments_[i].reset();
+                paramAttachments_[i] = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+                    vts, prefix + "_p" + juce::String(i), *paramSliders_[i]);
+            }
+        }
 
         // Dim unused params
         float alpha = hasParam ? 1.0f : 0.3f;
         paramSliders_[i]->setAlpha(alpha);
+        paramCombos_[i]->setAlpha(alpha);
         paramLabels_[i]->setAlpha(alpha);
+    }
+
+    // Trigger layout update for combo boxes
+    resized();
+}
+
+void SlotComponent::loadModelButtonClicked()
+{
+    fileChooser_ = std::make_unique<juce::FileChooser>(
+        "Select Neural Amp Model",
+        juce::File::getSpecialLocation(juce::File::userHomeDirectory),
+        "*.json");
+
+    auto flags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles;
+
+    fileChooser_->launchAsync(flags, [this](const juce::FileChooser &fc)
+                              {
+        auto file = fc.getResult();
+        if (file.existsAsFile())
+        {
+            bool success = processor_.loadNeuralAmpModel(slotIndex_, file);
+            if (success)
+            {
+                updateModelLabel();
+            }
+            else
+            {
+                modelNameLabel_.setText("Load Failed!", juce::dontSendNotification);
+                modelNameLabel_.setColour(juce::Label::textColourId, juce::Colours::red);
+            }
+        } });
+}
+
+void SlotComponent::updateModelLabel()
+{
+    juce::String modelName = processor_.getNeuralAmpModelName(slotIndex_);
+    modelNameLabel_.setText(modelName, juce::dontSendNotification);
+
+    // Green if loaded, grey if not
+    if (modelName == "No Model" || modelName.startsWith("Load Failed") ||
+        modelName == "Not Neural Amp" || modelName == "RTNeural Disabled")
+    {
+        modelNameLabel_.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+    }
+    else
+    {
+        modelNameLabel_.setColour(juce::Label::textColourId, juce::Colours::lightgreen);
     }
 }
 
@@ -141,40 +262,108 @@ void SlotComponent::resized()
     // Type combo
     typeCombo_.setBounds(bounds.removeFromTop(25));
 
-    bounds.removeFromTop(10);
+    bounds.removeFromTop(5);
 
-    // Knobs layout - 2 rows of 3
+    // Neural Amp model controls (shown only for Neural Amp effect)
+    if (isNeuralAmpSlot_)
+    {
+        loadModelButton_.setBounds(bounds.removeFromTop(25));
+        bounds.removeFromTop(3);
+        modelNameLabel_.setBounds(bounds.removeFromTop(18));
+        bounds.removeFromTop(5);
+    }
+
+    // Knobs layout
     int knobSize = 70;
     int labelHeight = 20;
+    int knobSpacing = (bounds.getWidth() - knobSize * 3) / 4;
 
-    // First row: Mix + Param1 + Param2
+    // Collect visible knob params and enum params separately
+    std::vector<int> knobParamIndices;
+    std::vector<int> enumParamIndices;
+
+    for (int i = 0; i < (int)paramSliders_.size(); ++i)
+    {
+        if (paramCombos_[i]->isVisible())
+        {
+            enumParamIndices.push_back(i);
+        }
+        else if (paramSliders_[i]->isVisible())
+        {
+            knobParamIndices.push_back(i);
+        }
+    }
+
+    // Layout knobs in grid: Mix first, then params flow consecutively
+    // Row 1: Mix + up to 2 params
+    // Row 2: up to 3 params
+    // Row 3: up to 2 params (if needed)
+
     auto row1 = bounds.removeFromTop(knobSize + labelHeight);
-    int knobSpacing = (row1.getWidth() - knobSize * 3) / 4;
 
+    // Mix knob
     auto mixArea = row1.removeFromLeft(knobSpacing + knobSize);
     mixArea.removeFromLeft(knobSpacing);
     mixLabel_.setBounds(mixArea.removeFromBottom(labelHeight));
     mixSlider_.setBounds(mixArea);
 
-    for (int i = 0; i < 2 && i < (int)paramSliders_.size(); ++i)
+    // First 2 knob params in row 1
+    for (int k = 0; k < 2 && k < (int)knobParamIndices.size(); ++k)
     {
+        int idx = knobParamIndices[k];
         auto area = row1.removeFromLeft(knobSpacing + knobSize);
         area.removeFromLeft(knobSpacing);
-        paramLabels_[i]->setBounds(area.removeFromBottom(labelHeight));
-        paramSliders_[i]->setBounds(area);
+        paramLabels_[idx]->setBounds(area.removeFromBottom(labelHeight));
+        paramSliders_[idx]->setBounds(area);
     }
 
     bounds.removeFromTop(5);
 
-    // Second row: Param3 + Param4 + Param5
+    // Row 2: next 3 knob params
     auto row2 = bounds.removeFromTop(knobSize + labelHeight);
     row2.removeFromLeft(knobSpacing);
 
-    for (int i = 2; i < 5 && i < (int)paramSliders_.size(); ++i)
+    for (int k = 2; k < 5 && k < (int)knobParamIndices.size(); ++k)
     {
+        int idx = knobParamIndices[k];
         auto area = row2.removeFromLeft(knobSize + knobSpacing);
-        paramLabels_[i]->setBounds(area.removeFromBottom(labelHeight));
-        paramSliders_[i]->setBounds(area.removeFromLeft(knobSize));
+        paramLabels_[idx]->setBounds(area.removeFromBottom(labelHeight));
+        paramSliders_[idx]->setBounds(area.removeFromLeft(knobSize));
+    }
+
+    // Row 3: remaining knob params (if any)
+    if (knobParamIndices.size() > 5)
+    {
+        bounds.removeFromTop(5);
+        auto row3 = bounds.removeFromTop(knobSize + labelHeight);
+        row3.removeFromLeft(knobSpacing);
+
+        for (int k = 5; k < (int)knobParamIndices.size(); ++k)
+        {
+            int idx = knobParamIndices[k];
+            auto area = row3.removeFromLeft(knobSize + knobSpacing);
+            paramLabels_[idx]->setBounds(area.removeFromBottom(labelHeight));
+            paramSliders_[idx]->setBounds(area.removeFromLeft(knobSize));
+        }
+    }
+
+    // Hide bounds for unused params
+    for (int i = 0; i < (int)paramSliders_.size(); ++i)
+    {
+        if (!paramSliders_[i]->isVisible() && !paramCombos_[i]->isVisible())
+        {
+            paramSliders_[i]->setBounds(0, 0, 0, 0);
+            paramLabels_[i]->setBounds(0, 0, 0, 0);
+        }
+    }
+
+    // Bottom section: Enum parameter combos (full width rows)
+    for (int idx : enumParamIndices)
+    {
+        bounds.removeFromTop(5);
+        auto comboRow = bounds.removeFromTop(25 + labelHeight);
+        paramLabels_[idx]->setBounds(comboRow.removeFromBottom(labelHeight));
+        paramCombos_[idx]->setBounds(comboRow);
     }
 }
 

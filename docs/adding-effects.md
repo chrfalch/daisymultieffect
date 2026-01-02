@@ -137,7 +137,39 @@ cd firmware && make
 | 18 | Graphic EQ |
 | 19 | Flanger |
 | 20 | Phaser |
-| 21+ | New effects |
+| 21 | Neural Amp (RTNeural) |
+| 22+ | New effects |
+
+## Neural Amp Modeling (RTNeural)
+
+The `NeuralAmpEffect` (TypeId 21) uses RTNeural for neural network-based amp simulation.
+
+### Backends
+
+| Platform | Backend | Reason |
+|----------|---------|--------|
+| VST (x86/ARM macOS) | XSIMD | SIMD optimized (AVX/SSE/NEON) |
+| Daisy Seed (Cortex-M7) | STL | Cortex-M7 lacks NEON; pure C++ works well |
+
+### Supported Model Architectures
+
+For embedded (Daisy Seed): GRU-8, GRU-12, GRU-16
+For VST: GRU-8 through GRU-40, LSTM-8 through LSTM-32
+
+### Model Format
+
+Uses AIDA-X / RTNeural JSON format. Models can be downloaded from:
+- [Tone Hunt](https://tonehunt.org/)
+- [NAM Model Pack](https://drive.google.com/drive/folders/18MwNhuo9fjK8hlne6SAdhpGtL4bWsVz-)
+
+### CMake Configuration
+
+RTNeural is automatically fetched when building the VST:
+```cmake
+option(ENABLE_RTNEURAL "Enable RTNeural for Neural Amp modeling" ON)
+```
+
+To disable: `cmake -DENABLE_RTNEURAL=OFF ..`
 
 ## Tips
 

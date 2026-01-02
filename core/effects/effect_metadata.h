@@ -250,6 +250,25 @@ namespace Effects
     }
 
     //=========================================================================
+    // Neural Amp (NAM / RTNeural-based amp simulation)
+    //=========================================================================
+    namespace NeuralAmp
+    {
+        constexpr uint8_t TypeId = 21;
+        inline const NumberParamRange kGainRange = {0.0f, 1.0f, 0.01f};
+        inline const NumberParamRange kEqRange = {0.0f, 1.0f, 0.01f};
+
+        inline const ParamInfo kParams[] = {
+            {0, "Input", "Input gain/drive", ParamValueKind::Number, &kGainRange, nullptr},
+            {1, "Output", "Output level", ParamValueKind::Number, &kGainRange, nullptr},
+            {2, "Bass", "Low frequency boost/cut", ParamValueKind::Number, &kEqRange, nullptr},
+            {3, "Mid", "Mid frequency boost/cut", ParamValueKind::Number, &kEqRange, nullptr},
+            {4, "Treble", "High frequency boost/cut", ParamValueKind::Number, &kEqRange, nullptr},
+        };
+        inline const ::EffectMeta kMeta = {"Neural Amp", "AI-trained amp simulation (AIDA-X/RTNeural). Load JSON model files.", kParams, 5};
+    }
+
+    //=========================================================================
     // Master list of all effects (ordered for UI display)
     //=========================================================================
 
@@ -273,6 +292,7 @@ namespace Effects
         {GraphicEQ::TypeId, &GraphicEQ::kMeta},
         {Flanger::TypeId, &Flanger::kMeta},
         {Phaser::TypeId, &Phaser::kMeta},
+        {NeuralAmp::TypeId, &NeuralAmp::kMeta},
     };
 
     constexpr size_t kNumEffects = sizeof(kAllEffects) / sizeof(kAllEffects[0]);

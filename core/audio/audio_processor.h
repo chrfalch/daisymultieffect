@@ -19,6 +19,7 @@
 #include "effects/eq.h"
 #include "effects/flanger.h"
 #include "effects/phaser.h"
+#include "effects/neural_amp.h"
 
 // Platform-agnostic audio processor.
 // Manages effect instances and processes audio frames.
@@ -82,6 +83,16 @@ public:
     static constexpr int GetMaxSweeps() { return kMaxSweeps; }
     static constexpr int GetMaxReverbs() { return kMaxReverbs; }
 
+    // Access to Neural Amp effects for model loading
+    NeuralAmpEffect *GetNeuralAmpEffect(int index)
+    {
+        if (index >= 0 && index < kMaxNeuralAmps)
+            return &fx_neuralamps_[index];
+        return nullptr;
+    }
+
+    static constexpr int GetMaxNeuralAmps() { return kMaxNeuralAmps; }
+
 private:
     BaseEffect *Instantiate(uint8_t typeId, int slotIndex);
 
@@ -100,6 +111,7 @@ private:
     static constexpr int kMaxEQs = 4;
     static constexpr int kMaxFlangers = 4;
     static constexpr int kMaxPhasers = 4;
+    static constexpr int kMaxNeuralAmps = 2; // Neural amps are CPU-intensive
 
     DelayEffect fx_delays_[kMaxDelays];
     StereoSweepDelayEffect fx_sweeps_[kMaxSweeps];
@@ -112,6 +124,7 @@ private:
     GraphicEQEffect fx_eqs_[kMaxEQs];
     FlangerEffect fx_flangers_[kMaxFlangers];
     PhaserEffect fx_phasers_[kMaxPhasers];
+    NeuralAmpEffect fx_neuralamps_[kMaxNeuralAmps];
 
     // Pool counters
     int delay_next_ = 0;
@@ -125,4 +138,5 @@ private:
     int eq_next_ = 0;
     int flanger_next_ = 0;
     int phaser_next_ = 0;
+    int neuralamp_next_ = 0;
 };

@@ -4,6 +4,9 @@ project(DaisyMultiFX VERSION 1.0.0)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# RTNeural integration (optional, enables Neural Amp effect)
+option(ENABLE_RTNEURAL "Enable RTNeural for Neural Amp modeling" ON)
+
 # Find or fetch JUCE
 option(FETCH_JUCE "Fetch JUCE from GitHub" ON)
 
@@ -24,6 +27,21 @@ else()
     add_subdirectory(${JUCE_DIR} ${CMAKE_BINARY_DIR}/juce)
 endif()
 
+# RTNeural (header-only neural network inference)
+if(ENABLE_RTNEURAL)
+    FetchContent_Declare(
+        RTNeural
+        GIT_REPOSITORY https://github.com/jatinchowdhury18/RTNeural.git
+        GIT_TAG main
+        GIT_SHALLOW TRUE
+    )
+    # Configure RTNeural to use XSIMD backend (SIMD optimized for desktop)
+    set(RTNEURAL_XSIMD ON CACHE BOOL "Use XSIMD backend" FORCE)
+    set(RTNEURAL_STL OFF CACHE BOOL "Use STL backend" FORCE)
+    set(RTNEURAL_EIGEN OFF CACHE BOOL "Use Eigen backend" FORCE)
+    FetchContent_MakeAvailable(RTNeural)
+endif()
+
 # Core DSP library (shared with firmware)
 set(CORE_DIR ${CMAKE_SOURCE_DIR}/../core)
 
@@ -35,6 +53,12 @@ target_include_directories(core_dsp PUBLIC
     ${CMAKE_SOURCE_DIR}/..
     ${CORE_DIR}
 )
+
+# Link RTNeural to core_dsp if enabled
+if(ENABLE_RTNEURAL)
+    target_link_libraries(core_dsp PUBLIC RTNeural)
+    target_compile_definitions(core_dsp PUBLIC RTNEURAL_USE_XSIMD=1)
+endif()
 
 # JUCE Plugin
 juce_add_plugin(DaisyMultiFX
