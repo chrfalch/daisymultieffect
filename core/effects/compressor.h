@@ -1,11 +1,12 @@
 
 #pragma once
 #include "effects/base_effect.h"
+#include "effects/effect_metadata.h"
 #include <cmath>
 
 struct CompressorEffect : BaseEffect
 {
-    static constexpr uint8_t TypeId = 15;
+    static constexpr uint8_t TypeId = Effects::Compressor::TypeId;
 
     float threshold_ = 0.5f; // id0: threshold in dB mapped to 0..1 (-40dB to 0dB)
     float ratio_ = 4.0f;     // id1: compression ratio (1:1 to 20:1)
@@ -18,10 +19,7 @@ struct CompressorEffect : BaseEffect
     float envR_ = 0.0f;
     float sampleRate_ = 48000.0f;
 
-    static const NumberParamRange kThreshRange, kRatioRange, kAttackRange, kReleaseRange, kMakeupRange;
-    static const ParamInfo kParams[5];
-    static const EffectMeta kMeta;
-    const EffectMeta &GetMetadata() const override { return kMeta; }
+    const EffectMeta &GetMetadata() const override { return Effects::Compressor::kMeta; }
 
     uint8_t GetTypeId() const override { return TypeId; }
     ChannelMode GetSupportedModes() const override { return ChannelMode::MonoOrStereo; }

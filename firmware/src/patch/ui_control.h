@@ -10,7 +10,7 @@ namespace daisy
     class Switch;
 } // namespace daisy
 
-class AudioEngine;
+class AudioProcessor;
 class MidiControl;
 class TempoControl;
 
@@ -21,7 +21,7 @@ class TempoControl;
 class UiControl
 {
 public:
-    void Init(daisy::DaisySeed &hw, AudioEngine &engine, MidiControl &midi, TempoControl &tempoControl);
+    void Init(daisy::DaisySeed &hw, AudioProcessor &processor, MidiControl &midi, TempoControl &tempoControl);
 
     // Sets the active patch. Applies it to AudioEngine and informs MidiControl.
     void SetPatch(const PatchWireDesc &patch);
@@ -39,7 +39,7 @@ private:
     void HandleButtonPress(int buttonIndex);
 
     daisy::DaisySeed *hw_ = nullptr;
-    AudioEngine *engine_ = nullptr;
+    AudioProcessor *processor_ = nullptr;
     MidiControl *midi_ = nullptr;
     TempoControl *tempoControl_ = nullptr;
 

@@ -1,5 +1,6 @@
 #pragma once
 #include "effects/base_effect.h"
+#include "effects/effect_metadata.h"
 #include <cmath>
 #include <algorithm>
 
@@ -15,7 +16,7 @@
  */
 struct NoiseGateEffect : BaseEffect
 {
-    static constexpr uint8_t TypeId = 17;
+    static constexpr uint8_t TypeId = Effects::NoiseGate::TypeId;
 
     float threshold_ = 0.3f; // id0: threshold (0..1 maps to -80dB to -20dB)
     float attack_ = 0.001f;  // id1: attack time in seconds
@@ -28,10 +29,7 @@ struct NoiseGateEffect : BaseEffect
     float holdCounter_ = 0.0f; // Samples remaining in hold phase
     float sampleRate_ = 48000.0f;
 
-    static const NumberParamRange kThreshRange, kAttackRange, kHoldRange, kReleaseRange, kRangeRange;
-    static const ParamInfo kParams[5];
-    static const EffectMeta kMeta;
-    const EffectMeta &GetMetadata() const override { return kMeta; }
+    const EffectMeta &GetMetadata() const override { return Effects::NoiseGate::kMeta; }
 
     uint8_t GetTypeId() const override { return TypeId; }
     ChannelMode GetSupportedModes() const override { return ChannelMode::MonoOrStereo; }
@@ -119,24 +117,3 @@ struct NoiseGateEffect : BaseEffect
         r *= effectiveGain;
     }
 };
-
-// Static metadata definitions
-inline const NumberParamRange NoiseGateEffect::kThreshRange = {-80.0f, -20.0f, 0.1f};
-inline const NumberParamRange NoiseGateEffect::kAttackRange = {0.1f, 50.0f, 0.1f};
-inline const NumberParamRange NoiseGateEffect::kHoldRange = {10.0f, 500.0f, 1.0f};
-inline const NumberParamRange NoiseGateEffect::kReleaseRange = {10.0f, 500.0f, 1.0f};
-inline const NumberParamRange NoiseGateEffect::kRangeRange = {0.0f, 1.0f, 0.01f};
-
-inline const ParamInfo NoiseGateEffect::kParams[5] = {
-    {0, "Threshold", "Gate open level", ParamValueKind::Number, &NoiseGateEffect::kThreshRange, nullptr},
-    {1, "Attack", "Gate open speed", ParamValueKind::Number, &NoiseGateEffect::kAttackRange, nullptr},
-    {2, "Hold", "Hold time after signal", ParamValueKind::Number, &NoiseGateEffect::kHoldRange, nullptr},
-    {3, "Release", "Gate close speed", ParamValueKind::Number, &NoiseGateEffect::kReleaseRange, nullptr},
-    {4, "Range", "Floor level when closed", ParamValueKind::Number, &NoiseGateEffect::kRangeRange, nullptr},
-};
-
-inline const EffectMeta NoiseGateEffect::kMeta = {
-    "Noise Gate",
-    "Cut signal below threshold to eliminate hum/buzz.",
-    NoiseGateEffect::kParams,
-    5};

@@ -11,7 +11,7 @@
 #include "audio/pedalboard.h"
 #include "audio/tempo.h"
 
-class AudioEngine;
+class AudioProcessor;
 
 // USB-MIDI (device) + SysEx-based control plane.
 // Keeps main.cpp focused on audio/DSP while this module handles:
@@ -31,7 +31,7 @@ public:
         SetSlotType = 3,
     };
 
-    void Init(daisy::DaisySeed &hw, AudioEngine &engine, Board &board, TempoSource &tempo);
+    void Init(daisy::DaisySeed &hw, AudioProcessor &processor, Board &board, TempoSource &tempo);
 
     // Provide the currently-active patch for PATCH_DUMP responses.
     void SetCurrentPatch(const PatchWireDesc &patch);
@@ -64,7 +64,7 @@ private:
     static uint8_t EncodeRoute(uint8_t r);
 
     daisy::DaisySeed *hw_ = nullptr;
-    AudioEngine *engine_ = nullptr;
+    AudioProcessor *processor_ = nullptr;
     Board *board_ = nullptr;
     TempoSource *tempo_ = nullptr;
     daisy::MidiUsbTransport usb_midi_;

@@ -1,11 +1,12 @@
 
 #pragma once
 #include "effects/time_synced_effect.h"
+#include "effects/effect_metadata.h"
 #include <cmath>
 
 struct StereoSweepDelayEffect : TimeSyncedEffect
 {
-    static constexpr uint8_t TypeId = 12;
+    static constexpr uint8_t TypeId = Effects::SweepDelay::TypeId;
     static constexpr int MAX_SAMPLES = 48000 * 2;
 
     float *bufL_ = nullptr;
@@ -18,10 +19,7 @@ struct StereoSweepDelayEffect : TimeSyncedEffect
     float panRateHz_ = 0.5f; // id6
     float phase_ = 0.0f;
 
-    static const NumberParamRange kFbRange, kMixRange, kPanDepthRange, kPanRateRange;
-    static const ParamInfo kParams[7];
-    static const EffectMeta kMeta;
-    const EffectMeta &GetMetadata() const override { return kMeta; }
+    const EffectMeta &GetMetadata() const override { return Effects::SweepDelay::kMeta; }
 
     StereoSweepDelayEffect(TempoSource &t) : TimeSyncedEffect(t) {}
 

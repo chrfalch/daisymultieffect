@@ -29,7 +29,6 @@ set(CORE_DIR ${CMAKE_SOURCE_DIR}/../core)
 
 add_library(core_dsp STATIC
     ${CORE_DIR}/audio/audio_processor.cpp
-    ${CORE_DIR}/effects/effect_static_defs.cpp
 )
 
 target_include_directories(core_dsp PUBLIC

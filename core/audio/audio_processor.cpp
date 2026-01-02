@@ -190,8 +190,21 @@ void AudioProcessor::ProcessFrame(float inL, float inR, float &outL, float &outR
         float wetL = srcL * (1.0f - g) + procL * g;
         float wetR = srcR * (1.0f - g) + procR * g;
 
-        float yL = srcL * s.dry + wetL * s.wet;
-        float yR = srcR * s.dry + wetR * s.wet;
+        // Wet/dry mix: dry=0,wet=1 means 100% effect, dry=1,wet=0 means bypass
+        // If only wet is used (dry=0), treat wet as a crossfade mix control
+        float yL, yR;
+        if (s.dry > 0.0f)
+        {
+            // Traditional parallel blend: dry*src + wet*processed
+            yL = srcL * s.dry + wetL * s.wet;
+            yR = srcR * s.dry + wetR * s.wet;
+        }
+        else
+        {
+            // Single-knob mix: crossfade from dry to wet
+            yL = srcL * (1.0f - s.wet) + wetL * s.wet;
+            yR = srcR * (1.0f - s.wet) + wetR * s.wet;
+        }
 
         board_.outL[i] = yL;
         board_.outR[i] = yR;

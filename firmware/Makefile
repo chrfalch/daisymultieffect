@@ -16,10 +16,11 @@ C_DEFS += -DDEBUG_PATCH_PASSTHROUGH
 endif
 
 CPP_SOURCES = src/main.cpp \
-              $(wildcard src/audio/*.cpp) \
+              ../core/audio/audio_processor.cpp \
               $(wildcard src/effects/*.cpp) \
               $(wildcard src/midi/*.cpp) \
-              $(wildcard src/patch/*.cpp)
+              $(wildcard src/patch/*.cpp) \
+              src/audio/tempo_control.cpp
 C_INCLUDES += -Isrc -I../core
 CFLAGS   += -O2
 CXXFLAGS += -O2

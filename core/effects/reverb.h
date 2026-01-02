@@ -1,11 +1,12 @@
 
 #pragma once
 #include "effects/base_effect.h"
+#include "effects/effect_metadata.h"
 #include <cmath>
 
 struct SimpleReverbEffect : BaseEffect
 {
-    static constexpr uint8_t TypeId = 14;
+    static constexpr uint8_t TypeId = Effects::Reverb::TypeId;
 
     struct Comb
     {
@@ -89,10 +90,7 @@ struct SimpleReverbEffect : BaseEffect
     uint8_t GetTypeId() const override { return TypeId; }
     ChannelMode GetSupportedModes() const override { return ChannelMode::MonoOrStereo; }
 
-    static const NumberParamRange kMixRange, kDecayRange, kDampRange, kPreRange, kSizeRange;
-    static const ParamInfo kParams[5];
-    static const EffectMeta kMeta;
-    const EffectMeta &GetMetadata() const override { return kMeta; }
+    const EffectMeta &GetMetadata() const override { return Effects::Reverb::kMeta; }
 
     // Bind all buffers before Init.
     // preBuf: MAX_PRE floats

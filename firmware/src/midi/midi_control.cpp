@@ -2,7 +2,7 @@
 
 #include <cstring>
 
-#include "audio/audio_engine.h"
+#include "audio/audio_processor.h"
 #include "effects/effect_registry.h"
 #include "midi/sysex_utils.h"
 
@@ -38,10 +38,10 @@ uint8_t MidiControl::EncodeRoute(uint8_t r)
     return (r == ROUTE_INPUT) ? 127 : (uint8_t)(r & 0x7F);
 }
 
-void MidiControl::Init(daisy::DaisySeed &hw, AudioEngine &engine, Board &board, TempoSource &tempo)
+void MidiControl::Init(daisy::DaisySeed &hw, AudioProcessor &processor, Board &board, TempoSource &tempo)
 {
     hw_ = &hw;
-    engine_ = &engine;
+    processor_ = &processor;
     board_ = &board;
     tempo_ = &tempo;
 
@@ -428,7 +428,7 @@ void MidiControl::ApplyPendingInAudioThread()
     }
     else if (kind == PendingKind::SetSlotType)
     {
-        if (!engine_)
+        if (!processor_)
             return;
 
         const uint8_t typeId = value;
@@ -456,7 +456,7 @@ void MidiControl::ApplyPendingInAudioThread()
 
         // Copy and apply in-place.
         pending_patch_ = current_patch_;
-        engine_->ApplyPatch(pending_patch_);
+        processor_->ApplyPatch(pending_patch_);
 
         // Refresh the patch's param snapshot based on the newly-instantiated effect.
         auto *fx = (*board_).slots[slot].effect;

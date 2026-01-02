@@ -1,6 +1,7 @@
 
 #pragma once
 #include "effects/base_effect.h"
+#include "effects/effect_metadata.h"
 #include <cmath>
 
 /**
@@ -10,7 +11,7 @@
  */
 struct OverdriveEffect : BaseEffect
 {
-    static constexpr uint8_t TypeId = 10;
+    static constexpr uint8_t TypeId = Effects::Distortion::TypeId;
 
     float drive_ = 0.5f;     // id0: drive amount (0-1)
     float tone_ = 0.5f;      // id1: tone control (dark to bright)
@@ -60,11 +61,7 @@ struct OverdriveEffect : BaseEffect
         post_gain_ = 1.0f / SoftClip(0.33f + drive_squashed * (pre_gain_ - 0.33f));
     }
 
-    static const NumberParamRange kDriveRange;
-    static const NumberParamRange kToneRange;
-    static const ParamInfo kParams[2];
-    static const EffectMeta kMeta;
-    const EffectMeta &GetMetadata() const override { return kMeta; }
+    const EffectMeta &GetMetadata() const override { return Effects::Distortion::kMeta; }
 
     void Init(float) override
     {

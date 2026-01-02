@@ -1,20 +1,18 @@
 
 #pragma once
 #include "effects/base_effect.h"
+#include "effects/effect_metadata.h"
 #include <cmath>
 
 struct StereoMixerEffect : BaseEffect
 {
-    static constexpr uint8_t TypeId = 13;
+    static constexpr uint8_t TypeId = Effects::Mixer::TypeId;
 
     float mixA_ = 0.5f;  // id0
     float mixB_ = 0.5f;  // id1
     float cross_ = 0.0f; // id2
 
-    static const NumberParamRange kMixRange, kCrossRange;
-    static const ParamInfo kParams[3];
-    static const EffectMeta kMeta;
-    const EffectMeta &GetMetadata() const override { return kMeta; }
+    const EffectMeta &GetMetadata() const override { return Effects::Mixer::kMeta; }
 
     uint8_t GetTypeId() const override { return TypeId; }
     ChannelMode GetSupportedModes() const override { return ChannelMode::Stereo; }

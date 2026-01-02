@@ -1,10 +1,11 @@
 
 #pragma once
 #include "effects/time_synced_effect.h"
+#include "effects/effect_metadata.h"
 
 struct DelayEffect : TimeSyncedEffect
 {
-    static constexpr uint8_t TypeId = 1;
+    static constexpr uint8_t TypeId = Effects::Delay::TypeId;
     static constexpr int MAX_SAMPLES = 48000 * 2;
 
     float *bufL_ = nullptr;
@@ -14,10 +15,7 @@ struct DelayEffect : TimeSyncedEffect
     float feedback_ = 0.4f; // id3
     float mix_ = 0.5f;      // id4
 
-    static const NumberParamRange kFbRange, kMixRange;
-    static const ParamInfo kParams[5];
-    static const EffectMeta kMeta;
-    const EffectMeta &GetMetadata() const override { return kMeta; }
+    const EffectMeta &GetMetadata() const override { return Effects::Delay::kMeta; }
 
     DelayEffect(TempoSource &t) : TimeSyncedEffect(t) {}
 

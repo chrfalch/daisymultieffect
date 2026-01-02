@@ -1,13 +1,14 @@
 
 #pragma once
 #include "effects/base_effect.h"
+#include "effects/effect_metadata.h"
 #include <cmath>
 
 // Pure C++ chorus implementation (no DaisySP dependency)
 // Uses a modulated delay line with LFO
 struct ChorusEffect : BaseEffect
 {
-    static constexpr uint8_t TypeId = 16;
+    static constexpr uint8_t TypeId = Effects::Chorus::TypeId;
     static constexpr int MAX_DELAY_SAMPLES = 4800; // ~100ms at 48kHz
 
     // Internal delay line
@@ -28,10 +29,7 @@ struct ChorusEffect : BaseEffect
 
     float sampleRate_ = 48000.0f;
 
-    static const NumberParamRange kRateRange, kDepthRange, kFeedbackRange, kDelayRange, kMixRange;
-    static const ParamInfo kParams[5];
-    static const EffectMeta kMeta;
-    const EffectMeta &GetMetadata() const override { return kMeta; }
+    const EffectMeta &GetMetadata() const override { return Effects::Chorus::kMeta; }
 
     uint8_t GetTypeId() const override { return TypeId; }
     ChannelMode GetSupportedModes() const override { return ChannelMode::Stereo; }

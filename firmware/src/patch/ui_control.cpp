@@ -1,6 +1,6 @@
 #include "patch/ui_control.h"
 
-#include "audio/audio_engine.h"
+#include "audio/audio_processor.h"
 #include "midi/midi_control.h"
 #include "audio/tempo_control.h"
 
@@ -15,10 +15,10 @@ namespace
     static daisy::Switch g_switches[kButtonCount];
 } // namespace
 
-void UiControl::Init(daisy::DaisySeed &hw, AudioEngine &engine, MidiControl &midi, TempoControl &tempoControl)
+void UiControl::Init(daisy::DaisySeed &hw, AudioProcessor &processor, MidiControl &midi, TempoControl &tempoControl)
 {
     hw_ = &hw;
-    engine_ = &engine;
+    processor_ = &processor;
     midi_ = &midi;
     tempoControl_ = &tempoControl;
 
@@ -38,13 +38,13 @@ void UiControl::SetPatch(const PatchWireDesc &patch)
     if (midi_)
         midi_->SetCurrentPatch(currentPatch_);
 
-    if (engine_)
-        engine_->ApplyPatch(currentPatch_);
+    if (processor_)
+        processor_->ApplyPatch(currentPatch_);
 }
 
 void UiControl::HandleButtonPress(int buttonIndex)
 {
-    if (!engine_ || !midi_ || !tempoControl_)
+    if (!processor_ || !midi_ || !tempoControl_)
         return;
 
     const ButtonBinding binding = bindings_[buttonIndex];
@@ -54,7 +54,7 @@ void UiControl::HandleButtonPress(int buttonIndex)
         const uint8_t slot = binding.slotIndex;
         if (slot < 12)
         {
-            auto &s = engine_->Board().slots[slot];
+            auto &s = processor_->Board().slots[slot];
             s.enabled = !s.enabled;
 
             if (slot < currentPatch_.numSlots)
