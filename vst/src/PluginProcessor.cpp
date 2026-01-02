@@ -97,59 +97,98 @@ juce::AudioProcessorValueTreeState::ParameterLayout DaisyMultiFXProcessor::creat
 
 void DaisyMultiFXProcessor::initializeDefaultPatch()
 {
-    // Create default patch and load into PatchState
+    // Create default patch - guitar signal chain
     PatchWireDesc patch = {};
     patch.numSlots = kNumSlots;
 
-    // Slot 0: Distortion
+    // Slot 0: Noise Gate - clean up hum/buzz before anything else
+    // Params: Threshold(-80 to -20dB), Attack, Hold, Release, Range
     patch.slots[0].slotIndex = 0;
-    patch.slots[0].typeId = MidiProtocol::EffectType::DISTORTION;
+    patch.slots[0].typeId = Effects::NoiseGate::TypeId; // 17
     patch.slots[0].enabled = 1;
     patch.slots[0].inputL = ROUTE_INPUT;
     patch.slots[0].inputR = ROUTE_INPUT;
     patch.slots[0].sumToMono = 1;
     patch.slots[0].wet = 127;
-    patch.slots[0].numParams = 2;
-    patch.slots[0].params[0] = {0, 40};
-    patch.slots[0].params[1] = {1, 64};
+    patch.slots[0].numParams = 5;
+    patch.slots[0].params[0] = {0, 64}; // Threshold: ~-50dB (mid-range)
+    patch.slots[0].params[1] = {1, 20}; // Attack: fast (~5ms)
+    patch.slots[0].params[2] = {2, 50}; // Hold: ~100ms
+    patch.slots[0].params[3] = {3, 40}; // Release: ~80ms
+    patch.slots[0].params[4] = {4, 0};  // Range: full cut when closed
 
-    // Slot 1: Delay
+    // Slot 1: Compressor - very subtle, just to even out dynamics
+    // Params: Threshold(-40 to 0dB), Ratio(1-20), Attack, Release, Makeup
     patch.slots[1].slotIndex = 1;
-    patch.slots[1].typeId = MidiProtocol::EffectType::DELAY;
+    patch.slots[1].typeId = Effects::Compressor::TypeId; // 15
     patch.slots[1].enabled = 1;
     patch.slots[1].inputL = 0;
     patch.slots[1].inputR = 0;
-    patch.slots[1].dry = 64;
-    patch.slots[1].wet = 96;
+    patch.slots[1].wet = 127;
     patch.slots[1].numParams = 5;
-    patch.slots[1].params[0] = {0, 64};
-    patch.slots[1].params[1] = {1, 32};
-    patch.slots[1].params[2] = {2, 127};
-    patch.slots[1].params[3] = {3, 50};
-    patch.slots[1].params[4] = {4, 80};
+    patch.slots[1].params[0] = {0, 80}; // Threshold: ~-15dB (subtle, only peaks)
+    patch.slots[1].params[1] = {1, 16}; // Ratio: ~2.5:1 (gentle)
+    patch.slots[1].params[2] = {2, 40}; // Attack: ~10ms (let transients through)
+    patch.slots[1].params[3] = {3, 50}; // Release: ~150ms
+    patch.slots[1].params[4] = {4, 20}; // Makeup: ~4dB
 
-    // Slot 2: Reverb
+    // Slot 2: Distortion - slight overdrive for rhythm guitar
+    // Params: Drive(0-1), Tone(0-1)
     patch.slots[2].slotIndex = 2;
-    patch.slots[2].typeId = MidiProtocol::EffectType::REVERB;
+    patch.slots[2].typeId = Effects::Distortion::TypeId; // 10
     patch.slots[2].enabled = 1;
     patch.slots[2].inputL = 1;
     patch.slots[2].inputR = 1;
-    patch.slots[2].dry = 64;
-    patch.slots[2].wet = 80;
-    patch.slots[2].numParams = 5;
-    patch.slots[2].params[0] = {0, 50};
-    patch.slots[2].params[1] = {1, 70};
-    patch.slots[2].params[2] = {2, 40};
-    patch.slots[2].params[3] = {3, 30};
-    patch.slots[2].params[4] = {4, 64};
+    patch.slots[2].wet = 127;
+    patch.slots[2].numParams = 2;
+    patch.slots[2].params[0] = {0, 40}; // Drive: ~30% (slight crunch)
+    patch.slots[2].params[1] = {1, 70}; // Tone: ~55% (slightly bright)
 
-    // Slot 3: Off
+    // Slot 3: EQ - flat (all at 0dB = 0.5 normalized = 64 in MIDI)
+    // Params: 100Hz, 200Hz, 400Hz, 800Hz, 1.6kHz, 3.2kHz, 6.4kHz
     patch.slots[3].slotIndex = 3;
-    patch.slots[3].typeId = MidiProtocol::EffectType::OFF;
+    patch.slots[3].typeId = Effects::GraphicEQ::TypeId; // 18
     patch.slots[3].enabled = 1;
     patch.slots[3].inputL = 2;
     patch.slots[3].inputR = 2;
     patch.slots[3].wet = 127;
+    patch.slots[3].numParams = 7;
+    patch.slots[3].params[0] = {0, 64}; // 100 Hz: flat
+    patch.slots[3].params[1] = {1, 64}; // 200 Hz: flat
+    patch.slots[3].params[2] = {2, 64}; // 400 Hz: flat
+    patch.slots[3].params[3] = {3, 64}; // 800 Hz: flat
+    patch.slots[3].params[4] = {4, 64}; // 1.6 kHz: flat
+    // Note: params[5] and [6] would need to be set via extended mechanism if UI supports 7
+
+    // Slot 4: Chorus - subtle shimmer
+    // Params: Rate, Depth, Feedback, Delay, Mix
+    patch.slots[4].slotIndex = 4;
+    patch.slots[4].typeId = Effects::Chorus::TypeId; // 16
+    patch.slots[4].enabled = 1;
+    patch.slots[4].inputL = 3;
+    patch.slots[4].inputR = 3;
+    patch.slots[4].wet = 127;
+    patch.slots[4].numParams = 5;
+    patch.slots[4].params[0] = {0, 30}; // Rate: ~0.4Hz (slow, lush)
+    patch.slots[4].params[1] = {1, 50}; // Depth: ~40%
+    patch.slots[4].params[2] = {2, 20}; // Feedback: ~15%
+    patch.slots[4].params[3] = {3, 40}; // Delay: ~13ms
+    patch.slots[4].params[4] = {4, 50}; // Mix: ~40%
+
+    // Slot 5: Reverb - room ambience
+    // Params: Mix, Decay, Damping, PreDelay, Size
+    patch.slots[5].slotIndex = 5;
+    patch.slots[5].typeId = Effects::Reverb::TypeId; // 14
+    patch.slots[5].enabled = 1;
+    patch.slots[5].inputL = 4;
+    patch.slots[5].inputR = 4;
+    patch.slots[5].wet = 127;
+    patch.slots[5].numParams = 5;
+    patch.slots[5].params[0] = {0, 40}; // Mix: ~30% (ambient, not washy)
+    patch.slots[5].params[1] = {1, 50}; // Decay: ~50% (medium room)
+    patch.slots[5].params[2] = {2, 60}; // Damping: ~50% (warm)
+    patch.slots[5].params[3] = {3, 25}; // PreDelay: ~25ms
+    patch.slots[5].params[4] = {4, 50}; // Size: ~50% (medium room)
 
     // Load into PatchState (will notify observers)
     patchState_.loadPatch(patch);
