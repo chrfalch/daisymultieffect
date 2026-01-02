@@ -73,7 +73,9 @@ export const EditorScreen: React.FC = () => {
         {patch?.slots.map((slot) => (
           <View key={slot.slotIndex} style={styles.card}>
             <View style={styles.slotHeader}>
-              <Text style={styles.slotTitle}>Slot {slot.slotIndex + 1}</Text>
+              <Text style={styles.slotTitle}>
+                {getEffectName(slot.typeId) || `Slot ${slot.slotIndex + 1}`}
+              </Text>
               <Pressable
                 onPress={() => setSlotEnabled(slot.slotIndex, !slot.enabled)}
               >
@@ -91,18 +93,6 @@ export const EditorScreen: React.FC = () => {
                   </View>
                 )}
               </Pressable>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Effect:</Text>
-              <Text style={styles.infoValue}>{getEffectName(slot.typeId)}</Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Dry/Wet:</Text>
-              <Text style={styles.infoValue}>
-                {slot.dry} / {slot.wet}
-              </Text>
             </View>
 
             {/* Parameters */}
