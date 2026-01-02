@@ -7,7 +7,9 @@ import {
   TouchableOpacity,
   Pressable,
 } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useDaisyMultiFX } from "../../hooks/useDaisyMultiFX";
+import { Slider } from "../../components/Slider";
 
 export const EditorScreen: React.FC = () => {
   const {
@@ -18,120 +20,131 @@ export const EditorScreen: React.FC = () => {
     refreshPatch,
     refreshEffectMeta,
     setSlotEnabled,
+    setSlotParam,
     getEffectName,
     getParamName,
   } = useDaisyMultiFX();
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Connection Status */}
-      <View style={styles.statusCard}>
-        <Text style={styles.statusTitle}>Connection Status</Text>
-        <View style={styles.statusRow}>
-          <View
-            style={[
-              styles.statusIndicator,
-              { backgroundColor: isConnected ? "#4CAF50" : "#F44336" },
-            ]}
-          />
-          <Text style={styles.statusText}>
-            {isConnected ? "Connected" : "Disconnected"}
-          </Text>
-        </View>
-        {connectionStatus && (
-          <Text style={styles.statusDetail}>{connectionStatus.status}</Text>
-        )}
-        <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.button} onPress={refreshPatch}>
-            <Text style={styles.buttonText}>Refresh Patch</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.button} onPress={refreshEffectMeta}>
-            <Text style={styles.buttonText}>Refresh Effects</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Available Effects */}
-      {effectMeta.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Available Effects</Text>
-          <View style={styles.effectsList}>
-            {effectMeta.map((effect) => (
-              <View key={effect.typeId} style={styles.effectBadge}>
-                <Text style={styles.effectBadgeText}>{effect.name}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Slots */}
-      {patch?.slots.map((slot) => (
-        <View key={slot.slotIndex} style={styles.card}>
-          <View style={styles.slotHeader}>
-            <Text style={styles.slotTitle}>Slot {slot.slotIndex + 1}</Text>
-            <Pressable
-              onPress={() => setSlotEnabled(slot.slotIndex, !slot.enabled)}
-            >
-              {({ pressed }) => (
-                <View
-                  style={[
-                    styles.enabledBadge,
-                    { backgroundColor: slot.enabled ? "#4CAF50" : "#9E9E9E" },
-                    pressed && { opacity: 0.7 },
-                  ]}
-                >
-                  <Text style={styles.enabledText}>
-                    {slot.enabled ? "ON" : "OFF"}
-                  </Text>
-                </View>
-              )}
-            </Pressable>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Effect:</Text>
-            <Text style={styles.infoValue}>{getEffectName(slot.typeId)}</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Dry/Wet:</Text>
-            <Text style={styles.infoValue}>
-              {slot.dry} / {slot.wet}
+    <GestureHandlerRootView style={styles.flex}>
+      <ScrollView style={styles.container}>
+        {/* Connection Status */}
+        <View style={styles.statusCard}>
+          <Text style={styles.statusTitle}>Connection Status</Text>
+          <View style={styles.statusRow}>
+            <View
+              style={[
+                styles.statusIndicator,
+                { backgroundColor: isConnected ? "#4CAF50" : "#F44336" },
+              ]}
+            />
+            <Text style={styles.statusText}>
+              {isConnected ? "Connected" : "Disconnected"}
             </Text>
           </View>
+          {connectionStatus && (
+            <Text style={styles.statusDetail}>{connectionStatus.status}</Text>
+          )}
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={styles.button} onPress={refreshPatch}>
+              <Text style={styles.buttonText}>Refresh Patch</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.button} onPress={refreshEffectMeta}>
+              <Text style={styles.buttonText}>Refresh Effects</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
-          {/* Parameters */}
-          {slot.typeId !== 0 && Object.keys(slot.params).length > 0 && (
-            <View style={styles.paramsContainer}>
-              <Text style={styles.paramsTitle}>Parameters</Text>
-              {Object.entries(slot.params).map(([paramId, value]) => (
-                <View key={paramId} style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>
-                    {getParamName(slot.typeId, Number(paramId))}:
-                  </Text>
-                  <Text style={styles.infoValue}>{value}</Text>
+        {/* Available Effects */}
+        {effectMeta.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Available Effects</Text>
+            <View style={styles.effectsList}>
+              {effectMeta.map((effect) => (
+                <View key={effect.typeId} style={styles.effectBadge}>
+                  <Text style={styles.effectBadgeText}>{effect.name}</Text>
                 </View>
               ))}
             </View>
-          )}
-        </View>
-      ))}
+          </View>
+        )}
 
-      {/* Empty State */}
-      {!patch && (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>No patch data received yet.</Text>
-          <Text style={styles.emptyStateHint}>
-            Make sure the VST or hardware is running.
-          </Text>
-        </View>
-      )}
-    </ScrollView>
+        {/* Slots */}
+        {patch?.slots.map((slot) => (
+          <View key={slot.slotIndex} style={styles.card}>
+            <View style={styles.slotHeader}>
+              <Text style={styles.slotTitle}>Slot {slot.slotIndex + 1}</Text>
+              <Pressable
+                onPress={() => setSlotEnabled(slot.slotIndex, !slot.enabled)}
+              >
+                {({ pressed }) => (
+                  <View
+                    style={[
+                      styles.enabledBadge,
+                      { backgroundColor: slot.enabled ? "#4CAF50" : "#9E9E9E" },
+                      pressed && { opacity: 0.7 },
+                    ]}
+                  >
+                    <Text style={styles.enabledText}>
+                      {slot.enabled ? "ON" : "OFF"}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Effect:</Text>
+              <Text style={styles.infoValue}>{getEffectName(slot.typeId)}</Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Dry/Wet:</Text>
+              <Text style={styles.infoValue}>
+                {slot.dry} / {slot.wet}
+              </Text>
+            </View>
+
+            {/* Parameters */}
+            {slot.typeId !== 0 && Object.keys(slot.params).length > 0 && (
+              <View style={styles.paramsContainer}>
+                {Object.entries(slot.params).map(([paramId, value]) => (
+                  <Slider
+                    key={paramId}
+                    label={getParamName(slot.typeId, Number(paramId))}
+                    value={value}
+                    min={0}
+                    max={127}
+                    onValueChangeEnd={(newValue) =>
+                      setSlotParam(slot.slotIndex, Number(paramId), newValue)
+                    }
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        ))}
+
+        {/* Empty State */}
+        {!patch && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>
+              No patch data received yet.
+            </Text>
+            <Text style={styles.emptyStateHint}>
+              Make sure the VST or hardware is running.
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+    </GestureHandlerRootView>
   );
 };
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
