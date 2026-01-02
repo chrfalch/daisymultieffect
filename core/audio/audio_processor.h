@@ -16,6 +16,7 @@
 #include "effects/compressor.h"
 #include "effects/chorus.h"
 #include "effects/noise_gate.h"
+#include "effects/eq.h"
 
 // Platform-agnostic audio processor.
 // Manages effect instances and processes audio frames.
@@ -94,6 +95,7 @@ private:
     static constexpr int kMaxCompressors = 4;
     static constexpr int kMaxChoruses = 4;
     static constexpr int kMaxNoiseGates = 4;
+    static constexpr int kMaxEQs = 4;
 
     DelayEffect fx_delays_[kMaxDelays];
     StereoSweepDelayEffect fx_sweeps_[kMaxSweeps];
@@ -103,6 +105,7 @@ private:
     CompressorEffect fx_compressors_[kMaxCompressors];
     ChorusEffect fx_choruses_[kMaxChoruses];
     NoiseGateEffect fx_noisegates_[kMaxNoiseGates];
+    GraphicEQEffect fx_eqs_[kMaxEQs];
 
     // Pool counters
     int delay_next_ = 0;
@@ -113,4 +116,5 @@ private:
     int compressor_next_ = 0;
     int chorus_next_ = 0;
     int noisegate_next_ = 0;
+    int eq_next_ = 0;
 };

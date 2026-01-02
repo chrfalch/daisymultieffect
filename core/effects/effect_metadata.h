@@ -188,6 +188,26 @@ namespace Effects
     }
 
     //=========================================================================
+    // Graphic EQ (7-band guitar EQ)
+    //=========================================================================
+    namespace GraphicEQ
+    {
+        constexpr uint8_t TypeId = 18;
+        // All bands: -12dB to +12dB (0.5 = 0dB flat)
+        inline const NumberParamRange kBandRange = {-12.0f, 12.0f, 0.5f};
+        inline const ParamInfo kParams[] = {
+            {0, "100 Hz", "Bass/thump", ParamValueKind::Number, &kBandRange, nullptr},
+            {1, "200 Hz", "Warmth/body", ParamValueKind::Number, &kBandRange, nullptr},
+            {2, "400 Hz", "Low-mid", ParamValueKind::Number, &kBandRange, nullptr},
+            {3, "800 Hz", "Midrange/punch", ParamValueKind::Number, &kBandRange, nullptr},
+            {4, "1.6 kHz", "Upper-mid/bite", ParamValueKind::Number, &kBandRange, nullptr},
+            {5, "3.2 kHz", "Presence/clarity", ParamValueKind::Number, &kBandRange, nullptr},
+            {6, "6.4 kHz", "Treble/air", ParamValueKind::Number, &kBandRange, nullptr},
+        };
+        inline const ::EffectMeta kMeta = {"Graphic EQ", "7-band EQ optimized for guitar.", kParams, 7};
+    }
+
+    //=========================================================================
     // Master list of all effects (ordered for UI display)
     //=========================================================================
 
@@ -208,6 +228,7 @@ namespace Effects
         {Compressor::TypeId, &Compressor::kMeta},
         {Chorus::TypeId, &Chorus::kMeta},
         {NoiseGate::TypeId, &NoiseGate::kMeta},
+        {GraphicEQ::TypeId, &GraphicEQ::kMeta},
     };
 
     constexpr size_t kNumEffects = sizeof(kAllEffects) / sizeof(kAllEffects[0]);
