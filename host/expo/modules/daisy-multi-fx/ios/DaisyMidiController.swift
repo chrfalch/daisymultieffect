@@ -67,6 +67,7 @@ final class DaisyMidiController: @unchecked Sendable {
     private(set) var connectionStatus: ConnectionStatus = ConnectionStatus(
         connected: false,
         sourceCount: 0,
+        sourceNames: [],
         destinationName: "",
         status: "Not initialized"
     )
@@ -121,6 +122,7 @@ final class DaisyMidiController: @unchecked Sendable {
             ConnectionStatus(
                 connected: false,
                 sourceCount: 0,
+                sourceNames: [],
                 destinationName: "",
                 status: "Disconnected"
             ))
@@ -129,12 +131,25 @@ final class DaisyMidiController: @unchecked Sendable {
     // MARK: - CoreMIDI Setup
 
     private func setupCoreMidi() {
-        let status = MIDIClientCreate("DaisyMultiFX" as CFString, nil, nil, &client)
+        // Enable network MIDI session (required for MIDI over network on iOS)
+        let networkSession = MIDINetworkSession.default()
+        networkSession.isEnabled = true
+        networkSession.connectionPolicy = .anyone
+        print(
+            "[DaisyMidi] Network MIDI enabled: \(networkSession.isEnabled), policy: \(networkSession.connectionPolicy.rawValue)"
+        )
+
+        // Create client with notification callback for device changes
+        let status = MIDIClientCreateWithBlock("DaisyMultiFX" as CFString, &client) {
+            [weak self] notification in
+            self?.handleMidiNotification(notification)
+        }
         guard status == noErr else {
             updateConnectionStatus(
                 ConnectionStatus(
                     connected: false,
                     sourceCount: 0,
+                    sourceNames: [],
                     destinationName: "",
                     status: "MIDI client creation failed: \(status)"
                 ))
@@ -156,6 +171,7 @@ final class DaisyMidiController: @unchecked Sendable {
                 ConnectionStatus(
                     connected: false,
                     sourceCount: 0,
+                    sourceNames: [],
                     destinationName: "",
                     status: "MIDI input port failed: \(inputStatus)"
                 ))
@@ -165,15 +181,30 @@ final class DaisyMidiController: @unchecked Sendable {
         // Create output port
         MIDIOutputPortCreate(client, "Output" as CFString, &outPort)
 
-        // Connect to all sources
+        // Log all available sources
         let sourceCount = MIDIGetNumberOfSources()
+        print("[DaisyMidi] Found \(sourceCount) MIDI sources:")
+        var sourceNames: [String] = []
         for i in 0..<sourceCount {
             let src = MIDIGetSource(i)
+            var name: Unmanaged<CFString>?
+            MIDIObjectGetStringProperty(src, kMIDIPropertyName, &name)
+            let srcName = (name?.takeRetainedValue() as String?) ?? "Unknown"
+            sourceNames.append(srcName)
+            print("[DaisyMidi]   Source \(i): \(srcName)")
             MIDIPortConnectSource(inPort, src, nil)
         }
 
-        // Find destination
+        // Also connect to the network session source if available
+        let networkSourceEndpoint = networkSession.sourceEndpoint()
+        if networkSourceEndpoint != 0 {
+            print("[DaisyMidi] Connecting to network session source endpoint")
+            MIDIPortConnectSource(inPort, networkSourceEndpoint, nil)
+        }
+
+        // Find destination - log all available
         let destCount = MIDIGetNumberOfDestinations()
+        print("[DaisyMidi] Found \(destCount) MIDI destinations:")
         var destNames: [String] = []
         var selectedDestName = ""
 
@@ -183,13 +214,25 @@ final class DaisyMidiController: @unchecked Sendable {
             MIDIObjectGetStringProperty(dest, kMIDIPropertyName, &name)
             if let n = name?.takeRetainedValue() as String? {
                 destNames.append(n)
-                if n.contains("IAC") || n.contains("Bus") || n.contains("Daisy") {
+                print("[DaisyMidi]   Destination \(i): \(n)")
+                // Match network MIDI, IAC, or Daisy
+                if destination == 0
+                    && (n.contains("IAC") || n.contains("Bus") || n.contains("Daisy")
+                        || n.contains("Network") || n.contains("Session"))
+                {
                     destination = dest
                     selectedDestName = n
                     print("[DaisyMidi] Selected destination: \(n)")
-                    break
                 }
             }
+        }
+
+        // Also check for network session destination
+        let networkDestEndpoint = networkSession.destinationEndpoint()
+        if networkDestEndpoint != 0 && destination == 0 {
+            destination = networkDestEndpoint
+            selectedDestName = "Network Session"
+            print("[DaisyMidi] Using network session destination endpoint")
         }
 
         if destination == 0 && destCount > 0 {
@@ -202,8 +245,124 @@ final class DaisyMidiController: @unchecked Sendable {
             ConnectionStatus(
                 connected: destination != 0,
                 sourceCount: Int(sourceCount),
+                sourceNames: sourceNames,
                 destinationName: selectedDestName,
-                status: "MIDI ready - \(sourceCount) sources"
+                status: "MIDI ready - \(sourceNames.joined(separator: ", "))"
+            ))
+    }
+
+    // MARK: - MIDI Notifications
+
+    private func handleMidiNotification(_ notification: UnsafePointer<MIDINotification>) {
+        let messageID = notification.pointee.messageID
+
+        switch messageID {
+        case .msgSetupChanged:
+            print("[DaisyMidi] MIDI setup changed - rescanning devices")
+            DispatchQueue.main.async { [weak self] in
+                self?.rescanMidiDevices()
+            }
+
+        case .msgObjectAdded:
+            print("[DaisyMidi] MIDI object added")
+            DispatchQueue.main.async { [weak self] in
+                self?.rescanMidiDevices()
+            }
+
+        case .msgObjectRemoved:
+            print("[DaisyMidi] MIDI object removed")
+            DispatchQueue.main.async { [weak self] in
+                self?.rescanMidiDevices()
+            }
+
+        case .msgPropertyChanged:
+            print("[DaisyMidi] MIDI property changed")
+
+        case .msgThruConnectionsChanged:
+            print("[DaisyMidi] MIDI thru connections changed")
+
+        case .msgSerialPortOwnerChanged:
+            print("[DaisyMidi] Serial port owner changed")
+
+        case .msgIOError:
+            print("[DaisyMidi] MIDI I/O error")
+
+        @unknown default:
+            print("[DaisyMidi] Unknown MIDI notification: \(messageID.rawValue)")
+        }
+    }
+
+    private func rescanMidiDevices() {
+        guard isSetup, inPort != 0 else { return }
+
+        let networkSession = MIDINetworkSession.default()
+
+        // Reconnect to all sources
+        let sourceCount = MIDIGetNumberOfSources()
+        print("[DaisyMidi] Rescanning - found \(sourceCount) MIDI sources:")
+        var sourceNames: [String] = []
+
+        for i in 0..<sourceCount {
+            let src = MIDIGetSource(i)
+            var name: Unmanaged<CFString>?
+            MIDIObjectGetStringProperty(src, kMIDIPropertyName, &name)
+            let srcName = (name?.takeRetainedValue() as String?) ?? "Unknown"
+            sourceNames.append(srcName)
+            print("[DaisyMidi]   Source \(i): \(srcName)")
+            MIDIPortConnectSource(inPort, src, nil)
+        }
+
+        // Connect to network session source
+        let networkSourceEndpoint = networkSession.sourceEndpoint()
+        if networkSourceEndpoint != 0 {
+            MIDIPortConnectSource(inPort, networkSourceEndpoint, nil)
+        }
+
+        // Rescan destinations
+        let destCount = MIDIGetNumberOfDestinations()
+        print("[DaisyMidi] Rescanning - found \(destCount) MIDI destinations:")
+        var selectedDestName = ""
+        var newDestination: MIDIEndpointRef = 0
+
+        for i in 0..<destCount {
+            let dest = MIDIGetDestination(i)
+            var name: Unmanaged<CFString>?
+            MIDIObjectGetStringProperty(dest, kMIDIPropertyName, &name)
+            if let n = name?.takeRetainedValue() as String? {
+                print("[DaisyMidi]   Destination \(i): \(n)")
+                if newDestination == 0
+                    && (n.contains("IAC") || n.contains("Bus") || n.contains("Daisy")
+                        || n.contains("Network") || n.contains("Session"))
+                {
+                    newDestination = dest
+                    selectedDestName = n
+                }
+            }
+        }
+
+        // Check network session destination
+        let networkDestEndpoint = networkSession.destinationEndpoint()
+        if networkDestEndpoint != 0 && newDestination == 0 {
+            newDestination = networkDestEndpoint
+            selectedDestName = "Network Session"
+        }
+
+        if newDestination == 0 && destCount > 0 {
+            newDestination = MIDIGetDestination(0)
+            var name: Unmanaged<CFString>?
+            MIDIObjectGetStringProperty(newDestination, kMIDIPropertyName, &name)
+            selectedDestName = (name?.takeRetainedValue() as String?) ?? "unknown"
+        }
+
+        destination = newDestination
+
+        updateConnectionStatus(
+            ConnectionStatus(
+                connected: destination != 0,
+                sourceCount: Int(sourceCount),
+                sourceNames: sourceNames,
+                destinationName: selectedDestName,
+                status: "MIDI ready - \(sourceNames.joined(separator: ", "))"
             ))
     }
 
@@ -532,7 +691,20 @@ final class DaisyMidiController: @unchecked Sendable {
     // MARK: - Send MIDI
 
     private func sendSysex(_ data: [UInt8]) {
-        guard destination != 0 else { return }
+        let hexString = data.map { String(format: "%02X", $0) }.joined(separator: " ")
+        print("[DaisyMidi] sendSysex called with \(data.count) bytes: \(hexString)")
+
+        guard destination != 0 else {
+            print("[DaisyMidi] ERROR: No destination set, cannot send MIDI")
+            return
+        }
+
+        guard outPort != 0 else {
+            print("[DaisyMidi] ERROR: No output port, cannot send MIDI")
+            return
+        }
+
+        print("[DaisyMidi] Sending to destination: \(destination), outPort: \(outPort)")
 
         let bufferSize = 1024
         var buffer = [UInt8](repeating: 0, count: bufferSize)
@@ -545,7 +717,12 @@ final class DaisyMidiController: @unchecked Sendable {
                 if let base = dataPtr.baseAddress {
                     pkt = MIDIPacketListAdd(plist, bufferSize, pkt, 0, data.count, base)
                 }
-                MIDISend(outPort, destination, plist)
+                let status = MIDISend(outPort, destination, plist)
+                if status != noErr {
+                    print("[DaisyMidi] MIDISend failed with status: \(status)")
+                } else {
+                    print("[DaisyMidi] MIDISend succeeded")
+                }
             }
         }
     }

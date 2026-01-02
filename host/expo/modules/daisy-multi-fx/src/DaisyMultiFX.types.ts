@@ -62,6 +62,8 @@ export interface ConnectionStatus {
   connected: boolean;
   /** Number of MIDI sources found */
   sourceCount: number;
+  /** Names of all MIDI sources */
+  sourceNames: string[];
   /** Name of the current destination */
   destinationName: string;
   /** Status message */

@@ -82,6 +82,7 @@ struct EffectMeta: Equatable {
 struct ConnectionStatus {
     var connected: Bool
     var sourceCount: Int
+    var sourceNames: [String]
     var destinationName: String
     var status: String
 
@@ -89,6 +90,7 @@ struct ConnectionStatus {
         return [
             "connected": connected,
             "sourceCount": sourceCount,
+            "sourceNames": sourceNames,
             "destinationName": destinationName,
             "status": status,
         ]
