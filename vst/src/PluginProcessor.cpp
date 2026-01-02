@@ -550,16 +550,34 @@ void DaisyMultiFXProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
 
     // Process audio
     const int numChannels = buffer.getNumChannels();
+    const int numSamples = buffer.getNumSamples();
     auto *leftIn = buffer.getReadPointer(0);
     auto *rightIn = (numChannels > 1) ? buffer.getReadPointer(1) : leftIn;
     auto *leftOut = buffer.getWritePointer(0);
     auto *rightOut = (numChannels > 1) ? buffer.getWritePointer(1) : buffer.getWritePointer(0);
 
+    // Detect mono input: check if right channel is essentially silent while left has signal
+    // This handles the common case of a mono guitar input on a stereo bus
+    bool monoInput = false;
+    if (numChannels > 1)
+    {
+        float leftEnergy = 0.0f, rightEnergy = 0.0f;
+        for (int i = 0; i < numSamples; ++i)
+        {
+            leftEnergy += leftIn[i] * leftIn[i];
+            rightEnergy += rightIn[i] * rightIn[i];
+        }
+        // If left has significant signal but right is near-silent, treat as mono
+        monoInput = (leftEnergy > 1e-8f && rightEnergy < leftEnergy * 0.001f);
+    }
+
     float maxIn = 0.0f, maxOut = 0.0f;
 
-    for (int i = 0; i < buffer.getNumSamples(); ++i)
+    for (int i = 0; i < numSamples; ++i)
     {
-        float inL = leftIn[i], inR = rightIn[i];
+        float inL = leftIn[i];
+        float inR = monoInput ? inL : rightIn[i]; // Copy L to R for mono input
+
         maxIn = std::max(maxIn, std::max(std::abs(inL), std::abs(inR)));
 
         float outL, outR;
