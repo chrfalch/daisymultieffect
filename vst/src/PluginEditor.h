@@ -18,6 +18,7 @@ public:
 private:
     void updateParameterLabels(int effectTypeIndex);
     void loadModelButtonClicked();
+    void loadIRButtonClicked();
     void updateModelLabel();
 
     DaisyMultiFXProcessor &processor_;
@@ -29,10 +30,11 @@ private:
     juce::Slider mixSlider_;
     juce::Label mixLabel_;
 
-    // Neural Amp specific controls
+    // Neural Amp / Cabinet IR specific controls
     juce::TextButton loadModelButton_;
     juce::Label modelNameLabel_;
     bool isNeuralAmpSlot_ = false;
+    bool isCabinetIRSlot_ = false;
 
     // Parameters - can be sliders or combo boxes depending on type
     std::vector<std::unique_ptr<juce::Slider>> paramSliders_;

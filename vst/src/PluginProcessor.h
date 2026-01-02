@@ -108,6 +108,12 @@ public:
     // Get the current Neural Amp model name for a slot
     juce::String getNeuralAmpModelName(int slotIndex) const;
 
+    // Cabinet IR loading - returns true if successful
+    bool loadCabinetIR(int slotIndex, const juce::File &irFile);
+
+    // Get the current Cabinet IR name for a slot
+    juce::String getCabinetIRName(int slotIndex) const;
+
 private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     void initializeDefaultPatch();

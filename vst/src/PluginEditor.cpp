@@ -127,13 +127,22 @@ void SlotComponent::updateParameterLabels(int effectTypeIndex)
         effectTypeId = Effects::kAllEffects[effectTypeIndex].typeId;
     }
 
-    // Check if this is a Neural Amp effect
+    // Check if this is a Neural Amp or Cabinet IR effect (both need file loading)
     isNeuralAmpSlot_ = (effectTypeId == Effects::NeuralAmp::TypeId);
-    loadModelButton_.setVisible(isNeuralAmpSlot_);
-    modelNameLabel_.setVisible(isNeuralAmpSlot_);
+    isCabinetIRSlot_ = (effectTypeId == Effects::CabinetIR::TypeId);
+
+    bool needsFileLoad = isNeuralAmpSlot_ || isCabinetIRSlot_;
+    loadModelButton_.setVisible(needsFileLoad);
+    modelNameLabel_.setVisible(needsFileLoad);
 
     if (isNeuralAmpSlot_)
     {
+        loadModelButton_.setButtonText("Load Model...");
+        updateModelLabel();
+    }
+    else if (isCabinetIRSlot_)
+    {
+        loadModelButton_.setButtonText("Load IR...");
         updateModelLabel();
     }
 
@@ -197,39 +206,85 @@ void SlotComponent::updateParameterLabels(int effectTypeIndex)
 
 void SlotComponent::loadModelButtonClicked()
 {
-    fileChooser_ = std::make_unique<juce::FileChooser>(
-        "Select Neural Amp Model",
-        juce::File::getSpecialLocation(juce::File::userHomeDirectory),
-        "*.json");
+    if (isNeuralAmpSlot_)
+    {
+        fileChooser_ = std::make_unique<juce::FileChooser>(
+            "Select Neural Amp Model",
+            juce::File::getSpecialLocation(juce::File::userHomeDirectory),
+            "*.json");
 
-    auto flags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles;
+        auto flags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles;
 
-    fileChooser_->launchAsync(flags, [this](const juce::FileChooser &fc)
-                              {
-        auto file = fc.getResult();
-        if (file.existsAsFile())
-        {
-            bool success = processor_.loadNeuralAmpModel(slotIndex_, file);
-            if (success)
+        fileChooser_->launchAsync(flags, [this](const juce::FileChooser &fc)
+                                  {
+            auto file = fc.getResult();
+            if (file.existsAsFile())
             {
-                updateModelLabel();
-            }
-            else
+                bool success = processor_.loadNeuralAmpModel(slotIndex_, file);
+                if (success)
+                {
+                    updateModelLabel();
+                }
+                else
+                {
+                    modelNameLabel_.setText("Load Failed!", juce::dontSendNotification);
+                    modelNameLabel_.setColour(juce::Label::textColourId, juce::Colours::red);
+                }
+            } });
+    }
+    else if (isCabinetIRSlot_)
+    {
+        fileChooser_ = std::make_unique<juce::FileChooser>(
+            "Select Cabinet Impulse Response",
+            juce::File::getSpecialLocation(juce::File::userHomeDirectory),
+            "*.wav;*.aif;*.aiff;*.flac");
+
+        auto flags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles;
+
+        fileChooser_->launchAsync(flags, [this](const juce::FileChooser &fc)
+                                  {
+            auto file = fc.getResult();
+            if (file.existsAsFile())
             {
-                modelNameLabel_.setText("Load Failed!", juce::dontSendNotification);
-                modelNameLabel_.setColour(juce::Label::textColourId, juce::Colours::red);
-            }
-        } });
+                bool success = processor_.loadCabinetIR(slotIndex_, file);
+                if (success)
+                {
+                    updateModelLabel();
+                }
+                else
+                {
+                    modelNameLabel_.setText("Load Failed!", juce::dontSendNotification);
+                    modelNameLabel_.setColour(juce::Label::textColourId, juce::Colours::red);
+                }
+            } });
+    }
 }
 
 void SlotComponent::updateModelLabel()
 {
-    juce::String modelName = processor_.getNeuralAmpModelName(slotIndex_);
-    modelNameLabel_.setText(modelName, juce::dontSendNotification);
+    juce::String displayName;
+
+    if (isNeuralAmpSlot_)
+    {
+        displayName = processor_.getNeuralAmpModelName(slotIndex_);
+    }
+    else if (isCabinetIRSlot_)
+    {
+        displayName = processor_.getCabinetIRName(slotIndex_);
+    }
+    else
+    {
+        return;
+    }
+
+    modelNameLabel_.setText(displayName, juce::dontSendNotification);
 
     // Green if loaded, grey if not
-    if (modelName == "No Model" || modelName.startsWith("Load Failed") ||
-        modelName == "Not Neural Amp" || modelName == "RTNeural Disabled")
+    if (displayName == "No Model" || displayName == "No IR" ||
+        displayName.startsWith("Load Failed") ||
+        displayName == "Not Neural Amp" || displayName == "Not Cabinet IR" ||
+        displayName == "RTNeural Disabled" || displayName == "Invalid Slot" ||
+        displayName == "No Effect")
     {
         modelNameLabel_.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     }
@@ -264,8 +319,8 @@ void SlotComponent::resized()
 
     bounds.removeFromTop(5);
 
-    // Neural Amp model controls (shown only for Neural Amp effect)
-    if (isNeuralAmpSlot_)
+    // File load controls (shown for Neural Amp and Cabinet IR effects)
+    if (isNeuralAmpSlot_ || isCabinetIRSlot_)
     {
         loadModelButton_.setBounds(bounds.removeFromTop(25));
         bounds.removeFromTop(3);

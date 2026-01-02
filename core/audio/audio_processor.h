@@ -20,6 +20,7 @@
 #include "effects/flanger.h"
 #include "effects/phaser.h"
 #include "effects/neural_amp.h"
+#include "effects/cabinet_ir.h"
 
 // Platform-agnostic audio processor.
 // Manages effect instances and processes audio frames.
@@ -93,6 +94,16 @@ public:
 
     static constexpr int GetMaxNeuralAmps() { return kMaxNeuralAmps; }
 
+    // Access to Cabinet IR effects for IR loading
+    CabinetIREffect *GetCabinetIREffect(int index)
+    {
+        if (index >= 0 && index < kMaxCabinetIRs)
+            return &fx_cabinetirs_[index];
+        return nullptr;
+    }
+
+    static constexpr int GetMaxCabinetIRs() { return kMaxCabinetIRs; }
+
 private:
     BaseEffect *Instantiate(uint8_t typeId, int slotIndex);
 
@@ -112,6 +123,7 @@ private:
     static constexpr int kMaxFlangers = 4;
     static constexpr int kMaxPhasers = 4;
     static constexpr int kMaxNeuralAmps = 2; // Neural amps are CPU-intensive
+    static constexpr int kMaxCabinetIRs = 2; // Cabinet IRs use convolution
 
     DelayEffect fx_delays_[kMaxDelays];
     StereoSweepDelayEffect fx_sweeps_[kMaxSweeps];
@@ -125,6 +137,7 @@ private:
     FlangerEffect fx_flangers_[kMaxFlangers];
     PhaserEffect fx_phasers_[kMaxPhasers];
     NeuralAmpEffect fx_neuralamps_[kMaxNeuralAmps];
+    CabinetIREffect fx_cabinetirs_[kMaxCabinetIRs];
 
     // Pool counters
     int delay_next_ = 0;
@@ -139,4 +152,5 @@ private:
     int flanger_next_ = 0;
     int phaser_next_ = 0;
     int neuralamp_next_ = 0;
+    int cabinetir_next_ = 0;
 };

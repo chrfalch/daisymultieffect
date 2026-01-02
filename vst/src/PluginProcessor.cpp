@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "core/effects/effect_metadata.h"
+#include <juce_audio_formats/juce_audio_formats.h>
 #include <iostream>
 #include <fstream>
 
@@ -699,6 +700,109 @@ juce::String DaisyMultiFXProcessor::getNeuralAmpModelName(int slotIndex) const
     juce::ignoreUnused(slotIndex);
     return "RTNeural Disabled";
 #endif
+}
+
+//=============================================================================
+// Cabinet IR Loading
+//=============================================================================
+
+bool DaisyMultiFXProcessor::loadCabinetIR(int slotIndex, const juce::File &irFile)
+{
+    if (!irFile.existsAsFile())
+        return false;
+
+    const auto &patch = patchState_.getPatch();
+    if (slotIndex < 0 || slotIndex >= kNumSlots)
+        return false;
+
+    // Check if this slot has Cabinet IR effect
+    if (patch.slots[slotIndex].typeId != Effects::CabinetIR::TypeId)
+        return false;
+
+    // Count how many Cabinet IR slots come before this one to find the pool index
+    int cabinetIRIndex = 0;
+    for (int i = 0; i < slotIndex; ++i)
+    {
+        if (patch.slots[i].typeId == Effects::CabinetIR::TypeId)
+            ++cabinetIRIndex;
+    }
+
+    // Get the Cabinet IR effect from the pool
+    CabinetIREffect *cabinetIR = processor_->GetCabinetIREffect(cabinetIRIndex);
+    if (!cabinetIR)
+        return false;
+
+    // Use JUCE to read the WAV file
+    juce::AudioFormatManager formatManager;
+    formatManager.registerBasicFormats();
+
+    std::unique_ptr<juce::AudioFormatReader> reader(formatManager.createReaderFor(irFile));
+    if (!reader)
+        return false;
+
+    // Read the IR samples - we'll use mono (or sum to mono if stereo)
+    int numSamples = static_cast<int>(reader->lengthInSamples);
+    if (numSamples <= 0)
+        return false;
+
+    // Limit to max IR length
+    if (numSamples > CabinetIREffect::kMaxIRLength)
+        numSamples = CabinetIREffect::kMaxIRLength;
+
+    // Read into a temporary buffer
+    juce::AudioBuffer<float> tempBuffer(1, numSamples);
+
+    if (reader->numChannels == 1)
+    {
+        // Mono file - read directly
+        reader->read(&tempBuffer, 0, numSamples, 0, true, false);
+    }
+    else
+    {
+        // Stereo or more - read both channels and average
+        juce::AudioBuffer<float> stereoBuffer(static_cast<int>(reader->numChannels), numSamples);
+        reader->read(&stereoBuffer, 0, numSamples, 0, true, true);
+
+        // Sum to mono
+        tempBuffer.clear();
+        for (int ch = 0; ch < static_cast<int>(reader->numChannels); ++ch)
+        {
+            tempBuffer.addFrom(0, 0, stereoBuffer, ch, 0, numSamples, 1.0f / reader->numChannels);
+        }
+    }
+
+    // Extract model name from filename (without extension)
+    std::string irName = irFile.getFileNameWithoutExtension().toStdString();
+    std::string irPath = irFile.getFullPathName().toStdString();
+
+    // Load the IR into the effect
+    return cabinetIR->LoadIR(tempBuffer.getReadPointer(0), numSamples, irName, irPath);
+}
+
+juce::String DaisyMultiFXProcessor::getCabinetIRName(int slotIndex) const
+{
+    const auto &patch = patchState_.getPatch();
+    if (slotIndex < 0 || slotIndex >= kNumSlots)
+        return "Invalid Slot";
+
+    // Check if this slot has Cabinet IR effect
+    if (patch.slots[slotIndex].typeId != Effects::CabinetIR::TypeId)
+        return "Not Cabinet IR";
+
+    // Count how many Cabinet IR slots come before this one
+    int cabinetIRIndex = 0;
+    for (int i = 0; i < slotIndex; ++i)
+    {
+        if (patch.slots[i].typeId == Effects::CabinetIR::TypeId)
+            ++cabinetIRIndex;
+    }
+
+    // Get the Cabinet IR effect
+    CabinetIREffect *cabinetIR = const_cast<DaisyMultiFXProcessor *>(this)->processor_->GetCabinetIREffect(cabinetIRIndex);
+    if (!cabinetIR)
+        return "No Effect";
+
+    return juce::String(cabinetIR->GetIRName());
 }
 
 juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter()

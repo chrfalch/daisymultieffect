@@ -96,6 +96,7 @@ target_link_libraries(DaisyMultiFX PRIVATE
     core_dsp
     juce::juce_audio_utils
     juce::juce_audio_processors
+    juce::juce_audio_formats
 PUBLIC
     juce::juce_recommended_config_flags
     juce::juce_recommended_lto_flags

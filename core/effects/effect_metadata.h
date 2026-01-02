@@ -269,6 +269,26 @@ namespace Effects
     }
 
     //=========================================================================
+    // Cabinet IR (Impulse Response convolution for speaker cabinet simulation)
+    //=========================================================================
+    namespace CabinetIR
+    {
+        constexpr uint8_t TypeId = 22;
+        inline const NumberParamRange kMixRange = {0.0f, 1.0f, 0.01f};
+        inline const NumberParamRange kOutputRange = {0.0f, 1.0f, 0.01f};
+        inline const NumberParamRange kLowCutRange = {0.0f, 1.0f, 0.01f};
+        inline const NumberParamRange kHighCutRange = {0.0f, 1.0f, 0.01f};
+
+        inline const ParamInfo kParams[] = {
+            {0, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
+            {1, "Output", "Output level (-20dB to +20dB)", ParamValueKind::Number, &kOutputRange, nullptr},
+            {2, "Low Cut", "High-pass filter (20-500Hz)", ParamValueKind::Number, &kLowCutRange, nullptr},
+            {3, "High Cut", "Low-pass filter (2-20kHz)", ParamValueKind::Number, &kHighCutRange, nullptr},
+        };
+        inline const ::EffectMeta kMeta = {"Cabinet IR", "Impulse response convolution for speaker cabinet simulation. Load WAV files.", kParams, 4};
+    }
+
+    //=========================================================================
     // Master list of all effects (ordered for UI display)
     //=========================================================================
 
@@ -293,6 +313,7 @@ namespace Effects
         {Flanger::TypeId, &Flanger::kMeta},
         {Phaser::TypeId, &Phaser::kMeta},
         {NeuralAmp::TypeId, &NeuralAmp::kMeta},
+        {CabinetIR::TypeId, &CabinetIR::kMeta},
     };
 
     constexpr size_t kNumEffects = sizeof(kAllEffects) / sizeof(kAllEffects[0]);

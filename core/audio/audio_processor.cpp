@@ -16,6 +16,7 @@ AudioProcessor::AudioProcessor(TempoSource &tempo)
       fx_flangers_{},
       fx_phasers_{},
       fx_neuralamps_{},
+      fx_cabinetirs_{},
       delay_next_(0),
       sweep_next_(0),
       dist_next_(0),
@@ -27,7 +28,8 @@ AudioProcessor::AudioProcessor(TempoSource &tempo)
       eq_next_(0),
       flanger_next_(0),
       phaser_next_(0),
-      neuralamp_next_(0)
+      neuralamp_next_(0),
+      cabinetir_next_(0)
 {
 }
 
@@ -94,6 +96,10 @@ BaseEffect *AudioProcessor::Instantiate(uint8_t typeId, int slotIndex)
         if (neuralamp_next_ < kMaxNeuralAmps)
             return &fx_neuralamps_[neuralamp_next_++];
         return nullptr;
+    case CabinetIREffect::TypeId:
+        if (cabinetir_next_ < kMaxCabinetIRs)
+            return &fx_cabinetirs_[cabinetir_next_++];
+        return nullptr;
     default:
         return nullptr;
     }
@@ -114,6 +120,7 @@ void AudioProcessor::ApplyPatch(const PatchWireDesc &pw)
     flanger_next_ = 0;
     phaser_next_ = 0;
     neuralamp_next_ = 0;
+    cabinetir_next_ = 0;
 
     // Clear all slots
     for (int i = 0; i < 12; i++)
