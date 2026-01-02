@@ -7,6 +7,7 @@
 #include "effects/reverb.h"
 #include "effects/compressor.h"
 #include "effects/chorus.h"
+#include "effects/noise_gate.h"
 
 const EffectMeta *EffectRegistry::Lookup(uint8_t typeId)
 {
@@ -26,6 +27,8 @@ const EffectMeta *EffectRegistry::Lookup(uint8_t typeId)
         return &CompressorEffect::kMeta;
     case ChorusEffect::TypeId:
         return &ChorusEffect::kMeta;
+    case NoiseGateEffect::TypeId:
+        return &NoiseGateEffect::kMeta;
     default:
         return nullptr;
     }

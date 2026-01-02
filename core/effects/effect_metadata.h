@@ -167,6 +167,27 @@ namespace Effects
     }
 
     //=========================================================================
+    // Noise Gate
+    //=========================================================================
+    namespace NoiseGate
+    {
+        constexpr uint8_t TypeId = 17;
+        inline const NumberParamRange kThreshRange = {-80.0f, -20.0f, 0.1f};
+        inline const NumberParamRange kAttackRange = {0.1f, 50.0f, 0.1f};
+        inline const NumberParamRange kHoldRange = {10.0f, 500.0f, 1.0f};
+        inline const NumberParamRange kReleaseRange = {10.0f, 500.0f, 1.0f};
+        inline const NumberParamRange kRangeRange = {0.0f, 1.0f, 0.01f};
+        inline const ParamInfo kParams[] = {
+            {0, "Threshold", "Gate open level", ParamValueKind::Number, &kThreshRange, nullptr},
+            {1, "Attack", "Gate open speed", ParamValueKind::Number, &kAttackRange, nullptr},
+            {2, "Hold", "Hold time after signal", ParamValueKind::Number, &kHoldRange, nullptr},
+            {3, "Release", "Gate close speed", ParamValueKind::Number, &kReleaseRange, nullptr},
+            {4, "Range", "Floor level when closed", ParamValueKind::Number, &kRangeRange, nullptr},
+        };
+        inline const ::EffectMeta kMeta = {"Noise Gate", "Cut signal below threshold to eliminate hum/buzz.", kParams, 5};
+    }
+
+    //=========================================================================
     // Master list of all effects (ordered for UI display)
     //=========================================================================
 
@@ -186,6 +207,7 @@ namespace Effects
         {Reverb::TypeId, &Reverb::kMeta},
         {Compressor::TypeId, &Compressor::kMeta},
         {Chorus::TypeId, &Chorus::kMeta},
+        {NoiseGate::TypeId, &NoiseGate::kMeta},
     };
 
     constexpr size_t kNumEffects = sizeof(kAllEffects) / sizeof(kAllEffects[0]);

@@ -161,31 +161,6 @@ void DaisyMultiFXProcessor::syncParametersFromPatch()
 {
     isUpdatingFromPatchState_ = true;
 
-    auto typeIdToIndex = [](uint8_t typeId) -> int
-    {
-        switch (typeId)
-        {
-        case 0:
-            return 0;
-        case 1:
-            return 1;
-        case 10:
-            return 2;
-        case 12:
-            return 3;
-        case 13:
-            return 4;
-        case 14:
-            return 5;
-        case 15:
-            return 6;
-        case 16:
-            return 7;
-        default:
-            return 0;
-        }
-    };
-
     const auto &patch = patchState_.getPatch();
 
     for (int slot = 0; slot < kNumSlots; ++slot)
@@ -193,7 +168,7 @@ void DaisyMultiFXProcessor::syncParametersFromPatch()
         juce::String prefix = "slot" + juce::String(slot);
         const auto &slotData = patch.slots[slot];
 
-        *parameters_.getRawParameterValue(prefix + "_type") = static_cast<float>(typeIdToIndex(slotData.typeId));
+        *parameters_.getRawParameterValue(prefix + "_type") = static_cast<float>(Effects::getIndexByTypeId(slotData.typeId));
         *parameters_.getRawParameterValue(prefix + "_enabled") = slotData.enabled ? 1.0f : 0.0f;
         *parameters_.getRawParameterValue(prefix + "_mix") = slotData.wet / 127.0f;
 
@@ -244,10 +219,9 @@ void DaisyMultiFXProcessor::parameterChanged(const juce::String &parameterID, fl
         }
         else if (suffix == "_type")
         {
-            const uint8_t typeIds[] = {0, 1, 10, 12, 13, 14, 15, 16};
             int typeIndex = static_cast<int>(newValue);
-            if (typeIndex >= 0 && typeIndex < 8)
-                patchState_.setSlotType(static_cast<uint8_t>(slotIndex), typeIds[typeIndex]);
+            if (typeIndex >= 0 && typeIndex < static_cast<int>(Effects::kNumEffects))
+                patchState_.setSlotType(static_cast<uint8_t>(slotIndex), Effects::getTypeIdByIndex(static_cast<size_t>(typeIndex)));
         }
         else if (suffix.startsWith("_p"))
         {
@@ -288,34 +262,10 @@ void DaisyMultiFXProcessor::onSlotTypeChanged(uint8_t slot, uint8_t typeId)
     if (!isUpdatingFromPatchState_ && slot < kNumSlots)
     {
         isUpdatingFromPatchState_ = true;
-        auto typeIdToIndex = [](uint8_t tid) -> int
-        {
-            switch (tid)
-            {
-            case 0:
-                return 0;
-            case 1:
-                return 1;
-            case 10:
-                return 2;
-            case 12:
-                return 3;
-            case 13:
-                return 4;
-            case 14:
-                return 5;
-            case 15:
-                return 6;
-            case 16:
-                return 7;
-            default:
-                return 0;
-            }
-        };
         if (auto *param = dynamic_cast<juce::AudioParameterChoice *>(
                 parameters_.getParameter("slot" + juce::String(slot) + "_type")))
         {
-            float normalizedValue = typeIdToIndex(typeId) / static_cast<float>(param->choices.size() - 1);
+            float normalizedValue = Effects::getIndexByTypeId(typeId) / static_cast<float>(param->choices.size() - 1);
             param->setValueNotifyingHost(normalizedValue);
         }
         isUpdatingFromPatchState_ = false;

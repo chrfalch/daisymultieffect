@@ -15,6 +15,7 @@
 #include "effects/stereo_sweep_delay.h"
 #include "effects/compressor.h"
 #include "effects/chorus.h"
+#include "effects/noise_gate.h"
 
 // Owns the DSP graph/runtime state (effects, routing, patch application).
 // Keeps main.cpp small and focused on hardware + scheduling.
@@ -49,6 +50,7 @@ private:
     static constexpr int kMaxReverbs = 2;
     static constexpr int kMaxCompressors = 4;
     static constexpr int kMaxChoruses = 4;
+    static constexpr int kMaxNoiseGates = 4;
 
     DelayEffect fx_delays_[kMaxDelays];
     StereoSweepDelayEffect fx_sweeps_[kMaxSweeps];
@@ -57,6 +59,7 @@ private:
     SimpleReverbEffect fx_reverbs_[kMaxReverbs];
     CompressorEffect fx_compressors_[kMaxCompressors];
     ChorusEffect fx_choruses_[kMaxChoruses];
+    NoiseGateEffect fx_noisegates_[kMaxNoiseGates];
 
     // Track which pool instances are in use (reset on ApplyPatch).
     int delay_next_ = 0;
@@ -66,4 +69,5 @@ private:
     int reverb_next_ = 0;
     int compressor_next_ = 0;
     int chorus_next_ = 0;
+    int noisegate_next_ = 0;
 };
