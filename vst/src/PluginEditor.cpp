@@ -211,7 +211,7 @@ void SlotComponent::loadModelButtonClicked()
         fileChooser_ = std::make_unique<juce::FileChooser>(
             "Select Neural Amp Model",
             juce::File::getSpecialLocation(juce::File::userHomeDirectory),
-            "*.json");
+            "*.json;*.aidax");
 
         auto flags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles;
 
