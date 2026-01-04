@@ -9,7 +9,7 @@
 #include <atomic>
 
 // Number of effect slots exposed in the UI/parameter system
-static constexpr int kNumSlots = 8;
+static constexpr int kNumSlots = 12;
 
 // Default patch configuration for the guitar signal chain
 // Maximum params per effect slot (should match largest effect)

@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include "core/effects/effect_metadata.h"
+#include <algorithm>
 #include <cmath>
 
 //==============================================================================
@@ -467,9 +468,29 @@ DaisyMultiFXEditor::DaisyMultiFXEditor(DaisyMultiFXProcessor &p)
         slots_.push_back(std::move(slot));
     }
 
-    setSize(900, 500);
+    // Window sizing: scale the allowed max width with kNumSlots.
+    // Goal: keep enough per-slot width that each slot can display 3 knobs per row
+    // (SlotComponent uses knobSize=70 and computes spacing as (innerWidth - 3*knobSize)/4).
+    constexpr int kEditorOuterMargin = 10; // DaisyMultiFXEditor::resized() uses bounds.reduce(10, 10)
+    constexpr int kSlotGap = 10;           // DaisyMultiFXEditor::resized() uses 10px between slots
+    constexpr int kSlotInnerPadding = 10;  // SlotComponent::resized() uses getLocalBounds().reduced(10)
+    constexpr int kKnobSize = 70;          // SlotComponent::resized()
+    constexpr int kKnobsPerRow = 3;
+    constexpr int kMinKnobSpacing = 8; // Desired minimum spacing between/around knobs
+
+    constexpr int kInnerGaps = kKnobsPerRow + 1; // left + (between knobs) + right => 4
+    constexpr int kMinSlotInnerWidth = (kKnobSize * kKnobsPerRow) + (kMinKnobSpacing * kInnerGaps);
+    constexpr int kMinSlotWidth = kMinSlotInnerWidth + (kSlotInnerPadding * 2);
+
+    const int preferredWidth = (kEditorOuterMargin * 2) + (kNumSlots * kMinSlotWidth) + ((kNumSlots - 1) * kSlotGap);
+
+    const int maxWidth = std::max(1200, preferredWidth);
+    const int initialWidth = std::min(maxWidth, std::max(900, preferredWidth));
+
     setResizable(true, true);
-    setResizeLimits(600, 400, 1200, 800);
+    // Keep the min size modest (hosts can be picky), but allow growing wide enough for all slots.
+    setResizeLimits(600, 400, maxWidth, 800);
+    setSize(initialWidth, 500);
 
     // Start timer for level meter updates
     startTimerHz(30);
