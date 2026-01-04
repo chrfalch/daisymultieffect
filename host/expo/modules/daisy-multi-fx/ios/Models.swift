@@ -48,16 +48,50 @@ struct Patch: Equatable {
 
 // MARK: - Effect Metadata
 
+/// Number parameter range metadata
+struct NumberRangeMeta: Equatable {
+    var min: Float
+    var max: Float
+    var step: Float
+
+    func toDictionary() -> [String: Any] {
+        return [
+            "min": Double(min),
+            "max": Double(max),
+            "step": Double(step),
+        ]
+    }
+}
+
 /// Effect parameter metadata
 struct EffectParamMeta: Equatable {
     var id: UInt8
     var name: String
+    var kind: UInt8
+    var range: NumberRangeMeta?
+    var description: String?
+    var unitPrefix: String?
+    var unitSuffix: String?
 
     func toDictionary() -> [String: Any] {
-        return [
+        var dict: [String: Any] = [
             "id": Int(id),
             "name": name,
+            "kind": Int(kind),
         ]
+        if let range {
+            dict["range"] = range.toDictionary()
+        }
+        if let description, !description.isEmpty {
+            dict["description"] = description
+        }
+        if let unitPrefix, !unitPrefix.isEmpty {
+            dict["unitPrefix"] = unitPrefix
+        }
+        if let unitSuffix, !unitSuffix.isEmpty {
+            dict["unitSuffix"] = unitSuffix
+        }
+        return dict
     }
 }
 
@@ -66,15 +100,20 @@ struct EffectMeta: Equatable {
     var typeId: UInt8
     var name: String
     var shortName: String  // 3-character short name
+    var description: String?
     var params: [EffectParamMeta]
 
     func toDictionary() -> [String: Any] {
-        return [
+        var dict: [String: Any] = [
             "typeId": Int(typeId),
             "name": name,
             "shortName": shortName,
             "params": params.map { $0.toDictionary() },
         ]
+        if let description, !description.isEmpty {
+            dict["description"] = description
+        }
+        return dict
     }
 }
 

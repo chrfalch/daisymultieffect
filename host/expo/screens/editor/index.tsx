@@ -26,7 +26,37 @@ export const EditorScreen: React.FC = () => {
     getEffectName,
     getEffectShortName,
     getParamName,
+    getParamMeta,
   } = useDaisyMultiFX();
+
+  const formatValueFromRange = (
+    raw: number,
+    meta?: {
+      range?: { min: number; max: number; step: number };
+      unitPrefix?: string;
+      unitSuffix?: string;
+    }
+  ) => {
+    const range = meta?.range;
+    if (!range) return String(raw);
+    const v01 = raw / 127;
+    const unclamped = range.min + v01 * (range.max - range.min);
+    const step = range.step;
+    const stepped =
+      step > 0
+        ? Math.round((unclamped - range.min) / step) * step + range.min
+        : unclamped;
+
+    // Derive a reasonable number of decimals from step
+    const decimals =
+      step > 0 && step < 1
+        ? Math.min(6, Math.max(0, Math.ceil(-Math.log10(step))))
+        : 0;
+    const valueText = stepped.toFixed(decimals);
+    const prefix = meta?.unitPrefix ? meta.unitPrefix : "";
+    const suffix = meta?.unitSuffix ? ` ${meta.unitSuffix}` : "";
+    return `${prefix}${valueText}${suffix}`;
+  };
   const [expandedSlot, setExpandedSlot] = React.useState<number>(0);
 
   const selectSlot = (slotIndex: number) => {
@@ -36,6 +66,11 @@ export const EditorScreen: React.FC = () => {
     patch?.slots.find((s) => s.slotIndex === expandedSlot) ??
     patch?.slots[0] ??
     null;
+
+  const selectedEffectDescription = React.useMemo(() => {
+    if (!slot) return undefined;
+    return effectMeta.find((e) => e.typeId === slot.typeId)?.description;
+  }, [effectMeta, slot?.typeId]);
 
   return (
     <GestureHandlerRootView style={styles.flex}>
@@ -132,23 +167,34 @@ export const EditorScreen: React.FC = () => {
               onValueChange={(value) => setSlotEnabled(slot.slotIndex, value)}
             />
           </HStack>
+          {!!selectedEffectDescription && (
+            <Text style={styles.effectDescription} numberOfLines={2}>
+              {selectedEffectDescription}
+            </Text>
+          )}
           {/* Parameters */}
           <VStack style={styles.paramsContainer}>
-            {Object.entries(slot.params).map(
-              ([paramId, value]) =>
-                getParamName(slot.typeId, Number(paramId)) && (
-                  <Slider
-                    key={paramId}
-                    label={getParamName(slot.typeId, Number(paramId))}
-                    value={value}
-                    min={0}
-                    max={127}
-                    onValueChange={(newValue) =>
-                      setSlotParam(slot.slotIndex, Number(paramId), newValue)
-                    }
-                  />
-                )
-            )}
+            {Object.entries(slot.params).map(([paramId, value]) => {
+              const id = Number(paramId);
+              const name = getParamName(slot.typeId, id);
+              if (!name) return null;
+
+              const meta = getParamMeta(slot.typeId, id);
+              return (
+                <Slider
+                  key={paramId}
+                  label={name}
+                  description={meta?.description}
+                  value={value}
+                  min={0}
+                  max={127}
+                  formatValue={(raw) => formatValueFromRange(raw, meta)}
+                  onValueChange={(newValue) =>
+                    setSlotParam(slot.slotIndex, id, newValue)
+                  }
+                />
+              );
+            })}
           </VStack>
         </VStack>
       )}
@@ -171,6 +217,11 @@ const styles = StyleSheet.create({
   parameterPanelTitle: {
     fontSize: 18,
     fontWeight: "600",
+  },
+  effectDescription: {
+    marginTop: 6,
+    fontSize: 13,
+    color: "#666",
   },
   paramsContainer: {
     marginTop: 12,

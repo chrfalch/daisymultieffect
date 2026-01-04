@@ -506,6 +506,28 @@ final class DaisyMidiController: @unchecked Sendable {
                 onEffectMetaUpdate?(effectsMeta)
             }
 
+        case MidiProtocol.Resp.effectMetaV4:
+            // Single effect V4 metadata with short name + param ranges
+            if let effect = decodeEffectMetaV4(data) {
+                if let idx = effectsMeta.firstIndex(where: { $0.typeId == effect.typeId }) {
+                    effectsMeta[idx] = effect
+                } else {
+                    effectsMeta.append(effect)
+                }
+                onEffectMetaUpdate?(effectsMeta)
+            }
+
+        case MidiProtocol.Resp.effectMetaV5:
+            // Single effect V5 metadata with descriptions + units + optional ranges
+            if let effect = decodeEffectMetaV5(data) {
+                if let idx = effectsMeta.firstIndex(where: { $0.typeId == effect.typeId }) {
+                    effectsMeta[idx] = effect
+                } else {
+                    effectsMeta.append(effect)
+                }
+                onEffectMetaUpdate?(effectsMeta)
+            }
+
         case MidiProtocol.Cmd.setEnabled:
             if data.count >= 5 {
                 let slot = data[3]
@@ -622,11 +644,22 @@ final class DaisyMidiController: @unchecked Sendable {
                 let paramName =
                     String(bytes: data[offset..<(offset + paramNameLen)], encoding: .ascii) ?? "?"
                 offset += paramNameLen
-                params.append(EffectParamMeta(id: paramId, name: paramName))
+                params.append(
+                    EffectParamMeta(
+                        id: paramId,
+                        name: paramName,
+                        kind: 0,
+                        range: nil,
+                        description: nil,
+                        unitPrefix: nil,
+                        unitSuffix: nil
+                    ))
             }
 
             effects.append(
-                EffectMeta(typeId: typeId, name: name, shortName: shortName, params: params))
+                EffectMeta(
+                    typeId: typeId, name: name, shortName: shortName, description: nil,
+                    params: params))
         }
 
         return effects
@@ -668,6 +701,7 @@ final class DaisyMidiController: @unchecked Sendable {
 
             // Skip 'kind' byte
             guard offset < data.count else { break }
+            let kind = data[offset]
             offset += 1
 
             guard offset < data.count else { break }
@@ -679,10 +713,232 @@ final class DaisyMidiController: @unchecked Sendable {
                 String(bytes: data[offset..<(offset + paramNameLen)], encoding: .ascii) ?? "?"
             offset += paramNameLen
 
-            params.append(EffectParamMeta(id: paramId, name: paramName))
+            params.append(
+                EffectParamMeta(
+                    id: paramId,
+                    name: paramName,
+                    kind: kind,
+                    range: nil,
+                    description: nil,
+                    unitPrefix: nil,
+                    unitSuffix: nil
+                ))
         }
 
-        return EffectMeta(typeId: typeId, name: name, shortName: shortName, params: params)
+        return EffectMeta(
+            typeId: typeId, name: name, shortName: shortName, description: nil, params: params)
+    }
+
+    /// Decode V4 effect metadata with short name and number param ranges.
+    /// Format: F0 7D <sender> 37 <typeId> <nameLen> <name...> <shortName[3]> <numParams>
+    ///   (paramId kind flags nameLen name... [minQ16.16_5] [maxQ16.16_5] [stepQ16.16_5])xN F7
+    private func decodeEffectMetaV4(_ data: [UInt8]) -> EffectMeta? {
+        guard data.count > 3 else { return nil }
+
+        var offset = 3  // Skip manufacturer, sender, cmd
+
+        guard offset < data.count else { return nil }
+        let typeId = data[offset]
+        offset += 1
+
+        guard offset < data.count else { return nil }
+        let nameLen = Int(data[offset])
+        offset += 1
+
+        guard offset + nameLen <= data.count else { return nil }
+        let name = String(bytes: data[offset..<(offset + nameLen)], encoding: .ascii) ?? "?"
+        offset += nameLen
+
+        guard offset + 3 <= data.count else { return nil }
+        let shortName = String(bytes: data[offset..<(offset + 3)], encoding: .ascii) ?? "---"
+        offset += 3
+
+        guard offset < data.count else { return nil }
+        let numParams = Int(data[offset])
+        offset += 1
+
+        var params: [EffectParamMeta] = []
+        params.reserveCapacity(numParams)
+
+        for _ in 0..<numParams {
+            guard offset < data.count else { break }
+            let paramId = data[offset]
+            offset += 1
+
+            guard offset < data.count else { break }
+            let kind = data[offset]
+            offset += 1
+
+            guard offset < data.count else { break }
+            let flags = data[offset]
+            offset += 1
+
+            guard offset < data.count else { break }
+            let paramNameLen = Int(data[offset])
+            offset += 1
+
+            guard offset + paramNameLen <= data.count else { break }
+            let paramName =
+                String(bytes: data[offset..<(offset + paramNameLen)], encoding: .ascii) ?? "?"
+            offset += paramNameLen
+
+            var range: NumberRangeMeta? = nil
+            let hasRange = (flags & 0x01) != 0
+            if hasRange {
+                guard offset + 15 <= data.count else { break }
+                let minVal = unpackQ16_16(data, offset: offset)
+                offset += 5
+                let maxVal = unpackQ16_16(data, offset: offset)
+                offset += 5
+                let stepVal = unpackQ16_16(data, offset: offset)
+                offset += 5
+                range = NumberRangeMeta(min: minVal, max: maxVal, step: stepVal)
+            }
+
+            params.append(
+                EffectParamMeta(
+                    id: paramId,
+                    name: paramName,
+                    kind: kind,
+                    range: range,
+                    description: nil,
+                    unitPrefix: nil,
+                    unitSuffix: nil
+                ))
+        }
+
+        return EffectMeta(
+            typeId: typeId, name: name, shortName: shortName, description: nil, params: params)
+    }
+
+    private func unpackQ16_16(_ data: [UInt8], offset: Int) -> Float {
+        let u: UInt32 =
+            (UInt32(data[offset + 0]) & 0x7F)
+            | ((UInt32(data[offset + 1]) & 0x7F) << 7)
+            | ((UInt32(data[offset + 2]) & 0x7F) << 14)
+            | ((UInt32(data[offset + 3]) & 0x7F) << 21)
+            | ((UInt32(data[offset + 4]) & 0x7F) << 28)
+        let i = Int32(bitPattern: u)
+        return Float(i) / 65536.0
+    }
+
+    /// Decode V5 effect metadata with short name, param descriptions, and units.
+    /// Format: F0 7D <sender> 38 <typeId> <nameLen> <name...> <shortName[3]> <effectDescLen> <effectDesc...> <numParams>
+    ///   (paramId kind flags nameLen name... descLen desc... unitPreLen unitPre... unitSufLen unitSuf...
+    ///    [minQ16.16_5] [maxQ16.16_5] [stepQ16.16_5])xN F7
+    private func decodeEffectMetaV5(_ data: [UInt8]) -> EffectMeta? {
+        guard data.count > 3 else { return nil }
+
+        var offset = 3  // Skip manufacturer, sender, cmd
+
+        guard offset < data.count else { return nil }
+        let typeId = data[offset]
+        offset += 1
+
+        guard offset < data.count else { return nil }
+        let nameLen = Int(data[offset])
+        offset += 1
+
+        guard offset + nameLen <= data.count else { return nil }
+        let name = String(bytes: data[offset..<(offset + nameLen)], encoding: .ascii) ?? "?"
+        offset += nameLen
+
+        guard offset + 3 <= data.count else { return nil }
+        let shortName = String(bytes: data[offset..<(offset + 3)], encoding: .ascii) ?? "---"
+        offset += 3
+
+        guard offset < data.count else { return nil }
+        let effectDescLen = Int(data[offset])
+        offset += 1
+        guard offset + effectDescLen <= data.count else { return nil }
+        let effectDesc =
+            String(bytes: data[offset..<(offset + effectDescLen)], encoding: .ascii) ?? ""
+        offset += effectDescLen
+
+        guard offset < data.count else { return nil }
+        let numParams = Int(data[offset])
+        offset += 1
+
+        var params: [EffectParamMeta] = []
+        params.reserveCapacity(numParams)
+
+        for _ in 0..<numParams {
+            guard offset < data.count else { break }
+            let paramId = data[offset]
+            offset += 1
+
+            guard offset < data.count else { break }
+            let kind = data[offset]
+            offset += 1
+
+            guard offset < data.count else { break }
+            let flags = data[offset]
+            offset += 1
+
+            guard offset < data.count else { break }
+            let paramNameLen = Int(data[offset])
+            offset += 1
+            guard offset + paramNameLen <= data.count else { break }
+            let paramName =
+                String(bytes: data[offset..<(offset + paramNameLen)], encoding: .ascii) ?? "?"
+            offset += paramNameLen
+
+            guard offset < data.count else { break }
+            let descLen = Int(data[offset])
+            offset += 1
+            guard offset + descLen <= data.count else { break }
+            let desc =
+                String(bytes: data[offset..<(offset + descLen)], encoding: .ascii) ?? ""
+            offset += descLen
+
+            guard offset < data.count else { break }
+            let unitPreLen = Int(data[offset])
+            offset += 1
+            guard offset + unitPreLen <= data.count else { break }
+            let unitPrefix =
+                String(bytes: data[offset..<(offset + unitPreLen)], encoding: .ascii) ?? ""
+            offset += unitPreLen
+
+            guard offset < data.count else { break }
+            let unitSufLen = Int(data[offset])
+            offset += 1
+            guard offset + unitSufLen <= data.count else { break }
+            let unitSuffix =
+                String(bytes: data[offset..<(offset + unitSufLen)], encoding: .ascii) ?? ""
+            offset += unitSufLen
+
+            var range: NumberRangeMeta? = nil
+            let hasRange = (flags & 0x01) != 0
+            if hasRange {
+                guard offset + 15 <= data.count else { break }
+                let minVal = unpackQ16_16(data, offset: offset)
+                offset += 5
+                let maxVal = unpackQ16_16(data, offset: offset)
+                offset += 5
+                let stepVal = unpackQ16_16(data, offset: offset)
+                offset += 5
+                range = NumberRangeMeta(min: minVal, max: maxVal, step: stepVal)
+            }
+
+            params.append(
+                EffectParamMeta(
+                    id: paramId,
+                    name: paramName,
+                    kind: kind,
+                    range: range,
+                    description: desc.isEmpty ? nil : desc,
+                    unitPrefix: unitPrefix.isEmpty ? nil : unitPrefix,
+                    unitSuffix: unitSuffix.isEmpty ? nil : unitSuffix
+                ))
+        }
+
+        return EffectMeta(
+            typeId: typeId,
+            name: name,
+            shortName: shortName,
+            description: effectDesc.isEmpty ? nil : effectDesc,
+            params: params
+        )
     }
 
     // MARK: - State Updates (from incoming MIDI)

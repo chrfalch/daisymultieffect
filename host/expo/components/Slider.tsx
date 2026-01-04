@@ -9,9 +9,12 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 interface SliderProps {
   label: string;
+  description?: string;
   value: number;
   min?: number;
   max?: number;
+  step?: number;
+  formatValue?: (value: number) => string;
   onValueChange?: (value: number) => void;
   onValueChangeEnd?: (value: number) => void;
   updateIntervalMs?: number;
@@ -19,9 +22,12 @@ interface SliderProps {
 
 export const Slider: React.FC<SliderProps> = ({
   label,
+  description,
   value,
   min = 0,
   max = 127,
+  step,
+  formatValue,
   onValueChange,
   onValueChangeEnd,
   updateIntervalMs = 30,
@@ -36,6 +42,13 @@ export const Slider: React.FC<SliderProps> = ({
   };
 
   const clampedValue = (val: number) => clamp(val, min, max);
+
+  const snapToStep = (val: number) => {
+    "worklet";
+    if (!step || step <= 0) return val;
+    const snapped = Math.round((val - min) / step) * step + min;
+    return clamp(snapped, min, max);
+  };
 
   const [displayValue, setDisplayValue] = React.useState(() =>
     clampedValue(value)
@@ -65,14 +78,17 @@ export const Slider: React.FC<SliderProps> = ({
   const valueToPosition = (val: number) => {
     "worklet";
     if (width.value <= 0 || max === min) return 0;
-    return ((val - min) / (max - min)) * width.value;
+    const v = snapToStep(clamp(val, min, max));
+    return ((v - min) / (max - min)) * width.value;
   };
 
   const positionToValue = (pos: number) => {
     "worklet";
     if (width.value <= 0 || max === min) return min;
     const normalized = clamp(pos / width.value, 0, 1);
-    return Math.round(min + normalized * (max - min));
+    const raw = min + normalized * (max - min);
+    if (step && step > 0) return snapToStep(raw);
+    return Math.round(raw);
   };
 
   const updateValue = useCallback(
@@ -176,9 +192,16 @@ export const Slider: React.FC<SliderProps> = ({
           <Animated.View style={[styles.fill, fillStyle]} />
           <View style={styles.labelContainer}>
             <Text style={styles.label}>{label}</Text>
+            {!!description && (
+              <Text style={styles.description} numberOfLines={1}>
+                {description}
+              </Text>
+            )}
           </View>
           <View style={styles.valueContainer}>
-            <Text style={styles.value}>{displayValue}</Text>
+            <Text style={styles.value}>
+              {formatValue ? formatValue(displayValue) : String(displayValue)}
+            </Text>
           </View>
         </View>
       </GestureDetector>
@@ -191,7 +214,8 @@ const styles = StyleSheet.create({
     marginVertical: 6,
   },
   sliderContainer: {
-    height: 56,
+    minHeight: 56,
+    paddingVertical: 8,
     backgroundColor: "#2a2a3e",
     borderRadius: 12,
     overflow: "hidden",
@@ -215,6 +239,12 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 18,
     fontWeight: "500",
+  },
+  description: {
+    marginTop: 2,
+    color: "#cfd3ff",
+    fontSize: 12,
+    fontWeight: "400",
   },
   valueContainer: {
     paddingRight: 16,

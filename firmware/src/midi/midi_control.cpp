@@ -29,6 +29,115 @@ namespace
     static inline uint8_t PendingSlotOf(uint32_t w) { return (uint8_t)((w >> 8) & 0xFF); }
     static inline uint8_t PendingIdOf(uint32_t w) { return (uint8_t)((w >> 16) & 0xFF); }
     static inline uint8_t PendingValueOf(uint32_t w) { return (uint8_t)((w >> 24) & 0xFF); }
+
+    static inline bool IsLegacyCmd(uint8_t b)
+    {
+        switch (b)
+        {
+        case 0x12: // request patch dump
+        case 0x20: // set param
+        case 0x21: // set enabled
+        case 0x22: // set type
+        case 0x32: // request meta
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    static inline bool ExtractParenUnit(const char *s, const char **outPtr, size_t *outLen)
+    {
+        if (!s)
+            return false;
+        const char *open = std::strchr(s, '(');
+        const char *close = open ? std::strchr(open, ')') : nullptr;
+        if (!open || !close || close <= open + 1)
+            return false;
+        *outPtr = open + 1;
+        *outLen = (size_t)(close - (open + 1));
+        return true;
+    }
+
+    static inline void InferUnitSuffix(uint8_t effectTypeId,
+                                       const char *name,
+                                       const char *desc,
+                                       const char **outPtr,
+                                       size_t *outLen)
+    {
+        *outPtr = "";
+        *outLen = 0;
+
+        // Special-case: Graphic EQ bands are gains in dB.
+        // (TypeId 18 in core metadata.)
+        if (effectTypeId == 18)
+        {
+            *outPtr = "dB";
+            *outLen = 2;
+            return;
+        }
+
+        // Prefer explicit "(unit)" in name/description.
+        if (ExtractParenUnit(name, outPtr, outLen))
+            return;
+        if (ExtractParenUnit(desc, outPtr, outLen))
+            return;
+
+        // Best-effort fallbacks.
+        if (name)
+        {
+            if (std::strstr(name, "kHz"))
+            {
+                *outPtr = "kHz";
+                *outLen = 3;
+                return;
+            }
+            if (std::strstr(name, "Hz"))
+            {
+                *outPtr = "Hz";
+                *outLen = 2;
+                return;
+            }
+            if (std::strstr(name, "ms"))
+            {
+                *outPtr = "ms";
+                *outLen = 2;
+                return;
+            }
+            if (std::strstr(name, "dB"))
+            {
+                *outPtr = "dB";
+                *outLen = 2;
+                return;
+            }
+        }
+        if (desc)
+        {
+            if (std::strstr(desc, "kHz"))
+            {
+                *outPtr = "kHz";
+                *outLen = 3;
+                return;
+            }
+            if (std::strstr(desc, "Hz"))
+            {
+                *outPtr = "Hz";
+                *outLen = 2;
+                return;
+            }
+            if (std::strstr(desc, "ms"))
+            {
+                *outPtr = "ms";
+                *outLen = 2;
+                return;
+            }
+            if (std::strstr(desc, "dB"))
+            {
+                *outPtr = "dB";
+                *outLen = 2;
+                return;
+            }
+        }
+    }
 }
 
 uint8_t MidiControl::EncodeRoute(uint8_t r)
@@ -71,34 +180,34 @@ void MidiControl::SendTempoUpdate(float bpm)
 {
     uint8_t q[5];
     packQ16_16(floatToQ16_16(bpm), q);
-    uint8_t msg[] = {0xF0, 0x7D, 0x41, q[0], q[1], q[2], q[3], q[4], 0xF7};
+    uint8_t msg[] = {0xF0, 0x7D, 0x01, 0x41, q[0], q[1], q[2], q[3], q[4], 0xF7};
     SendSysEx(msg, sizeof(msg));
 }
 
 void MidiControl::SendButtonStateChange(uint8_t btn, uint8_t slot, bool enabled)
 {
-    uint8_t msg[] = {0xF0, 0x7D, 0x40, btn, slot, (uint8_t)(enabled ? 1 : 0), 0xF7};
+    uint8_t msg[] = {0xF0, 0x7D, 0x01, 0x40, btn, slot, (uint8_t)(enabled ? 1 : 0), 0xF7};
     SendSysEx(msg, sizeof(msg));
 }
 
 void MidiControl::SendSetParam(uint8_t slot, uint8_t paramId, uint8_t value)
 {
     // SysEx: F0 7D 20 <slot> <paramId> <value> F7
-    uint8_t msg[] = {0xF0, 0x7D, 0x20, (uint8_t)(slot & 0x7F), (uint8_t)(paramId & 0x7F), (uint8_t)(value & 0x7F), 0xF7};
+    uint8_t msg[] = {0xF0, 0x7D, 0x01, 0x20, (uint8_t)(slot & 0x7F), (uint8_t)(paramId & 0x7F), (uint8_t)(value & 0x7F), 0xF7};
     SendSysEx(msg, sizeof(msg));
 }
 
 void MidiControl::SendSetEnabled(uint8_t slot, bool enabled)
 {
     // SysEx: F0 7D 21 <slot> <enabled> F7
-    uint8_t msg[] = {0xF0, 0x7D, 0x21, (uint8_t)(slot & 0x7F), (uint8_t)(enabled ? 1 : 0), 0xF7};
+    uint8_t msg[] = {0xF0, 0x7D, 0x01, 0x21, (uint8_t)(slot & 0x7F), (uint8_t)(enabled ? 1 : 0), 0xF7};
     SendSysEx(msg, sizeof(msg));
 }
 
 void MidiControl::SendSetType(uint8_t slot, uint8_t typeId)
 {
     // SysEx: F0 7D 22 <slot> <typeId> F7
-    uint8_t msg[] = {0xF0, 0x7D, 0x22, (uint8_t)(slot & 0x7F), (uint8_t)(typeId & 0x7F), 0xF7};
+    uint8_t msg[] = {0xF0, 0x7D, 0x01, 0x22, (uint8_t)(slot & 0x7F), (uint8_t)(typeId & 0x7F), 0xF7};
     SendSysEx(msg, sizeof(msg));
 }
 
@@ -186,6 +295,7 @@ void MidiControl::SendEffectList()
             size_t p = 0;
             msg[p++] = 0xF0;
             msg[p++] = 0x7D;
+            msg[p++] = 0x01; // sender (firmware)
             msg[p++] = 0x34;
             msg[p++] = typeId & 0x7F;
             msg[p++] = (uint8_t)nameLen;
@@ -197,13 +307,14 @@ void MidiControl::SendEffectList()
                 hw_->DelayMs(1);
         }
 
-        // Send V3 metadata with short name
+        // Send V5 metadata with effect/param descriptions + units + optional number ranges.
         {
             uint8_t msg[512];
             size_t p = 0;
             msg[p++] = 0xF0;
             msg[p++] = 0x7D;
-            msg[p++] = 0x36; // EFFECT_META_V3
+            msg[p++] = 0x01; // sender (firmware)
+            msg[p++] = 0x38; // EFFECT_META_V5
             msg[p++] = typeId & 0x7F;
             msg[p++] = (uint8_t)nameLen;
             for (size_t i = 0; i < nameLen; i++)
@@ -214,6 +325,14 @@ void MidiControl::SendEffectList()
             for (int i = 0; i < 3; i++)
                 msg[p++] = (uint8_t)(shortName[i] & 0x7F);
 
+            const char *effectDesc = meta->description ? meta->description : "";
+            size_t effectDescLen = std::strlen(effectDesc);
+            if (effectDescLen > 80)
+                effectDescLen = 80;
+            msg[p++] = (uint8_t)(effectDescLen & 0x7F);
+            for (size_t i = 0; i < effectDescLen; i++)
+                msg[p++] = (uint8_t)(effectDesc[i] & 0x7F);
+
             const uint8_t numParams = meta->numParams;
             msg[p++] = (uint8_t)(numParams & 0x7F);
             for (uint8_t pi = 0; pi < numParams; pi++)
@@ -222,6 +341,12 @@ void MidiControl::SendEffectList()
                 msg[p++] = (uint8_t)(par.id & 0x7F);
                 msg[p++] = (uint8_t)((uint8_t)par.kind & 0x7F);
 
+                uint8_t flags = 0;
+                const bool hasNumberRange = (par.kind == ParamValueKind::Number && par.number);
+                if (hasNumberRange)
+                    flags |= 0x01;
+                msg[p++] = (uint8_t)(flags & 0x7F);
+
                 const char *pname = par.name ? par.name : "";
                 size_t pnameLen = std::strlen(pname);
                 if (pnameLen > 24)
@@ -229,6 +354,40 @@ void MidiControl::SendEffectList()
                 msg[p++] = (uint8_t)(pnameLen & 0x7F);
                 for (size_t j = 0; j < pnameLen; j++)
                     msg[p++] = (uint8_t)(pname[j] & 0x7F);
+
+                const char *pdesc = par.description ? par.description : "";
+                size_t pdescLen = std::strlen(pdesc);
+                if (pdescLen > 80)
+                    pdescLen = 80;
+                msg[p++] = (uint8_t)(pdescLen & 0x7F);
+                for (size_t j = 0; j < pdescLen; j++)
+                    msg[p++] = (uint8_t)(pdesc[j] & 0x7F);
+
+                // Prefix currently unused (kept for future-proofing)
+                msg[p++] = 0;
+
+                const char *unitSuffix = "";
+                size_t unitSufLen = 0;
+                InferUnitSuffix(typeId, pname, pdesc, &unitSuffix, &unitSufLen);
+                if (unitSufLen > 16)
+                    unitSufLen = 16;
+                msg[p++] = (uint8_t)(unitSufLen & 0x7F);
+                for (size_t j = 0; j < unitSufLen; j++)
+                    msg[p++] = (uint8_t)(unitSuffix[j] & 0x7F);
+
+                if (hasNumberRange)
+                {
+                    uint8_t q[5];
+                    packQ16_16(floatToQ16_16(par.number->minValue), q);
+                    for (int k = 0; k < 5; k++)
+                        msg[p++] = q[k];
+                    packQ16_16(floatToQ16_16(par.number->maxValue), q);
+                    for (int k = 0; k < 5; k++)
+                        msg[p++] = q[k];
+                    packQ16_16(floatToQ16_16(par.number->step), q);
+                    for (int k = 0; k < 5; k++)
+                        msg[p++] = q[k];
+                }
             }
 
             msg[p++] = 0xF7;
@@ -250,6 +409,7 @@ void MidiControl::SendPatchDump()
     size_t p = 0;
     msg[p++] = 0xF0;
     msg[p++] = 0x7D;
+    msg[p++] = 0x01; // sender (firmware)
     msg[p++] = 0x13;
     msg[p++] = (uint8_t)(current_patch_.numSlots & 0x7F);
 
@@ -295,7 +455,23 @@ void MidiControl::HandleSysexMessage(const uint8_t *bytes, size_t len)
     if (bytes[1] != 0x7D)
         return;
 
-    const uint8_t type = bytes[2];
+    uint8_t type = 0;
+    size_t payload = 0;
+    if (IsLegacyCmd(bytes[2]))
+    {
+        // Legacy: F0 7D <cmd> ... F7
+        type = bytes[2];
+        payload = 3;
+    }
+    else
+    {
+        // Sender-based: F0 7D <sender> <cmd> ... F7
+        if (len < 5)
+            return;
+        type = bytes[3];
+        payload = 4;
+    }
+
     switch (type)
     {
     case 0x32: // request all effect meta
@@ -307,11 +483,11 @@ void MidiControl::HandleSysexMessage(const uint8_t *bytes, size_t len)
         SendPatchDump();
         break;
     case 0x20: // set param: F0 7D 20 <slot> <paramId> <value> F7
-        if (len >= 7)
+        if (payload + 3 <= len)
         {
-            const uint8_t slot = bytes[3] & 0x7F;
-            const uint8_t pid = bytes[4] & 0x7F;
-            const uint8_t value = bytes[5] & 0x7F;
+            const uint8_t slot = bytes[payload + 0] & 0x7F;
+            const uint8_t pid = bytes[payload + 1] & 0x7F;
+            const uint8_t value = bytes[payload + 2] & 0x7F;
             if (slot < 12)
             {
                 daisy::ScopedIrqBlocker lock;
@@ -320,10 +496,10 @@ void MidiControl::HandleSysexMessage(const uint8_t *bytes, size_t len)
         }
         break;
     case 0x21: // set slot enabled: F0 7D 21 <slot> <enabled> F7
-        if (len >= 6)
+        if (payload + 2 <= len)
         {
-            const uint8_t slot = bytes[3] & 0x7F;
-            const uint8_t enabled = bytes[4] & 0x7F;
+            const uint8_t slot = bytes[payload + 0] & 0x7F;
+            const uint8_t enabled = bytes[payload + 1] & 0x7F;
             if (slot < 12)
             {
                 daisy::ScopedIrqBlocker lock;
@@ -332,10 +508,10 @@ void MidiControl::HandleSysexMessage(const uint8_t *bytes, size_t len)
         }
         break;
     case 0x22: // set slot type: F0 7D 22 <slot> <typeId> F7
-        if (len >= 6)
+        if (payload + 2 <= len)
         {
-            const uint8_t slot = bytes[3] & 0x7F;
-            const uint8_t typeId = bytes[4] & 0x7F;
+            const uint8_t slot = bytes[payload + 0] & 0x7F;
+            const uint8_t typeId = bytes[payload + 1] & 0x7F;
             if (slot < 12)
             {
                 daisy::ScopedIrqBlocker lock;

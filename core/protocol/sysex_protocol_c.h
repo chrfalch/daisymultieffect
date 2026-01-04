@@ -101,6 +101,23 @@ extern "C"
          */
         SYSEX_RESP_EFFECT_META_V3 = 0x36,
 
+        /**
+         * Effect metadata v4 (with params, short name, and number ranges):
+         * F0 7D <sender> 37 <typeId> <nameLen> <name...> <shortName[3]> <numParams>
+         *   (paramId kind flags nameLen name... [minQ16.16_5] [maxQ16.16_5] [stepQ16.16_5]) x N
+         * flags bit0: hasNumberRange (only valid when kind==Number)
+         */
+        SYSEX_RESP_EFFECT_META_V4 = 0x37,
+
+        /**
+         * Effect metadata v5 (adds effect/param descriptions + unit prefix/suffix):
+         * F0 7D <sender> 38 <typeId> <nameLen> <name...> <shortName[3]> <effectDescLen> <effectDesc...> <numParams>
+         *   (paramId kind flags nameLen name... descLen desc... unitPreLen unitPre... unitSufLen unitSuf...
+         *    [minQ16.16_5] [maxQ16.16_5] [stepQ16.16_5]) x N
+         * flags bit0: hasNumberRange (only valid when kind==Number)
+         */
+        SYSEX_RESP_EFFECT_META_V5 = 0x38,
+
         /** Button state change: F0 7D 40 <btn> <slot> <enabled> F7 */
         SYSEX_RESP_BUTTON_STATE = 0x40,
 

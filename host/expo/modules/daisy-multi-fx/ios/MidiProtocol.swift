@@ -24,6 +24,8 @@ enum MidiProtocol {
         static let effectDiscovered: UInt8 = 0x34
         static let effectMetaV2: UInt8 = 0x35
         static let effectMetaV3: UInt8 = 0x36
+        static let effectMetaV4: UInt8 = 0x37
+        static let effectMetaV5: UInt8 = 0x38
     }
 
     // MARK: - Encoders

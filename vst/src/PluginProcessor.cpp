@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "core/effects/effect_metadata.h"
+#include "core/protocol/sysex_protocol.h"
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <iostream>
 #include <fstream>
@@ -510,6 +511,223 @@ void DaisyMultiFXProcessor::sendEffectMeta()
         v3.push_back(0xF7);
         auto v3Msg = juce::MidiMessage::createSysExMessage(v3.data() + 1, static_cast<int>(v3.size()) - 2);
         pendingMidiOut_.addEvent(v3Msg, 0);
+    }
+
+    // Also send V4 metadata per effect (adds number ranges encoded as Q16.16).
+    // Format: F0 7D <sender> 37 <typeId> <nameLen> <name...> <shortName[3]> <numParams>
+    //         (paramId kind flags nameLen name... [min] [max] [step])xN F7
+    // where min/max/step are Q16.16 packed into 5 bytes each (7-bit safe).
+    for (size_t i = 0; i < Effects::kNumEffects; ++i)
+    {
+        const auto &entry = Effects::kAllEffects[i];
+        const auto *meta = entry.meta;
+
+        std::vector<uint8_t> v4;
+        v4.reserve(320);
+        v4.push_back(0xF0);
+        v4.push_back(MidiProtocol::MANUFACTURER_ID);
+        v4.push_back(MidiProtocol::Sender::VST);
+        v4.push_back(MidiProtocol::Resp::EFFECT_META_V4);
+
+        v4.push_back(static_cast<uint8_t>(entry.typeId) & 0x7F);
+
+        const char *name = meta && meta->name ? meta->name : "";
+        size_t nameLen = std::strlen(name);
+        if (nameLen > 60)
+            nameLen = 60;
+        v4.push_back(static_cast<uint8_t>(nameLen) & 0x7F);
+        for (size_t c = 0; c < nameLen; ++c)
+            v4.push_back(static_cast<uint8_t>(name[c]) & 0x7F);
+
+        const char *shortName = (meta && meta->shortName) ? meta->shortName : "---";
+        for (int k = 0; k < 3; ++k)
+            v4.push_back(static_cast<uint8_t>(shortName[k]) & 0x7F);
+
+        const uint8_t numParams = meta ? meta->numParams : 0;
+        v4.push_back(numParams & 0x7F);
+
+        for (uint8_t p = 0; p < numParams; ++p)
+        {
+            const auto &param = meta->params[p];
+            v4.push_back(static_cast<uint8_t>(param.id) & 0x7F);
+            v4.push_back(static_cast<uint8_t>(param.kind) & 0x7F);
+
+            uint8_t flags = 0;
+            const bool hasNumberRange = (param.kind == ParamValueKind::Number) && (param.number != nullptr);
+            if (hasNumberRange)
+                flags |= 0x01;
+            v4.push_back(flags & 0x7F);
+
+            const char *pname = param.name ? param.name : "";
+            size_t pnameLen = std::strlen(pname);
+            if (pnameLen > 24)
+                pnameLen = 24;
+            v4.push_back(static_cast<uint8_t>(pnameLen) & 0x7F);
+            for (size_t c = 0; c < pnameLen; ++c)
+                v4.push_back(static_cast<uint8_t>(pname[c]) & 0x7F);
+
+            if (hasNumberRange)
+            {
+                uint8_t packed[5];
+
+                DaisyMultiFX::Protocol::packQ16_16(
+                    DaisyMultiFX::Protocol::floatToQ16_16(param.number->minValue), packed);
+                v4.insert(v4.end(), packed, packed + 5);
+
+                DaisyMultiFX::Protocol::packQ16_16(
+                    DaisyMultiFX::Protocol::floatToQ16_16(param.number->maxValue), packed);
+                v4.insert(v4.end(), packed, packed + 5);
+
+                DaisyMultiFX::Protocol::packQ16_16(
+                    DaisyMultiFX::Protocol::floatToQ16_16(param.number->step), packed);
+                v4.insert(v4.end(), packed, packed + 5);
+            }
+        }
+
+        v4.push_back(0xF7);
+        auto v4Msg = juce::MidiMessage::createSysExMessage(v4.data() + 1, static_cast<int>(v4.size()) - 2);
+        pendingMidiOut_.addEvent(v4Msg, 0);
+    }
+
+    // Also send V5 metadata per effect (adds effect/param descriptions + unit prefix/suffix).
+    // Format: F0 7D <sender> 38 <typeId> <nameLen> <name...> <shortName[3]> <effectDescLen> <effectDesc...> <numParams>
+    //         (paramId kind flags nameLen name... descLen desc... unitPreLen unitPre... unitSufLen unitSuf...
+    //          [min] [max] [step])xN F7
+    auto inferUnitSuffix = [](uint8_t effectTypeId, const ParamInfo &par) -> const char *
+    {
+        // 1) Parse from name: "Foo (ms)" etc
+        if (par.name)
+        {
+            const char *open = std::strchr(par.name, '(');
+            const char *close = open ? std::strchr(open, ')') : nullptr;
+            if (open && close && close > open + 1)
+                return open + 1;
+        }
+
+        // 2) Parse from description: "Attack time (ms)" etc
+        if (par.description)
+        {
+            const char *open = std::strchr(par.description, '(');
+            const char *close = open ? std::strchr(open, ')') : nullptr;
+            if (open && close && close > open + 1)
+                return open + 1;
+        }
+
+        // 3) Known special-cases
+        if (effectTypeId == Effects::GraphicEQ::TypeId)
+            return "dB";
+
+        return "";
+    };
+
+    for (size_t i = 0; i < Effects::kNumEffects; ++i)
+    {
+        const auto &entry = Effects::kAllEffects[i];
+        const auto *meta = entry.meta;
+
+        std::vector<uint8_t> v5;
+        v5.reserve(420);
+        v5.push_back(0xF0);
+        v5.push_back(MidiProtocol::MANUFACTURER_ID);
+        v5.push_back(MidiProtocol::Sender::VST);
+        v5.push_back(MidiProtocol::Resp::EFFECT_META_V5);
+
+        v5.push_back(static_cast<uint8_t>(entry.typeId) & 0x7F);
+
+        const char *name = meta && meta->name ? meta->name : "";
+        size_t nameLen = std::strlen(name);
+        if (nameLen > 60)
+            nameLen = 60;
+        v5.push_back(static_cast<uint8_t>(nameLen) & 0x7F);
+        for (size_t c = 0; c < nameLen; ++c)
+            v5.push_back(static_cast<uint8_t>(name[c]) & 0x7F);
+
+        const char *shortName = (meta && meta->shortName) ? meta->shortName : "---";
+        for (int k = 0; k < 3; ++k)
+            v5.push_back(static_cast<uint8_t>(shortName[k]) & 0x7F);
+
+        const char *effectDesc = (meta && meta->description) ? meta->description : "";
+        size_t effectDescLen = std::strlen(effectDesc);
+        if (effectDescLen > 80)
+            effectDescLen = 80;
+        v5.push_back(static_cast<uint8_t>(effectDescLen) & 0x7F);
+        for (size_t c = 0; c < effectDescLen; ++c)
+            v5.push_back(static_cast<uint8_t>(effectDesc[c]) & 0x7F);
+
+        const uint8_t numParams = meta ? meta->numParams : 0;
+        v5.push_back(numParams & 0x7F);
+
+        for (uint8_t p = 0; p < numParams; ++p)
+        {
+            const auto &par = meta->params[p];
+            v5.push_back(static_cast<uint8_t>(par.id) & 0x7F);
+            v5.push_back(static_cast<uint8_t>(par.kind) & 0x7F);
+
+            uint8_t flags = 0;
+            const bool hasNumberRange = (par.kind == ParamValueKind::Number) && (par.number != nullptr);
+            if (hasNumberRange)
+                flags |= 0x01;
+            v5.push_back(flags & 0x7F);
+
+            const char *pname = par.name ? par.name : "";
+            size_t pnameLen = std::strlen(pname);
+            if (pnameLen > 24)
+                pnameLen = 24;
+            v5.push_back(static_cast<uint8_t>(pnameLen) & 0x7F);
+            for (size_t c = 0; c < pnameLen; ++c)
+                v5.push_back(static_cast<uint8_t>(pname[c]) & 0x7F);
+
+            const char *pdesc = par.description ? par.description : "";
+            size_t pdescLen = std::strlen(pdesc);
+            if (pdescLen > 60)
+                pdescLen = 60;
+            v5.push_back(static_cast<uint8_t>(pdescLen) & 0x7F);
+            for (size_t c = 0; c < pdescLen; ++c)
+                v5.push_back(static_cast<uint8_t>(pdesc[c]) & 0x7F);
+
+            // Unit prefix (kept empty for now)
+            v5.push_back(0);
+
+            // Unit suffix (best-effort inference)
+            const char *unitSuf = inferUnitSuffix(static_cast<uint8_t>(entry.typeId), par);
+            // inferUnitSuffix returns pointer inside original string; cap at ')'
+            size_t unitSufLen = 0;
+            if (unitSuf && unitSuf[0] != '\0')
+            {
+                const char *close = std::strchr(unitSuf, ')');
+                unitSufLen = close ? static_cast<size_t>(close - unitSuf) : std::strlen(unitSuf);
+                if (unitSufLen > 8)
+                    unitSufLen = 8;
+
+                // Reject if it looks like a phrase (spaces), not a unit.
+                if (std::memchr(unitSuf, ' ', unitSufLen) != nullptr)
+                    unitSufLen = 0;
+            }
+            v5.push_back(static_cast<uint8_t>(unitSufLen) & 0x7F);
+            for (size_t c = 0; c < unitSufLen; ++c)
+                v5.push_back(static_cast<uint8_t>(unitSuf[c]) & 0x7F);
+
+            if (hasNumberRange)
+            {
+                uint8_t packed[5];
+
+                DaisyMultiFX::Protocol::packQ16_16(
+                    DaisyMultiFX::Protocol::floatToQ16_16(par.number->minValue), packed);
+                v5.insert(v5.end(), packed, packed + 5);
+
+                DaisyMultiFX::Protocol::packQ16_16(
+                    DaisyMultiFX::Protocol::floatToQ16_16(par.number->maxValue), packed);
+                v5.insert(v5.end(), packed, packed + 5);
+
+                DaisyMultiFX::Protocol::packQ16_16(
+                    DaisyMultiFX::Protocol::floatToQ16_16(par.number->step), packed);
+                v5.insert(v5.end(), packed, packed + 5);
+            }
+        }
+
+        v5.push_back(0xF7);
+        auto v5Msg = juce::MidiMessage::createSysExMessage(v5.data() + 1, static_cast<int>(v5.size()) - 2);
+        pendingMidiOut_.addEvent(v5Msg, 0);
     }
 }
 

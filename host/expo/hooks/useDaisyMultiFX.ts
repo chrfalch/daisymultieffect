@@ -19,6 +19,7 @@ import type {
   EffectMeta,
   ConnectionStatus,
   EffectSlot,
+  EffectParam,
 } from "../modules/daisy-multi-fx";
 
 export interface UseDaisyMultiFXResult {
@@ -45,6 +46,7 @@ export interface UseDaisyMultiFXResult {
   getSlot: (slotIndex: number) => EffectSlot | undefined;
   getEffectName: (typeId: number) => string;
   getParamName: (typeId: number, paramId: number) => string;
+  getParamMeta: (typeId: number, paramId: number) => EffectParam | undefined;
   getEffectShortName: (typeId: number) => string;
 }
 
@@ -169,6 +171,14 @@ export function useDaisyMultiFX(
     [effectMeta]
   );
 
+  const getParamMeta = useCallback(
+    (typeId: number, paramId: number) => {
+      const effect = effectMeta.find((e) => e.typeId === typeId);
+      return effect?.params.find((p) => p.id === paramId);
+    },
+    [effectMeta]
+  );
+
   return {
     // Connection
     isConnected,
@@ -193,6 +203,7 @@ export function useDaisyMultiFX(
     getSlot,
     getEffectName,
     getParamName,
+    getParamMeta,
     getEffectShortName,
   };
 }

@@ -6,6 +6,23 @@ export interface EffectParam {
   id: number;
   /** Human-readable name */
   name: string;
+
+  /** Parameter kind (matches firmware ParamValueKind) */
+  kind: number;
+
+  /** Optional help/description text */
+  description?: string;
+
+  /** Optional unit prefix/suffix for display */
+  unitPrefix?: string;
+  unitSuffix?: string;
+
+  /** Optional numeric range metadata (for kind==Number) */
+  range?: {
+    min: number;
+    max: number;
+    step: number;
+  };
 }
 
 /**
@@ -18,6 +35,8 @@ export interface EffectMeta {
   name: string;
   /** 3-character short name for display (e.g., "DLY", "REV", "OVD") */
   shortName: string;
+  /** Optional effect description/help text */
+  description?: string;
   /** Available parameters for this effect */
   params: EffectParam[];
 }
