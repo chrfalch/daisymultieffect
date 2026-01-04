@@ -6,8 +6,10 @@ import { useDaisyMultiFX } from "../../hooks/useDaisyMultiFX";
 import { Card } from "../../components/Card";
 import { CardTitle } from "../../components/CardTitle";
 import { PedalSlot } from "../../components/PedalSlot";
+import { GraphView } from "../../components/GraphView";
 import { ConnectionStatus } from "../../components/ConnectionStatus";
 import { Button } from "../../components/Button";
+import { Badge } from "../../components/Badge";
 import { HStack, VStack, WrapStack } from "../../components/Stack";
 import { ParametersPanel } from "./ParametersPanel";
 import { RoutingPanel } from "./RoutingPanel";
@@ -55,7 +57,6 @@ export const EditorScreen: React.FC = () => {
     patch,
     effectMeta,
     refreshPatch,
-    refreshEffectMeta,
     setSlotEnabled,
     setSlotType,
     setSlotParam,
@@ -66,6 +67,7 @@ export const EditorScreen: React.FC = () => {
     getEffectName,
     getEffectShortName,
     getParamName,
+    pushPatchToVst,
     getParamMeta,
   } = useDaisyMultiFX();
   const [expandedSlot, setExpandedSlot] = React.useState<number>(0);
@@ -73,7 +75,6 @@ export const EditorScreen: React.FC = () => {
 
   const selectSlot = (slotIndex: number) => {
     setExpandedSlot(slotIndex);
-    setPanelTab("parameters");
   };
   const slot =
     patch?.slots.find((s) => s.slotIndex === expandedSlot) ??
@@ -100,41 +101,26 @@ export const EditorScreen: React.FC = () => {
                 connectionStatus={connectionStatus}
               />
             </VStack>
-            <HStack gap={8}>
-              <Button title="Refresh Patch" onPress={refreshPatch} />
-              <Button title="Refresh Effects" onPress={refreshEffectMeta} />
-            </HStack>
+            <VStack gap={8}>
+              <Button title="Load Patch from VST" onPress={refreshPatch} />
+              <Button title="Push Patch to VST" onPress={pushPatchToVst} />
+            </VStack>
           </HStack>
         </Card>
 
-        {/* Slots */}
-        <WrapStack gap={10} justify="center">
-          {patch?.slots.map((current, index) => {
-            if (index >= patch.numSlots) {
-              return null;
-            }
-            const isSelected = current.slotIndex === expandedSlot;
-            return (
-              <PedalSlot
-                key={current.slotIndex}
-                shortName={
-                  getEffectShortName(current.typeId) ||
-                  `Slot ${current.slotIndex + 1}`
-                }
-                name={
-                  getEffectName(current.typeId) ||
-                  `Slot ${current.slotIndex + 1}`
-                }
-                enabled={current.enabled}
-                selected={isSelected}
-                onPress={() => selectSlot(current.slotIndex)}
-                onToggleEnabled={() =>
-                  setSlotEnabled(current.slotIndex, !current.enabled)
-                }
-              />
-            );
-          })}
-        </WrapStack>
+        {patch && (
+          <Card style={styles.graphCard}>
+            <GraphView
+              slots={patch.slots}
+              numSlots={patch.numSlots}
+              selectedSlotIndex={expandedSlot}
+              getShortName={getEffectShortName}
+              getName={getEffectName}
+              onToggleSlotEnabled={setSlotEnabled}
+              onSelectSlot={selectSlot}
+            />
+          </Card>
+        )}
 
         {/* Empty State */}
         {!patch && (
@@ -227,6 +213,12 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 16,
   },
+  slotsViewToggle: {
+    marginTop: 4,
+  },
+  graphCard: {
+    paddingVertical: 8,
+  },
   parameterPanelTitle: {
     fontSize: 18,
     fontWeight: "600",
@@ -245,6 +237,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: "#eee",
+    minHeight: 300,
   },
   panelBody: {
     position: "relative",

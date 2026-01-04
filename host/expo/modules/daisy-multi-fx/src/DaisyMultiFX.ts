@@ -44,6 +44,7 @@ export function isConnected(): boolean {
  * Response will be delivered via onPatchUpdate event.
  */
 export function requestPatch(): void {
+  DaisyMultiFXModule.requestEffectMeta();
   DaisyMultiFXModule.requestPatch();
 }
 

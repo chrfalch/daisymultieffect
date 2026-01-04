@@ -8,7 +8,8 @@ interface PedalSlotProps {
   enabled: boolean;
   selected?: boolean;
   onPress: () => void;
-  onToggleEnabled: () => void;
+  onToggleEnabled?: () => void;
+  showSwitch?: boolean;
 }
 
 export const PedalSlot: React.FC<PedalSlotProps> = ({
@@ -16,8 +17,9 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
   shortName,
   enabled,
   selected = false,
-  onPress,
   onToggleEnabled,
+  showSwitch = true,
+  onPress,
 }) => {
   const topStripBg = selected ? "#2196F3" : "#E3F2FD";
   const topStripText = selected ? "#fff" : "#1976D2";
@@ -45,33 +47,35 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
               {name}
             </Text>
 
-            <Pressable
-              onPress={onToggleEnabled}
-              accessibilityRole="button"
-              accessibilityLabel={`Turn ${name} ${enabled ? "off" : "on"}`}
-            >
-              {({ pressed }) => (
-                <View
-                  style={[
-                    styles.footswitchOuter,
-                    {
-                      borderColor: enabled ? "#2196F3" : "#9E9E9E",
-                    },
-                    pressed && { opacity: 0.7 },
-                  ]}
-                >
+            {showSwitch && onToggleEnabled ? (
+              <Pressable
+                onPress={onToggleEnabled}
+                accessibilityRole="button"
+                accessibilityLabel={`Turn ${name} ${enabled ? "off" : "on"}`}
+              >
+                {({ pressed }) => (
                   <View
                     style={[
-                      styles.footswitchInner,
+                      styles.footswitchOuter,
                       {
-                        borderColor: enabled ? "#1976D2" : "#9E9E9E",
-                        backgroundColor: enabled ? "#4CAF50" : "#fff",
+                        borderColor: enabled ? "#2196F3" : "#9E9E9E",
                       },
+                      pressed && { opacity: 0.7 },
                     ]}
-                  />
-                </View>
-              )}
-            </Pressable>
+                  >
+                    <View
+                      style={[
+                        styles.footswitchInner,
+                        {
+                          borderColor: enabled ? "#1976D2" : "#9E9E9E",
+                          backgroundColor: enabled ? "#4CAF50" : "#fff",
+                        },
+                      ]}
+                    />
+                  </View>
+                )}
+              </Pressable>
+            ) : null}
           </View>
         </View>
       </Card>

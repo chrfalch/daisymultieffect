@@ -5,8 +5,8 @@ import {
   getConnectionStatus,
   getPatch,
   getEffectMeta,
-  requestPatch,
-  requestEffectMeta,
+  requestPatch as refreshPatch,
+  requestEffectMeta as refreshEffectMeta,
   setSlotEnabled,
   setSlotType as setSlotTypeRaw,
   setSlotParam,
@@ -17,6 +17,7 @@ import {
   addPatchUpdateListener,
   addEffectMetaUpdateListener,
   addConnectionStatusListener,
+  requestEffectMeta,
 } from "../modules/daisy-multi-fx";
 import type {
   Patch,
@@ -40,6 +41,7 @@ export interface UseDaisyMultiFXResult {
   disconnect: () => Promise<void>;
   refreshPatch: () => void;
   refreshEffectMeta: () => void;
+  pushPatchToVst: () => void;
 
   // Slot control
   setSlotEnabled: (slot: number, enabled: boolean) => void;
@@ -97,8 +99,7 @@ export function useDaisyMultiFX(
       }
 
       // Request fresh data
-      requestPatch();
-      requestEffectMeta();
+      refreshPatch();
     } catch (error) {
       console.error("[useDaisyMultiFX] Initialize failed:", error);
     }
@@ -206,6 +207,44 @@ export function useDaisyMultiFX(
     [patch]
   );
 
+  const pushPatchToVst = useCallback(() => {
+    if (!patch) {
+      console.warn("[useDaisyMultiFX] pushPatchToVst: no patch loaded");
+      return;
+    }
+    if (!isConnected) {
+      console.warn("[useDaisyMultiFX] pushPatchToVst: not connected");
+      return;
+    }
+
+    requestEffectMeta();
+
+    // Re-send the full current patch state using existing per-slot commands.
+    // The MIDI protocol doesn't currently support a single 'LOAD_PATCH' message.
+    for (const slot of patch.slots) {
+      const slotIndex = slot.slotIndex;
+
+      // Type first (may reset/init defaults on the receiver)
+      setSlotTypeRaw(slotIndex, slot.typeId);
+      setSlotEnabled(slotIndex, slot.enabled);
+
+      // Routing + mix/state
+      setSlotRoutingRaw(slotIndex, slot.inputL, slot.inputR);
+      setSlotSumToMono(slotIndex, slot.sumToMono);
+      setSlotMix(slotIndex, slot.dry, slot.wet);
+      setSlotChannelPolicy(slotIndex, slot.channelPolicy);
+
+      // Parameters
+      const entries = Object.entries(slot.params)
+        .map(([paramId, value]) => [Number(paramId), value] as const)
+        .filter(([paramId]) => Number.isFinite(paramId))
+        .sort((a, b) => a[0] - b[0]);
+      for (const [paramId, value] of entries) {
+        setSlotParam(slotIndex, paramId, value);
+      }
+    }
+  }, [patch, isConnected]);
+
   return {
     // Connection
     isConnected,
@@ -218,8 +257,9 @@ export function useDaisyMultiFX(
     // Actions
     initialize: initializeMidi,
     disconnect: disconnectMidi,
-    refreshPatch: requestPatch,
-    refreshEffectMeta: requestEffectMeta,
+    refreshPatch,
+    refreshEffectMeta,
+    pushPatchToVst,
 
     // Slot control
     setSlotEnabled,
