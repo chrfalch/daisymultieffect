@@ -8,9 +8,9 @@ import {
   requestPatch,
   requestEffectMeta,
   setSlotEnabled,
-  setSlotType,
+  setSlotType as setSlotTypeRaw,
   setSlotParam,
-  setSlotRouting,
+  setSlotRouting as setSlotRoutingRaw,
   setSlotSumToMono,
   setSlotMix,
   setSlotChannelPolicy,
@@ -190,6 +190,22 @@ export function useDaisyMultiFX(
     [effectMeta]
   );
 
+  const setSlotType = useCallback(
+    (slot: number, typeId: number) => {
+      const currentSlot = patch?.slots.find((s) => s.slotIndex === slot);
+      const inputL = currentSlot?.inputL;
+      const inputR = currentSlot?.inputR;
+
+      setSlotTypeRaw(slot, typeId);
+
+      // Preserve routing across type changes by re-applying the previous routing.
+      if (typeof inputL === "number" && typeof inputR === "number") {
+        setSlotRoutingRaw(slot, inputL, inputR);
+      }
+    },
+    [patch]
+  );
+
   return {
     // Connection
     isConnected,
@@ -211,7 +227,7 @@ export function useDaisyMultiFX(
     setSlotParam,
 
     // Routing/mix control
-    setSlotRouting,
+    setSlotRouting: setSlotRoutingRaw,
     setSlotSumToMono,
     setSlotMix,
     setSlotChannelPolicy,
