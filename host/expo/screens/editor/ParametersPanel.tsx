@@ -46,17 +46,17 @@ export const ParametersPanel: React.FC<{
     return <Text style={styles.todoText}>No parameters for this effect.</Text>;
   }
 
-  const paramEntries = Object.entries(slot.params)
-    .map(([paramId, value]) => ({ id: Number(paramId), value }))
-    .sort((a, b) => a.id - b.id);
   return (
     <VStack>
-      {paramEntries.map(({ id, value }) => {
+      {Object.entries(slot.params).map(([paramId, value]) => {
+        const id = Number(paramId);
         const name = getParamName(slot.typeId, id);
+        if (!name) return null;
+
         const meta = getParamMeta(slot.typeId, id);
         return (
           <Slider
-            key={String(id)}
+            key={paramId}
             label={name}
             description={meta?.description}
             value={value}

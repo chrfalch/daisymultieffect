@@ -1,4 +1,4 @@
-import { Subscription } from "expo-modules-core";
+import { EventSubscription } from "expo-modules-core";
 import DaisyMultiFXModule from "./DaisyMultiFXModule";
 import {
   Patch,
@@ -153,7 +153,7 @@ export function setSlotChannelPolicy(
  */
 export function addPatchUpdateListener(
   listener: (event: PatchUpdateEvent) => void
-): Subscription {
+): EventSubscription {
   return DaisyMultiFXModule.addListener("onPatchUpdate", listener);
 }
 
@@ -163,7 +163,7 @@ export function addPatchUpdateListener(
  */
 export function addEffectMetaUpdateListener(
   listener: (event: EffectMetaUpdateEvent) => void
-): Subscription {
+): EventSubscription {
   return DaisyMultiFXModule.addListener("onEffectMetaUpdate", listener);
 }
 
@@ -173,6 +173,6 @@ export function addEffectMetaUpdateListener(
  */
 export function addConnectionStatusListener(
   listener: (event: ConnectionStatusEvent) => void
-): Subscription {
+): EventSubscription {
   return DaisyMultiFXModule.addListener("onConnectionStatusChange", listener);
 }

@@ -177,7 +177,7 @@ export function useDaisyMultiFX(
       const effect = effectMeta.find((e) => e.typeId === typeId);
       const param = effect?.params.find((p) => p.id === paramId);
       const name = (param?.name ?? "").trim();
-      return name.length > 0 ? name : `Param ${paramId}`;
+      return name.length > 0 ? name : null;
     },
     [effectMeta]
   );
