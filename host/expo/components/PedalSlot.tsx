@@ -40,9 +40,7 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
                   pressed && { opacity: 0.7 },
                 ]}
               >
-                <Text style={styles.enabledText}>
-                  {enabled ? "ON" : "OFF"}
-                </Text>
+                <Text style={styles.enabledText}>{enabled ? "ON" : "OFF"}</Text>
               </View>
             )}
           </Pressable>
