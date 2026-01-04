@@ -5,8 +5,11 @@ import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { useDaisyMultiFX } from "../../hooks/useDaisyMultiFX";
 import { Slider } from "../../components/Slider";
 import { Card } from "../../components/Card";
-import { Button } from "../../components/Button";
+import { CardTitle } from "../../components/CardTitle";
 import { PedalSlot } from "../../components/PedalSlot";
+import { ConnectionStatus } from "../../components/ConnectionStatus";
+import { Button } from "../../components/Button";
+import { HStack, VStack, WrapStack } from "../../components/Stack";
 
 export const EditorScreen: React.FC = () => {
   const {
@@ -35,35 +38,31 @@ export const EditorScreen: React.FC = () => {
 
   return (
     <GestureHandlerRootView style={styles.flex}>
-      <ScrollView style={styles.container}>
-        {/* Connection Status */}
-        <View style={styles.statusCard}>
-          <Text style={styles.statusTitle}>Connection Status</Text>
-          <View style={styles.statusRow}>
-            <View
-              style={[
-                styles.statusIndicator,
-                { backgroundColor: isConnected ? "#4CAF50" : "#F44336" },
-              ]}
-            />
-            <Text style={styles.statusText}>
-              {isConnected ? "Connected" : "Disconnected"}
-            </Text>
-          </View>
-          {connectionStatus && (
-            <Text style={styles.statusDetail}>{connectionStatus.status}</Text>
-          )}
-          <View style={styles.buttonRow}>
-            <Button title="Refresh Patch" onPress={refreshPatch} />
-            <Button title="Refresh Effects" onPress={refreshEffectMeta} />
-          </View>
-        </View>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <Card>
+          <CardTitle>Connection Status</CardTitle>
+          <HStack justify="space-between" align="center">
+            <VStack>
+              <ConnectionStatus
+                isConnected={isConnected}
+                connectionStatus={connectionStatus}
+              />
+            </VStack>
+            <HStack gap={8}>
+              <Button title="Refresh Patch" onPress={refreshPatch} />
+              <Button title="Refresh Effects" onPress={refreshEffectMeta} />
+            </HStack>
+          </HStack>
+        </Card>
 
         {/* Available Effects */}
         {effectMeta.length > 0 && (
           <Card>
-            <Text style={styles.sectionTitle}>Available Effects</Text>
-            <View style={styles.effectsList}>
+            <CardTitle>Available Effects</CardTitle>
+            <WrapStack gap={8}>
               {effectMeta.map((effect) => {
                 const isSelected = slot?.typeId === effect.typeId;
                 return (
@@ -90,12 +89,12 @@ export const EditorScreen: React.FC = () => {
                   </Pressable>
                 );
               })}
-            </View>
+            </WrapStack>
           </Card>
         )}
 
         {/* Slots */}
-        <View style={styles.wrappingPanel}>
+        <WrapStack gap={10}>
           {patch?.slots.map((current, index) => {
             if (index >= patch.numSlots) {
               return null;
@@ -117,7 +116,7 @@ export const EditorScreen: React.FC = () => {
               />
             );
           })}
-        </View>
+        </WrapStack>
 
         {/* Empty State */}
         {!patch && (
@@ -179,64 +178,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
-  statusCard: {
-    backgroundColor: "#fff",
-    margin: 16,
+  scrollContent: {
     padding: 16,
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  wrappingPanel: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
     gap: 16,
   },
   parameterPanel: {
     padding: 16,
-  },
-  statusTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 12,
-  },
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  statusIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 8,
-  },
-  statusText: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  statusDetail: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 12,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 12,
-  },
-  effectsList: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
   },
   effectBadge: {
     backgroundColor: "#E3F2FD",
