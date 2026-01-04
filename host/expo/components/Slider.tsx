@@ -3,8 +3,6 @@ import { View, Text, StyleSheet, LayoutChangeEvent } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  useAnimatedProps,
-  withTiming,
   runOnJS,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -16,9 +14,8 @@ interface SliderProps {
   max?: number;
   onValueChange?: (value: number) => void;
   onValueChangeEnd?: (value: number) => void;
+  updateIntervalMs?: number;
 }
-
-const AnimatedText = Animated.createAnimatedComponent(Text);
 
 export const Slider: React.FC<SliderProps> = ({
   label,
@@ -27,30 +24,53 @@ export const Slider: React.FC<SliderProps> = ({
   max = 127,
   onValueChange,
   onValueChangeEnd,
+  updateIntervalMs = 30,
 }) => {
   const width = useSharedValue(0);
   const translateX = useSharedValue(0);
   const startX = useSharedValue(0);
   const currentValue = useSharedValue(value);
-  const clampedValue = (val: number) => clamp(val, min, max);
-
-  // Update shared value when prop changes
-  React.useEffect(() => {
-    currentValue.value = clampedValue(value);
-  }, [value, currentValue]);
-
   const clamp = (val: number, minVal: number, maxVal: number) => {
     "worklet";
     return Math.min(Math.max(val, minVal), maxVal);
   };
 
+  const clampedValue = (val: number) => clamp(val, min, max);
+
+  const [displayValue, setDisplayValue] = React.useState(() =>
+    clampedValue(value)
+  );
+
+  const pendingChangeRef = React.useRef<number | null>(null);
+  const changeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+
+  React.useEffect(() => {
+    return () => {
+      if (changeTimerRef.current) {
+        clearTimeout(changeTimerRef.current);
+        changeTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  // Update shared value when prop changes
+  React.useEffect(() => {
+    const next = clampedValue(value);
+    currentValue.value = next;
+    setDisplayValue(next);
+  }, [value, currentValue]);
+
   const valueToPosition = (val: number) => {
     "worklet";
+    if (width.value <= 0 || max === min) return 0;
     return ((val - min) / (max - min)) * width.value;
   };
 
   const positionToValue = (pos: number) => {
     "worklet";
+    if (width.value <= 0 || max === min) return min;
     const normalized = clamp(pos / width.value, 0, 1);
     return Math.round(min + normalized * (max - min));
   };
@@ -60,6 +80,37 @@ export const Slider: React.FC<SliderProps> = ({
       onValueChange?.(newValue);
     },
     [onValueChange]
+  );
+
+  const updateDisplayValue = useCallback((newValue: number) => {
+    setDisplayValue(newValue);
+  }, []);
+
+  const scheduleValueChange = useCallback(
+    (newValue: number) => {
+      pendingChangeRef.current = newValue;
+      if (changeTimerRef.current) return;
+
+      changeTimerRef.current = setTimeout(() => {
+        changeTimerRef.current = null;
+        if (pendingChangeRef.current === null) return;
+        updateValue(pendingChangeRef.current);
+      }, updateIntervalMs);
+    },
+    [updateIntervalMs, updateValue]
+  );
+
+  const flushValueChange = useCallback(
+    (valueToFlush?: number) => {
+      if (changeTimerRef.current) {
+        clearTimeout(changeTimerRef.current);
+        changeTimerRef.current = null;
+      }
+      const v = valueToFlush ?? pendingChangeRef.current;
+      pendingChangeRef.current = null;
+      if (typeof v === "number") updateValue(v);
+    },
+    [updateValue]
   );
 
   const finishUpdate = useCallback(
@@ -76,7 +127,8 @@ export const Slider: React.FC<SliderProps> = ({
       translateX.value = e.x;
       const newValue = positionToValue(e.x);
       currentValue.value = newValue;
-      runOnJS(updateValue)(newValue);
+      runOnJS(updateDisplayValue)(newValue);
+      runOnJS(flushValueChange)(newValue);
     })
     .onUpdate((e) => {
       "worklet";
@@ -84,11 +136,13 @@ export const Slider: React.FC<SliderProps> = ({
       const newValue = positionToValue(translateX.value);
       if (newValue !== currentValue.value) {
         currentValue.value = newValue;
-        runOnJS(updateValue)(newValue);
+        runOnJS(updateDisplayValue)(newValue);
+        runOnJS(scheduleValueChange)(newValue);
       }
     })
     .onEnd(() => {
       "worklet";
+      runOnJS(flushValueChange)(currentValue.value);
       runOnJS(finishUpdate)(currentValue.value);
     });
 
@@ -97,7 +151,8 @@ export const Slider: React.FC<SliderProps> = ({
     translateX.value = clamp(e.x, 0, width.value);
     const newValue = positionToValue(translateX.value);
     currentValue.value = newValue;
-    runOnJS(updateValue)(newValue);
+    runOnJS(updateDisplayValue)(newValue);
+    runOnJS(flushValueChange)(newValue);
     runOnJS(finishUpdate)(newValue);
   });
 
@@ -114,10 +169,6 @@ export const Slider: React.FC<SliderProps> = ({
     width.value = e.nativeEvent.layout.width;
   };
 
-  const animatedValueProps = useAnimatedProps(() => {
-    return { text: String(currentValue.value) };
-  });
-
   return (
     <View style={styles.container}>
       <GestureDetector gesture={gesture}>
@@ -127,10 +178,7 @@ export const Slider: React.FC<SliderProps> = ({
             <Text style={styles.label}>{label}</Text>
           </View>
           <View style={styles.valueContainer}>
-            <AnimatedText
-              animatedProps={animatedValueProps}
-              style={styles.value}
-            />
+            <Text style={styles.value}>{displayValue}</Text>
           </View>
         </View>
       </GestureDetector>

@@ -71,9 +71,11 @@ const styles = StyleSheet.create({
     color: "#1976D2",
   },
   enabledBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: "center",
+    alignItems: "center",
   },
   enabledText: {
     color: "#fff",

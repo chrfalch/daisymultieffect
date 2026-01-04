@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native";
+import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { GestureHandlerRootView, Switch } from "react-native-gesture-handler";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { useDaisyMultiFX } from "../../hooks/useDaisyMultiFX";
@@ -9,6 +9,7 @@ import { CardTitle } from "../../components/CardTitle";
 import { PedalSlot } from "../../components/PedalSlot";
 import { ConnectionStatus } from "../../components/ConnectionStatus";
 import { Button } from "../../components/Button";
+import { Badge } from "../../components/Badge";
 import { HStack, VStack, WrapStack } from "../../components/Stack";
 
 export const EditorScreen: React.FC = () => {
@@ -66,27 +67,16 @@ export const EditorScreen: React.FC = () => {
               {effectMeta.map((effect) => {
                 const isSelected = slot?.typeId === effect.typeId;
                 return (
-                  <Pressable
+                  <Badge
                     key={effect.typeId}
-                    style={[
-                      styles.effectBadge,
-                      isSelected && styles.effectBadgeSelected,
-                    ]}
+                    label={effect.name}
+                    selected={isSelected}
                     onPress={() => {
                       if (slot && !isSelected) {
                         setSlotType(slot.slotIndex, effect.typeId);
                       }
                     }}
-                  >
-                    <Text
-                      style={[
-                        styles.effectBadgeText,
-                        isSelected && styles.effectBadgeTextSelected,
-                      ]}
-                    >
-                      {effect.name}
-                    </Text>
-                  </Pressable>
+                  />
                 );
               })}
             </WrapStack>
@@ -120,24 +110,20 @@ export const EditorScreen: React.FC = () => {
 
         {/* Empty State */}
         {!patch && (
-          <View style={styles.emptyState}>
+          <VStack align="center">
             <Text style={styles.emptyStateText}>
               No patch data received yet.
             </Text>
             <Text style={styles.emptyStateHint}>
               Make sure the VST or hardware is running.
             </Text>
-          </View>
+          </VStack>
         )}
       </ScrollView>
 
       {slot && Object.keys(slot.params).length > 0 && (
-        <Animated.View
-          style={styles.parameterPanel}
-          entering={SlideInDown}
-          exiting={SlideOutDown}
-        >
-          <View style={styles.parameterPanelHeader}>
+        <VStack padding={16}>
+          <HStack justify="space-between" align="center">
             <Text style={styles.parameterPanelTitle}>
               {getEffectName(slot.typeId) || `Slot ${slot.slotIndex + 1}`}
             </Text>
@@ -145,9 +131,9 @@ export const EditorScreen: React.FC = () => {
               value={slot.enabled}
               onValueChange={(value) => setSlotEnabled(slot.slotIndex, value)}
             />
-          </View>
+          </HStack>
           {/* Parameters */}
-          <View style={styles.paramsContainer}>
+          <VStack style={styles.paramsContainer}>
             {Object.entries(slot.params).map(
               ([paramId, value]) =>
                 getParamName(slot.typeId, Number(paramId)) && (
@@ -157,14 +143,14 @@ export const EditorScreen: React.FC = () => {
                     value={value}
                     min={0}
                     max={127}
-                    onValueChangeEnd={(newValue) =>
+                    onValueChange={(newValue) =>
                       setSlotParam(slot.slotIndex, Number(paramId), newValue)
                     }
                   />
                 )
             )}
-          </View>
-        </Animated.View>
+          </VStack>
+        </VStack>
       )}
     </GestureHandlerRootView>
   );
@@ -182,32 +168,6 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 16,
   },
-  parameterPanel: {
-    padding: 16,
-  },
-  effectBadge: {
-    backgroundColor: "#E3F2FD",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  effectBadgeSelected: {
-    backgroundColor: "#2196F3",
-  },
-  effectBadgeText: {
-    color: "#1976D2",
-    fontSize: 14,
-  },
-  effectBadgeTextSelected: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-  parameterPanelHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
   parameterPanelTitle: {
     fontSize: 18,
     fontWeight: "600",
@@ -217,11 +177,6 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: "#eee",
-  },
-  emptyState: {
-    margin: 16,
-    padding: 32,
-    alignItems: "center",
   },
   emptyStateText: {
     fontSize: 16,
