@@ -1,9 +1,9 @@
 import React from "react";
-import { View, StyleProp, ViewStyle } from "react-native";
+import { View, StyleProp, ViewStyle, ViewProps } from "react-native";
 
 export type StackDirection = "horizontal" | "vertical";
 
-export interface StackProps {
+export interface StackProps extends Omit<ViewProps, "style" | "children"> {
   children?: React.ReactNode;
 
   direction?: StackDirection;
@@ -30,6 +30,7 @@ export const Stack: React.FC<StackProps> = ({
   paddingHorizontal,
   paddingVertical,
   style,
+  ...viewProps
 }) => {
   const stackStyle: ViewStyle = {
     flexDirection: direction === "horizontal" ? "row" : "column",
@@ -41,7 +42,11 @@ export const Stack: React.FC<StackProps> = ({
     ...(paddingVertical != null ? { paddingVertical } : null),
   };
 
-  return <View style={[stackStyle, style]}>{children}</View>;
+  return (
+    <View {...viewProps} style={[stackStyle, style]}>
+      {children}
+    </View>
+  );
 };
 
 export type HStackProps = Omit<StackProps, "direction">;

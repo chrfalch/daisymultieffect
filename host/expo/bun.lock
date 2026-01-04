@@ -4,6 +4,7 @@
     "": {
       "name": "daisymultieffect",
       "dependencies": {
+        "@expo/vector-icons": "^15.0.2",
         "expo": "^55.0.0-canary-20251230-fc48ddc",
         "expo-constants": "18.1.0-canary-20251230-fc48ddc",
         "expo-linking": "8.0.12-canary-20251230-fc48ddc",
