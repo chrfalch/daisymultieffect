@@ -6,8 +6,10 @@
 
 /**
  * Overdrive Effect
- * Exact port of DaisySP/Mutable Instruments Plaits overdrive.
- * Musical gain staging with automatic output leveling.
+ * DaisySP/Mutable Instruments Plaits overdrive core.
+ * Note: We apply a gentle taper to the UI drive parameter before feeding the
+ * original DaisySP SetDrive curve. This keeps maximum drive available, but
+ * makes mid-drive less aggressive for typical line-level / full-scale inputs.
  */
 struct OverdriveEffect : BaseEffect
 {
@@ -44,6 +46,15 @@ struct OverdriveEffect : BaseEffect
         return x < min ? min : (x > max ? max : x);
     }
 
+    // Parameter taper: keep 0..1 range and max drive, but make the response
+    // less aggressive in the 0..~0.6 region.
+    static inline float ApplyDriveTaper(float drive)
+    {
+        drive = fclamp(drive, 0.0f, 1.0f);
+        constexpr float kLinearMix = 0.35f; // 0=quadratic, 1=linear
+        return drive * (kLinearMix + (1.0f - kLinearMix) * drive);
+    }
+
     // Exact DaisySP SetDrive implementation
     void SetDrive(float drive)
     {
@@ -65,7 +76,7 @@ struct OverdriveEffect : BaseEffect
 
     void Init(float) override
     {
-        SetDrive(drive_);
+        SetDrive(ApplyDriveTaper(drive_));
         lpL_ = lpR_ = 0;
     }
 
@@ -74,7 +85,7 @@ struct OverdriveEffect : BaseEffect
         if (id == 0)
         {
             drive_ = v;
-            SetDrive(drive_);
+            SetDrive(ApplyDriveTaper(drive_));
         }
         else if (id == 1)
             tone_ = v;
