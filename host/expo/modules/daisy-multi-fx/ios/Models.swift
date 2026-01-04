@@ -65,12 +65,14 @@ struct EffectParamMeta: Equatable {
 struct EffectMeta: Equatable {
     var typeId: UInt8
     var name: String
+    var shortName: String  // 3-character short name
     var params: [EffectParamMeta]
 
     func toDictionary() -> [String: Any] {
         return [
             "typeId": Int(typeId),
             "name": name,
+            "shortName": shortName,
             "params": params.map { $0.toDictionary() },
         ]
     }

@@ -29,7 +29,7 @@ namespace Effects
     namespace Off
     {
         constexpr uint8_t TypeId = 0;
-        inline const ::EffectMeta kMeta = {"Off", "Bypass/disabled", nullptr, 0};
+        inline const ::EffectMeta kMeta = {"Off", "OFF", "Bypass/disabled", nullptr, 0};
     }
 
     //=========================================================================
@@ -47,7 +47,7 @@ namespace Effects
             {3, "Feedback", "Delay feedback", ParamValueKind::Number, &kFbRange, nullptr},
             {4, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
         };
-        inline const ::EffectMeta kMeta = {"Delay", "Tempo-synced delay.", kParams, 5};
+        inline const ::EffectMeta kMeta = {"Delay", "DLY", "Tempo-synced delay.", kParams, 5};
     }
 
     //=========================================================================
@@ -62,7 +62,7 @@ namespace Effects
             {0, "Drive", "Overdrive amount", ParamValueKind::Number, &kDriveRange, nullptr},
             {1, "Tone", "Dark to bright", ParamValueKind::Number, &kToneRange, nullptr},
         };
-        inline const ::EffectMeta kMeta = {"Overdrive", "Musical overdrive with auto-leveling.", kParams, 2};
+        inline const ::EffectMeta kMeta = {"Overdrive", "OVD", "Musical overdrive with auto-leveling.", kParams, 2};
     }
 
     //=========================================================================
@@ -84,7 +84,7 @@ namespace Effects
             {5, "Pan Depth", "Pan sweep depth", ParamValueKind::Number, &kPanDepthRange, nullptr},
             {6, "Pan Rate", "Pan rate (Hz)", ParamValueKind::Number, &kPanRateRange, nullptr},
         };
-        inline const ::EffectMeta kMeta = {"Sweep Delay", "Stereo delay with pan sweep.", kParams, 7};
+        inline const ::EffectMeta kMeta = {"Sweep Delay", "SWP", "Stereo delay with pan sweep.", kParams, 7};
     }
 
     //=========================================================================
@@ -100,7 +100,7 @@ namespace Effects
             {1, "Mix B", "Level for branch B", ParamValueKind::Number, &kMixRange, nullptr},
             {2, "Cross", "Cross-couple A/B", ParamValueKind::Number, &kCrossRange, nullptr},
         };
-        inline const ::EffectMeta kMeta = {"Mixer", "Mix two branches into stereo.", kParams, 3};
+        inline const ::EffectMeta kMeta = {"Mixer", "MIX", "Mix two branches into stereo.", kParams, 3};
     }
 
     //=========================================================================
@@ -121,7 +121,7 @@ namespace Effects
             {3, "PreDelay", "Pre-delay (ms)", ParamValueKind::Number, &kPreRange, nullptr},
             {4, "Size", "Room size", ParamValueKind::Number, &kSizeRange, nullptr},
         };
-        inline const ::EffectMeta kMeta = {"Reverb", "Simple Schroeder reverb.", kParams, 5};
+        inline const ::EffectMeta kMeta = {"Reverb", "REV", "Simple Schroeder reverb.", kParams, 5};
     }
 
     //=========================================================================
@@ -142,7 +142,7 @@ namespace Effects
             {3, "Release", "Release time (ms)", ParamValueKind::Number, &kReleaseRange, nullptr},
             {4, "Makeup", "Makeup gain (dB)", ParamValueKind::Number, &kMakeupRange, nullptr},
         };
-        inline const ::EffectMeta kMeta = {"Compressor", "Dynamics compressor.", kParams, 5};
+        inline const ::EffectMeta kMeta = {"Compressor", "CMP", "Dynamics compressor.", kParams, 5};
     }
 
     //=========================================================================
@@ -163,7 +163,7 @@ namespace Effects
             {3, "Delay", "Base delay (ms)", ParamValueKind::Number, &kDelayRange, nullptr},
             {4, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
         };
-        inline const ::EffectMeta kMeta = {"Chorus", "Classic stereo chorus.", kParams, 5};
+        inline const ::EffectMeta kMeta = {"Chorus", "CHO", "Classic stereo chorus.", kParams, 5};
     }
 
     //=========================================================================
@@ -184,7 +184,7 @@ namespace Effects
             {3, "Release", "Gate close speed", ParamValueKind::Number, &kReleaseRange, nullptr},
             {4, "Range", "Floor level when closed", ParamValueKind::Number, &kRangeRange, nullptr},
         };
-        inline const ::EffectMeta kMeta = {"Noise Gate", "Cut signal below threshold to eliminate hum/buzz.", kParams, 5};
+        inline const ::EffectMeta kMeta = {"Noise Gate", "NGT", "Cut signal below threshold to eliminate hum/buzz.", kParams, 5};
     }
 
     //=========================================================================
@@ -204,7 +204,7 @@ namespace Effects
             {5, "3.2 kHz", "Presence/clarity", ParamValueKind::Number, &kBandRange, nullptr},
             {6, "6.4 kHz", "Treble/air", ParamValueKind::Number, &kBandRange, nullptr},
         };
-        inline const ::EffectMeta kMeta = {"Graphic EQ", "7-band EQ optimized for guitar.", kParams, 7};
+        inline const ::EffectMeta kMeta = {"Graphic EQ", "GEQ", "7-band EQ optimized for guitar.", kParams, 7};
     }
 
     //=========================================================================
@@ -225,7 +225,7 @@ namespace Effects
             {3, "Delay", "Base delay (ms)", ParamValueKind::Number, &kDelayRange, nullptr},
             {4, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
         };
-        inline const ::EffectMeta kMeta = {"Flanger", "Classic jet/swoosh flanger.", kParams, 5};
+        inline const ::EffectMeta kMeta = {"Flanger", "FLG", "Classic jet/swoosh flanger.", kParams, 5};
     }
 
     //=========================================================================
@@ -246,7 +246,7 @@ namespace Effects
             {3, "Freq", "Base frequency (Hz)", ParamValueKind::Number, &kFreqRange, nullptr},
             {4, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
         };
-        inline const ::EffectMeta kMeta = {"Phaser", "Classic sweeping phaser.", kParams, 5};
+        inline const ::EffectMeta kMeta = {"Phaser", "PHS", "Classic sweeping phaser.", kParams, 5};
     }
 
     //=========================================================================
@@ -265,7 +265,7 @@ namespace Effects
             {3, "Mid", "Mid frequency boost/cut", ParamValueKind::Number, &kEqRange, nullptr},
             {4, "Treble", "High frequency boost/cut", ParamValueKind::Number, &kEqRange, nullptr},
         };
-        inline const ::EffectMeta kMeta = {"Neural Amp", "AI-trained amp simulation (AIDA-X/RTNeural). Load JSON model files.", kParams, 5};
+        inline const ::EffectMeta kMeta = {"Neural Amp", "NAM", "AI-trained amp simulation (AIDA-X/RTNeural). Load JSON model files.", kParams, 5};
     }
 
     //=========================================================================
@@ -285,7 +285,7 @@ namespace Effects
             {2, "Low Cut", "Cuts bass (0=off, 1=800Hz)", ParamValueKind::Number, &kLowCutRange, nullptr},
             {3, "High Cut", "Cuts treble (0=bright, 1=dark)", ParamValueKind::Number, &kHighCutRange, nullptr},
         };
-        inline const ::EffectMeta kMeta = {"Cabinet IR", "Impulse response convolution for speaker cabinet simulation. Load WAV files.", kParams, 4};
+        inline const ::EffectMeta kMeta = {"Cabinet IR", "CAB", "Impulse response convolution for speaker cabinet simulation. Load WAV files.", kParams, 4};
     }
 
     //=========================================================================

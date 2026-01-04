@@ -59,6 +59,9 @@ enum SysExResponse {
     /// Effect metadata v2 (with params)
     static let effectMetaV2: UInt8 = 0x35
 
+    /// Effect metadata v3 (with params and short name)
+    static let effectMetaV3: UInt8 = 0x36
+
     /// Effect meta list (all effects)
     static let effectMetaList: UInt8 = 0x33
 

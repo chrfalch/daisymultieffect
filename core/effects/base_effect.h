@@ -52,6 +52,7 @@ struct ParamInfo
 struct EffectMeta
 {
     const char *name;
+    const char *shortName;  // 3-character short name for display/MIDI
     const char *description;
     const ParamInfo *params;
     uint8_t numParams;

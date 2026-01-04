@@ -45,6 +45,7 @@ export interface UseDaisyMultiFXResult {
   getSlot: (slotIndex: number) => EffectSlot | undefined;
   getEffectName: (typeId: number) => string;
   getParamName: (typeId: number, paramId: number) => string;
+  getEffectShortName: (typeId: number) => string;
 }
 
 /**
@@ -148,12 +149,22 @@ export function useDaisyMultiFX(
     [effectMeta]
   );
 
+  // Helper: Get effect name by type ID
+  const getEffectShortName = useCallback(
+    (typeId: number): string => {
+      if (typeId === 0) return "Off";
+      const effect = effectMeta.find((e) => e.typeId === typeId);
+      return effect?.shortName ?? `Effect ${typeId}`;
+    },
+    [effectMeta]
+  );
+
   // Helper: Get parameter name
   const getParamName = useCallback(
     (typeId: number, paramId: number): string => {
       const effect = effectMeta.find((e) => e.typeId === typeId);
       const param = effect?.params.find((p) => p.id === paramId);
-      return param?.name ?? `Param ${paramId}`;
+      return param?.name;
     },
     [effectMeta]
   );
@@ -182,5 +193,6 @@ export function useDaisyMultiFX(
     getSlot,
     getEffectName,
     getParamName,
+    getEffectShortName,
   };
 }

@@ -94,6 +94,13 @@ extern "C"
          */
         SYSEX_RESP_EFFECT_META_V2 = 0x35,
 
+        /**
+         * Effect metadata v3 (with params and short name):
+         * F0 7D 36 <typeId> <nameLen> <name...> <shortName[3]> <numParams> (paramId kind nameLen name...)xN F7
+         * shortName is always 3 bytes (7-bit ASCII)
+         */
+        SYSEX_RESP_EFFECT_META_V3 = 0x36,
+
         /** Button state change: F0 7D 40 <btn> <slot> <enabled> F7 */
         SYSEX_RESP_BUTTON_STATE = 0x40,
 

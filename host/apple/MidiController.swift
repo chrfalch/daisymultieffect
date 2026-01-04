@@ -29,6 +29,7 @@ struct EffectParamMeta: Equatable {
 struct EffectMeta: Equatable {
     var typeId: UInt8
     var name: String
+    var shortName: String  // 3-character short name
     var params: [EffectParamMeta]
 }
 
@@ -154,6 +155,10 @@ class PatchState: ObservableObject {
             byId[fx.typeId] = fx
         }
         effectsById = byId
+    }
+    
+    func updateEffectMeta(_ effect: EffectMeta) {
+        effectsById[effect.typeId] = effect
     }
 
     func updateStatus(_ newStatus: String) {
@@ -478,6 +483,12 @@ class MidiTransport: ObservableObject {
         case MidiProtocol.Resp.effectMeta:
             let effects = decodeEffectMeta(data)
             patchState?.loadEffectMeta(effects)
+            
+        case SysExResponse.effectMetaV3:
+            // Single effect V3 metadata with short name
+            if let effect = decodeEffectMetaV3(data) {
+                patchState?.updateEffectMeta(effect)
+            }
 
         case MidiProtocol.Cmd.setEnabled:
             // Incoming command - route to PatchState (offset by 1 due to sender byte)
@@ -590,6 +601,9 @@ class MidiTransport: ObservableObject {
 
             let name = String(bytes: data[offset..<(offset + nameLen)], encoding: .ascii) ?? "?"
             offset += nameLen
+            
+            // Default short name from first 3 chars of name
+            let shortName = String(name.prefix(3)).uppercased()
 
             guard offset < data.count else { break }
             let numParams = Int(data[offset])
@@ -610,10 +624,62 @@ class MidiTransport: ObservableObject {
                 params.append(EffectParamMeta(id: paramId, name: paramName))
             }
 
-            effects.append(EffectMeta(typeId: typeId, name: name, params: params))
+            effects.append(EffectMeta(typeId: typeId, name: name, shortName: shortName, params: params))
         }
 
         return effects
+    }
+    
+    /// Decode V3 effect metadata with short name
+    /// Format: F0 7D 36 <typeId> <nameLen> <name...> <shortName[3]> <numParams> (paramId kind nameLen name...)xN F7
+    private func decodeEffectMetaV3(_ data: [UInt8]) -> EffectMeta? {
+        guard data.count > 3 else { return nil }
+        
+        var offset = 3  // Skip F0, 7D, 36
+        
+        guard offset < data.count else { return nil }
+        let typeId = data[offset]
+        offset += 1
+        
+        guard offset < data.count else { return nil }
+        let nameLen = Int(data[offset])
+        offset += 1
+        
+        guard offset + nameLen <= data.count else { return nil }
+        let name = String(bytes: data[offset..<(offset + nameLen)], encoding: .ascii) ?? "?"
+        offset += nameLen
+        
+        // Read 3-character short name
+        guard offset + 3 <= data.count else { return nil }
+        let shortName = String(bytes: data[offset..<(offset + 3)], encoding: .ascii) ?? "---"
+        offset += 3
+        
+        guard offset < data.count else { return nil }
+        let numParams = Int(data[offset])
+        offset += 1
+        
+        var params: [EffectParamMeta] = []
+        for _ in 0..<numParams {
+            guard offset < data.count else { break }
+            let paramId = data[offset]
+            offset += 1
+            
+            // Skip 'kind' byte
+            guard offset < data.count else { break }
+            offset += 1
+            
+            guard offset < data.count else { break }
+            let paramNameLen = Int(data[offset])
+            offset += 1
+            
+            guard offset + paramNameLen <= data.count else { break }
+            let paramName = String(bytes: data[offset..<(offset + paramNameLen)], encoding: .ascii) ?? "?"
+            offset += paramNameLen
+            
+            params.append(EffectParamMeta(id: paramId, name: paramName))
+        }
+        
+        return EffectMeta(typeId: typeId, name: name, shortName: shortName, params: params)
     }
 
     func sendSysex(_ data: [UInt8]) {

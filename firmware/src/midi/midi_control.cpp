@@ -197,16 +197,22 @@ void MidiControl::SendEffectList()
                 hw_->DelayMs(1);
         }
 
+        // Send V3 metadata with short name
         {
             uint8_t msg[512];
             size_t p = 0;
             msg[p++] = 0xF0;
             msg[p++] = 0x7D;
-            msg[p++] = 0x35;
+            msg[p++] = 0x36; // EFFECT_META_V3
             msg[p++] = typeId & 0x7F;
             msg[p++] = (uint8_t)nameLen;
             for (size_t i = 0; i < nameLen; i++)
                 msg[p++] = (uint8_t)(name[i] & 0x7F);
+
+            // Send 3-character short name (always 3 bytes)
+            const char *shortName = meta->shortName ? meta->shortName : "---";
+            for (int i = 0; i < 3; i++)
+                msg[p++] = (uint8_t)(shortName[i] & 0x7F);
 
             const uint8_t numParams = meta->numParams;
             msg[p++] = (uint8_t)(numParams & 0x7F);

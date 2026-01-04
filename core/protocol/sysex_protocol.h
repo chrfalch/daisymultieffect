@@ -49,6 +49,7 @@ namespace DaisyMultiFX
             static constexpr uint8_t PATCH_DUMP = SYSEX_RESP_PATCH_DUMP;
             static constexpr uint8_t EFFECT_DISCOVERED = SYSEX_RESP_EFFECT_DISCOVERED;
             static constexpr uint8_t EFFECT_META_V2 = SYSEX_RESP_EFFECT_META_V2;
+            static constexpr uint8_t EFFECT_META_V3 = SYSEX_RESP_EFFECT_META_V3;
             static constexpr uint8_t EFFECT_META_LIST = SYSEX_RESP_EFFECT_META_LIST;
             static constexpr uint8_t BUTTON_STATE = SYSEX_RESP_BUTTON_STATE;
             static constexpr uint8_t TEMPO_UPDATE = SYSEX_RESP_TEMPO_UPDATE;

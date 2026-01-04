@@ -16,6 +16,8 @@ export interface EffectMeta {
   typeId: number;
   /** Human-readable effect name */
   name: string;
+  /** 3-character short name for display (e.g., "DLY", "REV", "OVD") */
+  shortName: string;
   /** Available parameters for this effect */
   params: EffectParam[];
 }

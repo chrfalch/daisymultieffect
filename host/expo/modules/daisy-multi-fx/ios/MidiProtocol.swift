@@ -21,6 +21,9 @@ enum MidiProtocol {
     enum Resp {
         static let patchDump: UInt8 = 0x13
         static let effectMeta: UInt8 = 0x33
+        static let effectDiscovered: UInt8 = 0x34
+        static let effectMetaV2: UInt8 = 0x35
+        static let effectMetaV3: UInt8 = 0x36
     }
 
     // MARK: - Encoders
