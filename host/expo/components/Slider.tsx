@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, LayoutChangeEvent } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
+  useAnimatedProps,
   withTiming,
   runOnJS,
 } from "react-native-reanimated";
@@ -17,6 +18,8 @@ interface SliderProps {
   onValueChangeEnd?: (value: number) => void;
 }
 
+const AnimatedText = Animated.createAnimatedComponent(Text);
+
 export const Slider: React.FC<SliderProps> = ({
   label,
   value,
@@ -29,10 +32,11 @@ export const Slider: React.FC<SliderProps> = ({
   const translateX = useSharedValue(0);
   const startX = useSharedValue(0);
   const currentValue = useSharedValue(value);
+  const clampedValue = (val: number) => clamp(val, min, max);
 
   // Update shared value when prop changes
   React.useEffect(() => {
-    currentValue.value = value;
+    currentValue.value = clampedValue(value);
   }, [value, currentValue]);
 
   const clamp = (val: number, minVal: number, maxVal: number) => {
@@ -110,6 +114,10 @@ export const Slider: React.FC<SliderProps> = ({
     width.value = e.nativeEvent.layout.width;
   };
 
+  const animatedValueProps = useAnimatedProps(() => {
+    return { text: String(currentValue.value) };
+  });
+
   return (
     <View style={styles.container}>
       <GestureDetector gesture={gesture}>
@@ -119,7 +127,10 @@ export const Slider: React.FC<SliderProps> = ({
             <Text style={styles.label}>{label}</Text>
           </View>
           <View style={styles.valueContainer}>
-            <Text style={styles.value}>{value}</Text>
+            <AnimatedText
+              animatedProps={animatedValueProps}
+              style={styles.value}
+            />
           </View>
         </View>
       </GestureDetector>

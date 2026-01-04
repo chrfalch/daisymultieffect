@@ -1,16 +1,12 @@
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Pressable,
-} from "react-native";
+import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native";
 import { GestureHandlerRootView, Switch } from "react-native-gesture-handler";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { useDaisyMultiFX } from "../../hooks/useDaisyMultiFX";
 import { Slider } from "../../components/Slider";
+import { Card } from "../../components/Card";
+import { Button } from "../../components/Button";
+import { PedalSlot } from "../../components/PedalSlot";
 
 export const EditorScreen: React.FC = () => {
   const {
@@ -21,16 +17,21 @@ export const EditorScreen: React.FC = () => {
     refreshPatch,
     refreshEffectMeta,
     setSlotEnabled,
+    setSlotType,
     setSlotParam,
     getEffectName,
+    getEffectShortName,
     getParamName,
   } = useDaisyMultiFX();
-  const [expandedSlot, setExpandedSlot] = React.useState<number | null>(null);
+  const [expandedSlot, setExpandedSlot] = React.useState<number>(0);
 
-  const toggleSlot = (slotIndex: number) => {
-    setExpandedSlot((prev) => (prev === slotIndex ? null : slotIndex));
+  const selectSlot = (slotIndex: number) => {
+    setExpandedSlot(slotIndex);
   };
-  const slot = patch?.slots.find((s) => s.slotIndex === expandedSlot) ?? null;
+  const slot =
+    patch?.slots.find((s) => s.slotIndex === expandedSlot) ??
+    patch?.slots[0] ??
+    null;
 
   return (
     <GestureHandlerRootView style={styles.flex}>
@@ -53,77 +54,69 @@ export const EditorScreen: React.FC = () => {
             <Text style={styles.statusDetail}>{connectionStatus.status}</Text>
           )}
           <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.button} onPress={refreshPatch}>
-              <Text style={styles.buttonText}>Refresh Patch</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.button} onPress={refreshEffectMeta}>
-              <Text style={styles.buttonText}>Refresh Effects</Text>
-            </TouchableOpacity>
+            <Button title="Refresh Patch" onPress={refreshPatch} />
+            <Button title="Refresh Effects" onPress={refreshEffectMeta} />
           </View>
         </View>
 
         {/* Available Effects */}
         {effectMeta.length > 0 && (
-          <View style={styles.card}>
+          <Card>
             <Text style={styles.sectionTitle}>Available Effects</Text>
             <View style={styles.effectsList}>
-              {effectMeta.map((effect) => (
-                <View key={effect.typeId} style={styles.effectBadge}>
-                  <Text style={styles.effectBadgeText}>{effect.name}</Text>
-                </View>
-              ))}
+              {effectMeta.map((effect) => {
+                const isSelected = slot?.typeId === effect.typeId;
+                return (
+                  <Pressable
+                    key={effect.typeId}
+                    style={[
+                      styles.effectBadge,
+                      isSelected && styles.effectBadgeSelected,
+                    ]}
+                    onPress={() => {
+                      if (slot && !isSelected) {
+                        setSlotType(slot.slotIndex, effect.typeId);
+                      }
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.effectBadgeText,
+                        isSelected && styles.effectBadgeTextSelected,
+                      ]}
+                    >
+                      {effect.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
-          </View>
+          </Card>
         )}
 
         {/* Slots */}
         <View style={styles.wrappingPanel}>
-          {patch?.slots.map((current) => (
-            <Pressable
-              key={current.slotIndex}
-              style={[
-                styles.slotTitleContainer,
-                current === slot && { backgroundColor: "#2196F3" },
-              ]}
-              onPress={() => toggleSlot(current.slotIndex)}
-              accessibilityRole="button"
-              accessibilityLabel={`Toggle ${getEffectName(
-                current.typeId
-              )} details`}
-            >
-              <View style={styles.card}>
-                <View style={styles.slotHeader}>
-                  <Text style={styles.slotTitle}>
-                    {getEffectName(current.typeId) ||
-                      `Slot ${current.slotIndex + 1}`}
-                  </Text>
-                  <Pressable
-                    onPress={() =>
-                      setSlotEnabled(current.slotIndex, !current.enabled)
-                    }
-                  >
-                    {({ pressed }) => (
-                      <View
-                        style={[
-                          styles.enabledBadge,
-                          {
-                            backgroundColor: current.enabled
-                              ? "#4CAF50"
-                              : "#9E9E9E",
-                          },
-                          pressed && { opacity: 0.7 },
-                        ]}
-                      >
-                        <Text style={styles.enabledText}>
-                          {current.enabled ? "ON" : "OFF"}
-                        </Text>
-                      </View>
-                    )}
-                  </Pressable>
-                </View>
-              </View>
-            </Pressable>
-          ))}
+          {patch?.slots.map((current, index) => {
+            if (index >= patch.numSlots) {
+              return null;
+            }
+            const isSelected = current.slotIndex === expandedSlot;
+            return (
+              <PedalSlot
+                key={current.slotIndex}
+                name={
+                  getEffectShortName(current.typeId) ||
+                  `Slot ${current.slotIndex + 1}`
+                }
+                enabled={current.enabled}
+                selected={isSelected}
+                onPress={() => selectSlot(current.slotIndex)}
+                onToggleEnabled={() =>
+                  setSlotEnabled(current.slotIndex, !current.enabled)
+                }
+              />
+            );
+          })}
         </View>
 
         {/* Empty State */}
@@ -145,17 +138,15 @@ export const EditorScreen: React.FC = () => {
           entering={SlideInDown}
           exiting={SlideOutDown}
         >
-          <Pressable onPress={() => toggleSlot(slot.slotIndex)}>
-            <View style={styles.slotHeader}>
-              <Text style={styles.slotTitle}>
-                {getEffectName(slot.typeId) || `Slot ${slot.slotIndex + 1}`}
-              </Text>
-              <Switch
-                value={slot.enabled}
-                onValueChange={(value) => setSlotEnabled(slot.slotIndex, value)}
-              />
-            </View>
-          </Pressable>
+          <View style={styles.parameterPanelHeader}>
+            <Text style={styles.parameterPanelTitle}>
+              {getEffectName(slot.typeId) || `Slot ${slot.slotIndex + 1}`}
+            </Text>
+            <Switch
+              value={slot.enabled}
+              onValueChange={(value) => setSlotEnabled(slot.slotIndex, value)}
+            />
+          </View>
           {/* Parameters */}
           <View style={styles.paramsContainer}>
             {Object.entries(slot.params).map(
@@ -237,28 +228,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
   },
-  button: {
-    backgroundColor: "#2196F3",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "500",
-  },
-  card: {
-    backgroundColor: "#fff",
-    margin: 16,
-    marginTop: 0,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "600",
@@ -275,60 +244,32 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 16,
   },
+  effectBadgeSelected: {
+    backgroundColor: "#2196F3",
+  },
   effectBadgeText: {
     color: "#1976D2",
     fontSize: 14,
   },
-  slotHeader: {
+  effectBadgeTextSelected: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  parameterPanelHeader: {
+    flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
-    width: 70,
-    height: 80,
   },
-  slotTitleContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  slotTitle: {
+  parameterPanelTitle: {
     fontSize: 18,
     fontWeight: "600",
-    textAlign: "center",
-  },
-  enabledBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  enabledText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 4,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: "#666",
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: "500",
   },
   paramsContainer: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: "#eee",
-  },
-  paramsTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
-    marginBottom: 8,
   },
   emptyState: {
     margin: 16,
