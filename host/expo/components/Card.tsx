@@ -29,6 +29,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    borderWidth: 2,
+    borderColor: "#EEEEEE",
   },
   cardSelected: {
     backgroundColor: "#E3F2FD",

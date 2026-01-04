@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   pedal: {
-    width: 86,
+    width: 90,
     height: 120,
   },
 
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   shortName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "700",
     textAlign: "center",
     letterSpacing: 0.5,
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    borderWidth: 3,
+    borderWidth: 2,
     backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",

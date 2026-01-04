@@ -3,16 +3,17 @@ import { Text, StyleSheet, ScrollView, Pressable } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useDaisyMultiFX } from "../../hooks/useDaisyMultiFX";
-import { Slider } from "../../components/Slider";
 import { Card } from "../../components/Card";
 import { CardTitle } from "../../components/CardTitle";
 import { PedalSlot } from "../../components/PedalSlot";
 import { ConnectionStatus } from "../../components/ConnectionStatus";
 import { Button } from "../../components/Button";
-import { Badge } from "../../components/Badge";
 import { HStack, VStack, WrapStack } from "../../components/Stack";
+import { ParametersPanel } from "./ParametersPanel";
+import { RoutingPanel } from "./RoutingPanel";
+import { EffectContextMenuButton } from "./EffectContextMenuButton";
 
-type PanelTab = "parameters" | "effect" | "routing";
+type PanelTab = "parameters" | "routing";
 
 const PanelTabButton: React.FC<{
   label: string;
@@ -67,35 +68,6 @@ export const EditorScreen: React.FC = () => {
     getParamName,
     getParamMeta,
   } = useDaisyMultiFX();
-
-  const formatValueFromRange = (
-    raw: number,
-    meta?: {
-      range?: { min: number; max: number; step: number };
-      unitPrefix?: string;
-      unitSuffix?: string;
-    }
-  ) => {
-    const range = meta?.range;
-    if (!range) return String(raw);
-    const v01 = raw / 127;
-    const unclamped = range.min + v01 * (range.max - range.min);
-    const step = range.step;
-    const stepped =
-      step > 0
-        ? Math.round((unclamped - range.min) / step) * step + range.min
-        : unclamped;
-
-    // Derive a reasonable number of decimals from step
-    const decimals =
-      step > 0 && step < 1
-        ? Math.min(6, Math.max(0, Math.ceil(-Math.log10(step))))
-        : 0;
-    const valueText = stepped.toFixed(decimals);
-    const prefix = meta?.unitPrefix ? meta.unitPrefix : "";
-    const suffix = meta?.unitSuffix ? ` ${meta.unitSuffix}` : "";
-    return `${prefix}${valueText}${suffix}`;
-  };
   const [expandedSlot, setExpandedSlot] = React.useState<number>(0);
   const [panelTab, setPanelTab] = React.useState<PanelTab>("parameters");
 
@@ -112,34 +84,6 @@ export const EditorScreen: React.FC = () => {
     if (!slot) return undefined;
     return effectMeta.find((e) => e.typeId === slot.typeId)?.description;
   }, [effectMeta, slot?.typeId]);
-
-  const routeOptions = React.useMemo(() => {
-    if (!patch || !slot)
-      return [] as Array<{ label: string; value: number; enabled: boolean }>;
-
-    const options: Array<{ label: string; value: number; enabled: boolean }> = [
-      { label: "IN", value: 255, enabled: true },
-    ];
-
-    // Avoid forward references (future slot outputs are 0 for the current frame)
-    for (let i = 0; i < 12; i++) {
-      const enabled = i < slot.slotIndex;
-      const s = patch.slots[i];
-      const short = s ? getEffectShortName(s.typeId) : `Slot ${i + 1}`;
-      options.push({ label: `${i + 1}:${short}`, value: i, enabled });
-    }
-    return options;
-  }, [patch, slot?.slotIndex, getEffectShortName]);
-
-  const policyOptions = React.useMemo(
-    () =>
-      [
-        { label: "Auto", value: 0 },
-        { label: "Mono", value: 1 },
-        { label: "Stereo", value: 2 },
-      ] as const,
-    []
-  );
 
   return (
     <GestureHandlerRootView style={styles.flex}>
@@ -164,7 +108,7 @@ export const EditorScreen: React.FC = () => {
         </Card>
 
         {/* Slots */}
-        <WrapStack gap={10}>
+        <WrapStack gap={10} justify="center">
           {patch?.slots.map((current, index) => {
             if (index >= patch.numSlots) {
               return null;
@@ -208,21 +152,19 @@ export const EditorScreen: React.FC = () => {
       {slot && (
         <VStack padding={16}>
           <HStack justify="space-between" align="center">
-            <Text style={styles.parameterPanelTitle}>
-              {getEffectName(slot.typeId) || `Slot ${slot.slotIndex + 1}`}
-            </Text>
+            <HStack gap={8} align="center" style={styles.headerLeft}>
+              <EffectContextMenuButton
+                slot={slot}
+                effectMeta={effectMeta}
+                setSlotType={setSlotType}
+              />
+            </HStack>
             <HStack gap={8} align="center">
               <PanelTabButton
                 label="Parameters"
                 icon="options-outline"
                 selected={panelTab === "parameters"}
                 onPress={() => setPanelTab("parameters")}
-              />
-              <PanelTabButton
-                label="Effect"
-                icon="color-wand-outline"
-                selected={panelTab === "effect"}
-                onPress={() => setPanelTab("effect")}
               />
               <PanelTabButton
                 label="Routing"
@@ -247,179 +189,24 @@ export const EditorScreen: React.FC = () => {
                 panelTab === "parameters" ? undefined : styles.hiddenContent
               }
             >
-              {Object.keys(slot.params).length === 0 && (
-                <Text style={styles.todoText}>
-                  No parameters for this effect.
-                </Text>
-              )}
-              {Object.entries(slot.params).map(([paramId, value]) => {
-                const id = Number(paramId);
-                const name = getParamName(slot.typeId, id);
-                if (!name) return null;
-
-                const meta = getParamMeta(slot.typeId, id);
-                return (
-                  <Slider
-                    key={paramId}
-                    label={name}
-                    description={meta?.description}
-                    value={value}
-                    min={0}
-                    max={127}
-                    formatValue={(raw) => formatValueFromRange(raw, meta)}
-                    onValueChange={(newValue) =>
-                      setSlotParam(slot.slotIndex, id, newValue)
-                    }
-                  />
-                );
-              })}
+              <ParametersPanel
+                slot={slot}
+                getParamName={getParamName}
+                getParamMeta={getParamMeta}
+                setSlotParam={setSlotParam}
+              />
             </VStack>
 
-            {panelTab === "effect" && (
-              <VStack style={styles.overlayPanel} paddingVertical={16}>
-                {effectMeta.length === 0 ? (
-                  <Text style={styles.todoText}>
-                    No effects metadata loaded yet. Tap “Refresh Effects”.
-                  </Text>
-                ) : (
-                  <WrapStack gap={8}>
-                    {effectMeta.map((effect) => {
-                      const isSelected = slot?.typeId === effect.typeId;
-                      return (
-                        <Badge
-                          key={effect.typeId}
-                          label={effect.name}
-                          selected={isSelected}
-                          onPress={() => {
-                            if (slot && !isSelected) {
-                              setSlotType(slot.slotIndex, effect.typeId);
-                            }
-                          }}
-                        />
-                      );
-                    })}
-                  </WrapStack>
-                )}
-              </VStack>
-            )}
-
             {panelTab === "routing" && (
-              <ScrollView style={styles.overlayPanel}>
-                <VStack paddingVertical={16} gap={12}>
-                  <Text style={styles.routingSectionTitle}>Inputs</Text>
-
-                  <VStack gap={8}>
-                    <Text style={styles.routingLabel}>Left input</Text>
-                    <WrapStack gap={8}>
-                      {routeOptions.map((opt) => (
-                        <Badge
-                          key={`inL-${opt.value}`}
-                          label={opt.label}
-                          selected={slot.inputL === opt.value}
-                          onPress={
-                            opt.enabled
-                              ? () =>
-                                  setSlotRouting(
-                                    slot.slotIndex,
-                                    opt.value,
-                                    slot.inputR
-                                  )
-                              : undefined
-                          }
-                          style={
-                            !opt.enabled ? styles.badgeDisabled : undefined
-                          }
-                          textStyle={
-                            !opt.enabled ? styles.badgeTextDisabled : undefined
-                          }
-                        />
-                      ))}
-                    </WrapStack>
-                  </VStack>
-
-                  <VStack gap={8}>
-                    <Text style={styles.routingLabel}>Right input</Text>
-                    <WrapStack gap={8}>
-                      {routeOptions.map((opt) => (
-                        <Badge
-                          key={`inR-${opt.value}`}
-                          label={opt.label}
-                          selected={slot.inputR === opt.value}
-                          onPress={
-                            opt.enabled
-                              ? () =>
-                                  setSlotRouting(
-                                    slot.slotIndex,
-                                    slot.inputL,
-                                    opt.value
-                                  )
-                              : undefined
-                          }
-                          style={
-                            !opt.enabled ? styles.badgeDisabled : undefined
-                          }
-                          textStyle={
-                            !opt.enabled ? styles.badgeTextDisabled : undefined
-                          }
-                        />
-                      ))}
-                    </WrapStack>
-                  </VStack>
-
-                  <Text style={styles.routingSectionTitle}>Channel</Text>
-                  <WrapStack gap={8}>
-                    <Badge
-                      label={`Sum to mono: ${slot.sumToMono ? "ON" : "OFF"}`}
-                      selected={slot.sumToMono}
-                      onPress={() =>
-                        setSlotSumToMono(slot.slotIndex, !slot.sumToMono)
-                      }
-                    />
-                  </WrapStack>
-
-                  <VStack gap={8}>
-                    <Text style={styles.routingLabel}>Channel policy</Text>
-                    <WrapStack gap={8}>
-                      {policyOptions.map((p) => (
-                        <Badge
-                          key={`pol-${p.value}`}
-                          label={p.label}
-                          selected={slot.channelPolicy === p.value}
-                          onPress={() =>
-                            setSlotChannelPolicy(slot.slotIndex, p.value)
-                          }
-                        />
-                      ))}
-                    </WrapStack>
-                  </VStack>
-
-                  <Text style={styles.routingSectionTitle}>Mix</Text>
-                  <VStack gap={12}>
-                    <Slider
-                      label="Dry"
-                      description="Dry level (0..127)"
-                      value={slot.dry}
-                      min={0}
-                      max={127}
-                      formatValue={(raw) => String(raw)}
-                      onValueChange={(dry) =>
-                        setSlotMix(slot.slotIndex, dry, slot.wet)
-                      }
-                    />
-                    <Slider
-                      label="Wet"
-                      description="Wet level (0..127)"
-                      value={slot.wet}
-                      min={0}
-                      max={127}
-                      formatValue={(raw) => String(raw)}
-                      onValueChange={(wet) =>
-                        setSlotMix(slot.slotIndex, slot.dry, wet)
-                      }
-                    />
-                  </VStack>
-                </VStack>
-              </ScrollView>
+              <RoutingPanel
+                patch={patch!}
+                slot={slot}
+                getEffectShortName={getEffectShortName}
+                setSlotRouting={setSlotRouting}
+                setSlotSumToMono={setSlotSumToMono}
+                setSlotMix={setSlotMix}
+                setSlotChannelPolicy={setSlotChannelPolicy}
+              />
             )}
           </VStack>
         </VStack>
@@ -443,6 +230,10 @@ const styles = StyleSheet.create({
   parameterPanelTitle: {
     fontSize: 18,
     fontWeight: "600",
+  },
+  headerLeft: {
+    flex: 1,
+    marginRight: 8,
   },
   effectDescription: {
     marginTop: 6,
@@ -487,25 +278,6 @@ const styles = StyleSheet.create({
   panelTabButtonTextSelected: {
     color: "#fff",
     fontWeight: "600",
-  },
-  todoText: {
-    fontSize: 14,
-    color: "#666",
-  },
-  routingSectionTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-  },
-  routingLabel: {
-    fontSize: 13,
-    color: "#666",
-  },
-  badgeDisabled: {
-    opacity: 0.5,
-  },
-  badgeTextDisabled: {
-    opacity: 0.8,
   },
   emptyStateText: {
     fontSize: 16,
