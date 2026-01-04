@@ -47,6 +47,7 @@ namespace daisyfx
         {
             constexpr uint8_t PATCH_DUMP = 0x13;
             constexpr uint8_t EFFECT_META = 0x33;
+            constexpr uint8_t EFFECT_META_V3 = 0x36;
         }
 
         // Effect type IDs

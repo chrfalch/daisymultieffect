@@ -460,6 +460,57 @@ void DaisyMultiFXProcessor::sendEffectMeta()
     sysex.push_back(0xF7);
     auto msg = juce::MidiMessage::createSysExMessage(sysex.data() + 1, static_cast<int>(sysex.size()) - 2);
     pendingMidiOut_.addEvent(msg, 0);
+
+    // Also send V3 metadata per effect (includes 3-character shortName).
+    // Format: F0 7D <sender> 36 <typeId> <nameLen> <name...> <shortName[3]> <numParams>
+    //         (paramId kind nameLen name...)xN F7
+    for (size_t i = 0; i < Effects::kNumEffects; ++i)
+    {
+        const auto &entry = Effects::kAllEffects[i];
+        const auto *meta = entry.meta;
+
+        std::vector<uint8_t> v3;
+        v3.reserve(256);
+        v3.push_back(0xF0);
+        v3.push_back(MidiProtocol::MANUFACTURER_ID);
+        v3.push_back(MidiProtocol::Sender::VST);
+        v3.push_back(MidiProtocol::Resp::EFFECT_META_V3);
+
+        v3.push_back(static_cast<uint8_t>(entry.typeId) & 0x7F);
+
+        const char *name = meta && meta->name ? meta->name : "";
+        size_t nameLen = std::strlen(name);
+        if (nameLen > 60)
+            nameLen = 60;
+        v3.push_back(static_cast<uint8_t>(nameLen) & 0x7F);
+        for (size_t c = 0; c < nameLen; ++c)
+            v3.push_back(static_cast<uint8_t>(name[c]) & 0x7F);
+
+        const char *shortName = (meta && meta->shortName) ? meta->shortName : "---";
+        for (int k = 0; k < 3; ++k)
+            v3.push_back(static_cast<uint8_t>(shortName[k]) & 0x7F);
+
+        const uint8_t numParams = meta ? meta->numParams : 0;
+        v3.push_back(numParams & 0x7F);
+        for (uint8_t p = 0; p < numParams; ++p)
+        {
+            const auto &param = meta->params[p];
+            v3.push_back(static_cast<uint8_t>(param.id) & 0x7F);
+            v3.push_back(static_cast<uint8_t>(param.kind) & 0x7F);
+
+            const char *pname = param.name ? param.name : "";
+            size_t pnameLen = std::strlen(pname);
+            if (pnameLen > 24)
+                pnameLen = 24;
+            v3.push_back(static_cast<uint8_t>(pnameLen) & 0x7F);
+            for (size_t c = 0; c < pnameLen; ++c)
+                v3.push_back(static_cast<uint8_t>(pname[c]) & 0x7F);
+        }
+
+        v3.push_back(0xF7);
+        auto v3Msg = juce::MidiMessage::createSysExMessage(v3.data() + 1, static_cast<int>(v3.size()) - 2);
+        pendingMidiOut_.addEvent(v3Msg, 0);
+    }
 }
 
 //=============================================================================
