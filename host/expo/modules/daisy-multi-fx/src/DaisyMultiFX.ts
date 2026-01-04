@@ -103,6 +103,51 @@ export function setSlotParam(
 }
 
 /**
+ * Set routing taps for a slot.
+ * @param slot - Slot index (0-11)
+ * @param inputL - Left input route (0-11 = slot, 255 = IN)
+ * @param inputR - Right input route
+ */
+export function setSlotRouting(
+  slot: number,
+  inputL: number,
+  inputR: number
+): void {
+  DaisyMultiFXModule.setSlotRouting(slot, inputL, inputR);
+}
+
+/**
+ * Set sum-to-mono for a slot.
+ * @param slot - Slot index (0-11)
+ * @param sumToMono - Whether to sum L+R to mono before processing
+ */
+export function setSlotSumToMono(slot: number, sumToMono: boolean): void {
+  DaisyMultiFXModule.setSlotSumToMono(slot, sumToMono);
+}
+
+/**
+ * Set dry/wet mix for a slot.
+ * @param slot - Slot index (0-11)
+ * @param dry - Dry level (0-127)
+ * @param wet - Wet level (0-127)
+ */
+export function setSlotMix(slot: number, dry: number, wet: number): void {
+  DaisyMultiFXModule.setSlotMix(slot, dry, wet);
+}
+
+/**
+ * Set channel policy for a slot.
+ * @param slot - Slot index (0-11)
+ * @param channelPolicy - 0=Auto, 1=ForceMono, 2=ForceStereo
+ */
+export function setSlotChannelPolicy(
+  slot: number,
+  channelPolicy: number
+): void {
+  DaisyMultiFXModule.setSlotChannelPolicy(slot, channelPolicy);
+}
+
+/**
  * Subscribe to patch updates.
  * Called when a new patch is received from the device.
  */

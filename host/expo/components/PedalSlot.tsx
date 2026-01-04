@@ -4,6 +4,7 @@ import { Card } from "./Card";
 
 interface PedalSlotProps {
   name: string;
+  shortName: string;
   enabled: boolean;
   selected?: boolean;
   onPress: () => void;
@@ -12,11 +13,15 @@ interface PedalSlotProps {
 
 export const PedalSlot: React.FC<PedalSlotProps> = ({
   name,
+  shortName,
   enabled,
   selected = false,
   onPress,
   onToggleEnabled,
 }) => {
+  const topStripBg = selected ? "#2196F3" : "#E3F2FD";
+  const topStripText = selected ? "#fff" : "#1976D2";
+
   return (
     <Pressable
       style={styles.container}
@@ -24,26 +29,50 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
       accessibilityRole="button"
       accessibilityLabel={`Select ${name} details`}
     >
-      <Card selected={selected}>
-        <View style={styles.header}>
-          <Text style={[styles.title, selected && styles.titleSelected]}>
-            {name}
-          </Text>
-          <Pressable onPress={onToggleEnabled}>
-            {({ pressed }) => (
-              <View
-                style={[
-                  styles.enabledBadge,
-                  {
-                    backgroundColor: enabled ? "#4CAF50" : "#9E9E9E",
-                  },
-                  pressed && { opacity: 0.7 },
-                ]}
-              >
-                <Text style={styles.enabledText}>{enabled ? "ON" : "OFF"}</Text>
-              </View>
-            )}
-          </Pressable>
+      <Card selected={selected} style={styles.pedalCard}>
+        <View style={styles.pedal}>
+          <View style={[styles.topStrip, { backgroundColor: topStripBg }]}>
+            <Text style={[styles.shortName, { color: topStripText }]}>
+              {shortName}
+            </Text>
+          </View>
+
+          <View style={styles.face}>
+            <Text
+              style={[styles.name, selected && styles.nameSelected]}
+              numberOfLines={2}
+            >
+              {name}
+            </Text>
+
+            <Pressable
+              onPress={onToggleEnabled}
+              accessibilityRole="button"
+              accessibilityLabel={`Turn ${name} ${enabled ? "off" : "on"}`}
+            >
+              {({ pressed }) => (
+                <View
+                  style={[
+                    styles.footswitchOuter,
+                    {
+                      borderColor: enabled ? "#2196F3" : "#9E9E9E",
+                    },
+                    pressed && { opacity: 0.7 },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.footswitchInner,
+                      {
+                        borderColor: enabled ? "#1976D2" : "#9E9E9E",
+                        backgroundColor: enabled ? "#4CAF50" : "#fff",
+                      },
+                    ]}
+                  />
+                </View>
+              )}
+            </Pressable>
+          </View>
         </View>
       </Card>
     </Pressable>
@@ -55,31 +84,59 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  header: {
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-    width: 70,
-    height: 80,
+
+  pedalCard: {
+    padding: 0,
+    overflow: "hidden",
   },
-  title: {
-    fontSize: 18,
-    fontWeight: "600",
-    textAlign: "center",
+  pedal: {
+    width: 86,
+    height: 120,
   },
-  titleSelected: {
-    color: "#1976D2",
-  },
-  enabledBadge: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+
+  topStrip: {
+    height: 28,
     justifyContent: "center",
     alignItems: "center",
   },
-  enabledText: {
-    color: "#fff",
-    fontSize: 12,
+  shortName: {
+    fontSize: 16,
+    fontWeight: "700",
+    textAlign: "center",
+    letterSpacing: 0.5,
+  },
+
+  face: {
+    flex: 1,
+    paddingHorizontal: 10,
+    paddingTop: 10,
+    paddingBottom: 12,
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  name: {
+    fontSize: 10,
+    textAlign: "center",
+  },
+  nameSelected: {
+    color: "#1976D2",
     fontWeight: "600",
+  },
+
+  footswitchOuter: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 3,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  footswitchInner: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    backgroundColor: "#fff",
   },
 });

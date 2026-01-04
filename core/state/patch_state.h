@@ -136,6 +136,30 @@ namespace daisyfx
             notifySlotRoutingChanged(slot, inputL, inputR);
         }
 
+        void setSlotSumToMono(uint8_t slot, bool sumToMono)
+        {
+            if (slot >= MAX_SLOTS)
+                return;
+
+            uint8_t newVal = sumToMono ? 1 : 0;
+            if (patch_.slots[slot].sumToMono == newVal)
+                return;
+
+            patch_.slots[slot].sumToMono = newVal;
+            notifySlotSumToMonoChanged(slot, sumToMono);
+        }
+
+        void setSlotChannelPolicy(uint8_t slot, uint8_t channelPolicy)
+        {
+            if (slot >= MAX_SLOTS)
+                return;
+            if (patch_.slots[slot].channelPolicy == channelPolicy)
+                return;
+
+            patch_.slots[slot].channelPolicy = channelPolicy;
+            notifySlotChannelPolicyChanged(slot, channelPolicy);
+        }
+
         void setTempo(float bpm)
         {
             if (tempo_ == bpm)
@@ -330,6 +354,28 @@ namespace daisyfx
             }
             for (auto *o : obs)
                 o->onSlotRoutingChanged(slot, inputL, inputR);
+        }
+
+        void notifySlotSumToMonoChanged(uint8_t slot, bool sumToMono)
+        {
+            std::vector<PatchObserver *> obs;
+            {
+                std::lock_guard<std::mutex> lock(observerMutex_);
+                obs = observers_;
+            }
+            for (auto *o : obs)
+                o->onSlotSumToMonoChanged(slot, sumToMono);
+        }
+
+        void notifySlotChannelPolicyChanged(uint8_t slot, uint8_t channelPolicy)
+        {
+            std::vector<PatchObserver *> obs;
+            {
+                std::lock_guard<std::mutex> lock(observerMutex_);
+                obs = observers_;
+            }
+            for (auto *o : obs)
+                o->onSlotChannelPolicyChanged(slot, channelPolicy);
         }
 
         void notifyPatchLoaded()

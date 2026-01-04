@@ -4,6 +4,15 @@ import Foundation
 enum MidiProtocol {
     static let manufacturerId: UInt8 = 0x7D
 
+    // SysEx data bytes must be 7-bit. The firmware encodes ROUTE_INPUT (255) as 127 on-wire.
+    static func encodeRoute(_ route: UInt8) -> UInt8 {
+        (route == 255) ? 127 : (route & 0x7F)
+    }
+
+    static func decodeRoute(_ encoded: UInt8) -> UInt8 {
+        (encoded == 127) ? 255 : encoded
+    }
+
     enum Sender {
         static let firmware: UInt8 = 0x01
         static let vst: UInt8 = 0x02
@@ -15,6 +24,10 @@ enum MidiProtocol {
         static let setParam: UInt8 = 0x20
         static let setEnabled: UInt8 = 0x21
         static let setType: UInt8 = 0x22
+        static let setRouting: UInt8 = 0x23
+        static let setSumToMono: UInt8 = 0x24
+        static let setMix: UInt8 = 0x25
+        static let setChannelPolicy: UInt8 = 0x26
         static let requestMeta: UInt8 = 0x32
     }
 
@@ -51,5 +64,32 @@ enum MidiProtocol {
 
     static func encodeRequestMeta() -> [UInt8] {
         [0xF0, manufacturerId, Sender.swift, Cmd.requestMeta, 0xF7]
+    }
+
+    static func encodeSetRouting(slot: UInt8, inputL: UInt8, inputR: UInt8) -> [UInt8] {
+        [
+            0xF0, manufacturerId, Sender.swift, Cmd.setRouting, slot & 0x7F,
+            encodeRoute(inputL),
+            encodeRoute(inputR),
+            0xF7,
+        ]
+    }
+
+    static func encodeSetSumToMono(slot: UInt8, sumToMono: Bool) -> [UInt8] {
+        [
+            0xF0, manufacturerId, Sender.swift, Cmd.setSumToMono, slot & 0x7F, sumToMono ? 1 : 0,
+            0xF7,
+        ]
+    }
+
+    static func encodeSetMix(slot: UInt8, dry: UInt8, wet: UInt8) -> [UInt8] {
+        [0xF0, manufacturerId, Sender.swift, Cmd.setMix, slot & 0x7F, dry & 0x7F, wet & 0x7F, 0xF7]
+    }
+
+    static func encodeSetChannelPolicy(slot: UInt8, channelPolicy: UInt8) -> [UInt8] {
+        [
+            0xF0, manufacturerId, Sender.swift, Cmd.setChannelPolicy, slot & 0x7F,
+            channelPolicy & 0x7F, 0xF7,
+        ]
     }
 }

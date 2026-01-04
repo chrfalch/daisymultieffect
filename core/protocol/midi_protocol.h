@@ -39,6 +39,10 @@ namespace daisyfx
             constexpr uint8_t SET_PARAM = 0x20;
             constexpr uint8_t SET_ENABLED = 0x21;
             constexpr uint8_t SET_TYPE = 0x22;
+            constexpr uint8_t SET_ROUTING = 0x23;
+            constexpr uint8_t SET_SUM_TO_MONO = 0x24;
+            constexpr uint8_t SET_MIX = 0x25;
+            constexpr uint8_t SET_CHANNEL_POLICY = 0x26;
             constexpr uint8_t REQUEST_META = 0x32;
         }
 
@@ -78,8 +82,20 @@ namespace daisyfx
             uint8_t value = 0;
             bool enabled = false;
             uint8_t typeId = 0;
+            uint8_t inputL = 0;
+            uint8_t inputR = 0;
+            bool sumToMono = false;
+            uint8_t dry = 0;
+            uint8_t wet = 0;
+            uint8_t channelPolicy = 0;
             bool valid = false;
         };
+
+        inline uint8_t decodeRouteByte(uint8_t encoded)
+        {
+            // On-wire 7-bit encoding uses 127 to represent ROUTE_INPUT (255).
+            return (encoded == 127) ? 255 : encoded;
+        }
 
         //=========================================================================
         // Encoders - Create SysEx messages (all include sender ID)
@@ -216,6 +232,48 @@ namespace daisyfx
                     msg.slot = data[3];
                     msg.paramId = data[4];
                     msg.value = data[5];
+                    msg.valid = true;
+                }
+                break;
+
+            case Cmd::SET_ROUTING:
+                // 7D <sender> 23 <slot> <inputL> <inputR>
+                if (size >= 6)
+                {
+                    msg.slot = data[3];
+                    msg.inputL = decodeRouteByte(data[4]);
+                    msg.inputR = decodeRouteByte(data[5]);
+                    msg.valid = true;
+                }
+                break;
+
+            case Cmd::SET_SUM_TO_MONO:
+                // 7D <sender> 24 <slot> <sumToMono>
+                if (size >= 5)
+                {
+                    msg.slot = data[3];
+                    msg.sumToMono = data[4] != 0;
+                    msg.valid = true;
+                }
+                break;
+
+            case Cmd::SET_MIX:
+                // 7D <sender> 25 <slot> <dry> <wet>
+                if (size >= 6)
+                {
+                    msg.slot = data[3];
+                    msg.dry = data[4];
+                    msg.wet = data[5];
+                    msg.valid = true;
+                }
+                break;
+
+            case Cmd::SET_CHANNEL_POLICY:
+                // 7D <sender> 26 <slot> <policy>
+                if (size >= 5)
+                {
+                    msg.slot = data[3];
+                    msg.channelPolicy = data[4];
                     msg.valid = true;
                 }
                 break;

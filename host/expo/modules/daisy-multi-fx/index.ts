@@ -24,6 +24,10 @@ export {
   setSlotEnabled,
   setSlotType,
   setSlotParam,
+  setSlotRouting,
+  setSlotSumToMono,
+  setSlotMix,
+  setSlotChannelPolicy,
   // Events
   addPatchUpdateListener,
   addEffectMetaUpdateListener,

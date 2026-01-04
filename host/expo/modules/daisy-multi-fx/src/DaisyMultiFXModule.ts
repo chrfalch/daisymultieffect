@@ -34,6 +34,12 @@ declare class DaisyMultiFXModuleType extends NativeModule<{
   setSlotEnabled(slot: number, enabled: boolean): void;
   setSlotType(slot: number, typeId: number): void;
   setSlotParam(slot: number, paramId: number, value: number): void;
+
+  // Routing/mix control
+  setSlotRouting(slot: number, inputL: number, inputR: number): void;
+  setSlotSumToMono(slot: number, sumToMono: boolean): void;
+  setSlotMix(slot: number, dry: number, wet: number): void;
+  setSlotChannelPolicy(slot: number, channelPolicy: number): void;
 }
 
 export default requireNativeModule<DaisyMultiFXModuleType>("DaisyMultiFX");

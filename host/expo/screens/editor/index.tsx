@@ -58,6 +58,10 @@ export const EditorScreen: React.FC = () => {
     setSlotEnabled,
     setSlotType,
     setSlotParam,
+    setSlotRouting,
+    setSlotSumToMono,
+    setSlotMix,
+    setSlotChannelPolicy,
     getEffectName,
     getEffectShortName,
     getParamName,
@@ -109,6 +113,34 @@ export const EditorScreen: React.FC = () => {
     return effectMeta.find((e) => e.typeId === slot.typeId)?.description;
   }, [effectMeta, slot?.typeId]);
 
+  const routeOptions = React.useMemo(() => {
+    if (!patch || !slot)
+      return [] as Array<{ label: string; value: number; enabled: boolean }>;
+
+    const options: Array<{ label: string; value: number; enabled: boolean }> = [
+      { label: "IN", value: 255, enabled: true },
+    ];
+
+    // Avoid forward references (future slot outputs are 0 for the current frame)
+    for (let i = 0; i < 12; i++) {
+      const enabled = i < slot.slotIndex;
+      const s = patch.slots[i];
+      const short = s ? getEffectShortName(s.typeId) : `Slot ${i + 1}`;
+      options.push({ label: `${i + 1}:${short}`, value: i, enabled });
+    }
+    return options;
+  }, [patch, slot?.slotIndex, getEffectShortName]);
+
+  const policyOptions = React.useMemo(
+    () =>
+      [
+        { label: "Auto", value: 0 },
+        { label: "Mono", value: 1 },
+        { label: "Stereo", value: 2 },
+      ] as const,
+    []
+  );
+
   return (
     <GestureHandlerRootView style={styles.flex}>
       <ScrollView
@@ -141,8 +173,12 @@ export const EditorScreen: React.FC = () => {
             return (
               <PedalSlot
                 key={current.slotIndex}
-                name={
+                shortName={
                   getEffectShortName(current.typeId) ||
+                  `Slot ${current.slotIndex + 1}`
+                }
+                name={
+                  getEffectName(current.typeId) ||
                   `Slot ${current.slotIndex + 1}`
                 }
                 enabled={current.enabled}
@@ -268,9 +304,122 @@ export const EditorScreen: React.FC = () => {
             )}
 
             {panelTab === "routing" && (
-              <VStack style={styles.overlayPanel}>
-                <Text style={styles.todoText}>Routing (todo).</Text>
-              </VStack>
+              <ScrollView style={styles.overlayPanel}>
+                <VStack paddingVertical={16} gap={12}>
+                  <Text style={styles.routingSectionTitle}>Inputs</Text>
+
+                  <VStack gap={8}>
+                    <Text style={styles.routingLabel}>Left input</Text>
+                    <WrapStack gap={8}>
+                      {routeOptions.map((opt) => (
+                        <Badge
+                          key={`inL-${opt.value}`}
+                          label={opt.label}
+                          selected={slot.inputL === opt.value}
+                          onPress={
+                            opt.enabled
+                              ? () =>
+                                  setSlotRouting(
+                                    slot.slotIndex,
+                                    opt.value,
+                                    slot.inputR
+                                  )
+                              : undefined
+                          }
+                          style={
+                            !opt.enabled ? styles.badgeDisabled : undefined
+                          }
+                          textStyle={
+                            !opt.enabled ? styles.badgeTextDisabled : undefined
+                          }
+                        />
+                      ))}
+                    </WrapStack>
+                  </VStack>
+
+                  <VStack gap={8}>
+                    <Text style={styles.routingLabel}>Right input</Text>
+                    <WrapStack gap={8}>
+                      {routeOptions.map((opt) => (
+                        <Badge
+                          key={`inR-${opt.value}`}
+                          label={opt.label}
+                          selected={slot.inputR === opt.value}
+                          onPress={
+                            opt.enabled
+                              ? () =>
+                                  setSlotRouting(
+                                    slot.slotIndex,
+                                    slot.inputL,
+                                    opt.value
+                                  )
+                              : undefined
+                          }
+                          style={
+                            !opt.enabled ? styles.badgeDisabled : undefined
+                          }
+                          textStyle={
+                            !opt.enabled ? styles.badgeTextDisabled : undefined
+                          }
+                        />
+                      ))}
+                    </WrapStack>
+                  </VStack>
+
+                  <Text style={styles.routingSectionTitle}>Channel</Text>
+                  <WrapStack gap={8}>
+                    <Badge
+                      label={`Sum to mono: ${slot.sumToMono ? "ON" : "OFF"}`}
+                      selected={slot.sumToMono}
+                      onPress={() =>
+                        setSlotSumToMono(slot.slotIndex, !slot.sumToMono)
+                      }
+                    />
+                  </WrapStack>
+
+                  <VStack gap={8}>
+                    <Text style={styles.routingLabel}>Channel policy</Text>
+                    <WrapStack gap={8}>
+                      {policyOptions.map((p) => (
+                        <Badge
+                          key={`pol-${p.value}`}
+                          label={p.label}
+                          selected={slot.channelPolicy === p.value}
+                          onPress={() =>
+                            setSlotChannelPolicy(slot.slotIndex, p.value)
+                          }
+                        />
+                      ))}
+                    </WrapStack>
+                  </VStack>
+
+                  <Text style={styles.routingSectionTitle}>Mix</Text>
+                  <VStack gap={12}>
+                    <Slider
+                      label="Dry"
+                      description="Dry level (0..127)"
+                      value={slot.dry}
+                      min={0}
+                      max={127}
+                      formatValue={(raw) => String(raw)}
+                      onValueChange={(dry) =>
+                        setSlotMix(slot.slotIndex, dry, slot.wet)
+                      }
+                    />
+                    <Slider
+                      label="Wet"
+                      description="Wet level (0..127)"
+                      value={slot.wet}
+                      min={0}
+                      max={127}
+                      formatValue={(raw) => String(raw)}
+                      onValueChange={(wet) =>
+                        setSlotMix(slot.slotIndex, slot.dry, wet)
+                      }
+                    />
+                  </VStack>
+                </VStack>
+              </ScrollView>
             )}
           </VStack>
         </VStack>
@@ -342,6 +491,21 @@ const styles = StyleSheet.create({
   todoText: {
     fontSize: 14,
     color: "#666",
+  },
+  routingSectionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+  },
+  routingLabel: {
+    fontSize: 13,
+    color: "#666",
+  },
+  badgeDisabled: {
+    opacity: 0.5,
+  },
+  badgeTextDisabled: {
+    opacity: 0.8,
   },
   emptyStateText: {
     fontSize: 16,

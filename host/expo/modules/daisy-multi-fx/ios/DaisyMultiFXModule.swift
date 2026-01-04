@@ -85,5 +85,23 @@ public class DaisyMultiFXModule: Module {
             self.controller.setSlotParam(
                 slot: UInt8(slot), paramId: UInt8(paramId), value: UInt8(value))
         }
+
+        Function("setSlotRouting") { (slot: Int, inputL: Int, inputR: Int) in
+            self.controller.setSlotRouting(
+                slot: UInt8(slot), inputL: UInt8(inputL), inputR: UInt8(inputR))
+        }
+
+        Function("setSlotSumToMono") { (slot: Int, sumToMono: Bool) in
+            self.controller.setSlotSumToMono(slot: UInt8(slot), sumToMono: sumToMono)
+        }
+
+        Function("setSlotMix") { (slot: Int, dry: Int, wet: Int) in
+            self.controller.setSlotMix(slot: UInt8(slot), dry: UInt8(dry), wet: UInt8(wet))
+        }
+
+        Function("setSlotChannelPolicy") { (slot: Int, channelPolicy: Int) in
+            self.controller.setSlotChannelPolicy(
+                slot: UInt8(slot), channelPolicy: UInt8(channelPolicy))
+        }
     }
 }

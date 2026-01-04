@@ -325,6 +325,27 @@ void DaisyMultiFXProcessor::onSlotMixChanged(uint8_t slot, uint8_t wet, uint8_t 
         processor_->ApplyPatch(patchState_.getPatch());
 }
 
+void DaisyMultiFXProcessor::onSlotRoutingChanged(uint8_t slot, uint8_t inputL, uint8_t inputR)
+{
+    // Update DSP
+    if (isPrepared_)
+        processor_->ApplyPatch(patchState_.getPatch());
+}
+
+void DaisyMultiFXProcessor::onSlotSumToMonoChanged(uint8_t slot, bool sumToMono)
+{
+    // Update DSP
+    if (isPrepared_)
+        processor_->ApplyPatch(patchState_.getPatch());
+}
+
+void DaisyMultiFXProcessor::onSlotChannelPolicyChanged(uint8_t slot, uint8_t channelPolicy)
+{
+    // Update DSP
+    if (isPrepared_)
+        processor_->ApplyPatch(patchState_.getPatch());
+}
+
 void DaisyMultiFXProcessor::onPatchLoaded()
 {
     // Full patch reload - update DSP
@@ -387,6 +408,23 @@ void DaisyMultiFXProcessor::handleIncomingMidi(const juce::MidiMessage &message)
 
     case MidiProtocol::Cmd::SET_PARAM:
         patchState_.setSlotParam(decoded.slot, decoded.paramId, decoded.value);
+        break;
+
+    case MidiProtocol::Cmd::SET_ROUTING:
+        patchState_.setSlotRouting(decoded.slot, decoded.inputL, decoded.inputR);
+        break;
+
+    case MidiProtocol::Cmd::SET_SUM_TO_MONO:
+        patchState_.setSlotSumToMono(decoded.slot, decoded.sumToMono);
+        break;
+
+    case MidiProtocol::Cmd::SET_MIX:
+        // Protocol payload order is <dry> <wet>, but PatchState API is (wet, dry)
+        patchState_.setSlotMix(decoded.slot, decoded.wet, decoded.dry);
+        break;
+
+    case MidiProtocol::Cmd::SET_CHANNEL_POLICY:
+        patchState_.setSlotChannelPolicy(decoded.slot, decoded.channelPolicy);
         break;
 
     case MidiProtocol::Cmd::REQUEST_PATCH:

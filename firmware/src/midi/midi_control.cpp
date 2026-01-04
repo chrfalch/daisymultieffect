@@ -519,6 +519,63 @@ void MidiControl::HandleSysexMessage(const uint8_t *bytes, size_t len)
             }
         }
         break;
+
+    case 0x23: // set slot routing: F0 7D <sender> 23 <slot> <inputL> <inputR> F7
+        if (payload + 3 <= len)
+        {
+            const uint8_t slot = bytes[payload + 0] & 0x7F;
+            const uint8_t inputL_enc = bytes[payload + 1] & 0x7F;
+            const uint8_t inputR_enc = bytes[payload + 2] & 0x7F;
+            if (slot < 12)
+            {
+                // Decode 7-bit route encoding: 127 means ROUTE_INPUT (255).
+                const uint8_t inputL = (inputL_enc == 127) ? ROUTE_INPUT : inputL_enc;
+                const uint8_t inputR = (inputR_enc == 127) ? ROUTE_INPUT : inputR_enc;
+                daisy::ScopedIrqBlocker lock;
+                pending_word_ = PackPending(PendingKind::SetSlotRouting, slot, inputL, inputR);
+            }
+        }
+        break;
+
+    case 0x24: // set sum-to-mono: F0 7D <sender> 24 <slot> <sumToMono> F7
+        if (payload + 2 <= len)
+        {
+            const uint8_t slot = bytes[payload + 0] & 0x7F;
+            const uint8_t sum = bytes[payload + 1] & 0x7F;
+            if (slot < 12)
+            {
+                daisy::ScopedIrqBlocker lock;
+                pending_word_ = PackPending(PendingKind::SetSlotSumToMono, slot, 0, sum);
+            }
+        }
+        break;
+
+    case 0x25: // set mix: F0 7D <sender> 25 <slot> <dry> <wet> F7
+        if (payload + 3 <= len)
+        {
+            const uint8_t slot = bytes[payload + 0] & 0x7F;
+            const uint8_t dry = bytes[payload + 1] & 0x7F;
+            const uint8_t wet = bytes[payload + 2] & 0x7F;
+            if (slot < 12)
+            {
+                daisy::ScopedIrqBlocker lock;
+                pending_word_ = PackPending(PendingKind::SetSlotMix, slot, dry, wet);
+            }
+        }
+        break;
+
+    case 0x26: // set channel policy: F0 7D <sender> 26 <slot> <policy> F7
+        if (payload + 2 <= len)
+        {
+            const uint8_t slot = bytes[payload + 0] & 0x7F;
+            const uint8_t policy = bytes[payload + 1] & 0x7F;
+            if (slot < 12)
+            {
+                daisy::ScopedIrqBlocker lock;
+                pending_word_ = PackPending(PendingKind::SetSlotChannelPolicy, slot, 0, policy);
+            }
+        }
+        break;
     default:
         break;
     }
@@ -655,5 +712,63 @@ void MidiControl::ApplyPendingInAudioThread()
             }
         }
         // Note: We don't send back since this was received via SysEx
+    }
+    else if (kind == PendingKind::SetSlotRouting)
+    {
+        if (!processor_)
+            return;
+
+        if (slot >= current_patch_.numSlots)
+            current_patch_.numSlots = slot + 1;
+
+        current_patch_.slots[slot].slotIndex = slot;
+        current_patch_.slots[slot].inputL = pid;
+        current_patch_.slots[slot].inputR = value;
+
+        pending_patch_ = current_patch_;
+        processor_->ApplyPatch(pending_patch_);
+    }
+    else if (kind == PendingKind::SetSlotSumToMono)
+    {
+        if (!processor_)
+            return;
+
+        if (slot >= current_patch_.numSlots)
+            current_patch_.numSlots = slot + 1;
+
+        current_patch_.slots[slot].slotIndex = slot;
+        current_patch_.slots[slot].sumToMono = (value != 0) ? 1 : 0;
+
+        pending_patch_ = current_patch_;
+        processor_->ApplyPatch(pending_patch_);
+    }
+    else if (kind == PendingKind::SetSlotMix)
+    {
+        if (!processor_)
+            return;
+
+        if (slot >= current_patch_.numSlots)
+            current_patch_.numSlots = slot + 1;
+
+        current_patch_.slots[slot].slotIndex = slot;
+        current_patch_.slots[slot].dry = pid;
+        current_patch_.slots[slot].wet = value;
+
+        pending_patch_ = current_patch_;
+        processor_->ApplyPatch(pending_patch_);
+    }
+    else if (kind == PendingKind::SetSlotChannelPolicy)
+    {
+        if (!processor_)
+            return;
+
+        if (slot >= current_patch_.numSlots)
+            current_patch_.numSlots = slot + 1;
+
+        current_patch_.slots[slot].slotIndex = slot;
+        current_patch_.slots[slot].channelPolicy = value;
+
+        pending_patch_ = current_patch_;
+        processor_->ApplyPatch(pending_patch_);
     }
 }

@@ -29,6 +29,10 @@ public:
         SetParam = 1,
         SetSlotEnabled = 2,
         SetSlotType = 3,
+        SetSlotRouting = 4,
+        SetSlotSumToMono = 5,
+        SetSlotMix = 6,
+        SetSlotChannelPolicy = 7,
     };
 
     void Init(daisy::DaisySeed &hw, AudioProcessor &processor, Board &board, TempoSource &tempo);

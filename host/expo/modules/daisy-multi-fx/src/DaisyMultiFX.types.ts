@@ -61,6 +61,9 @@ export interface EffectSlot {
   dry: number;
   /** Wet level (0-127) */
   wet: number;
+
+  /** Channel routing policy (0=Auto, 1=ForceMono, 2=ForceStereo) */
+  channelPolicy: number;
   /** Parameter values indexed by param ID */
   params: Record<number, number>;
 }

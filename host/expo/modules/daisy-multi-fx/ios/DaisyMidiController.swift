@@ -550,6 +550,40 @@ final class DaisyMidiController: @unchecked Sendable {
                 updateSlotParam(slot: slot, paramId: paramId, value: value)
             }
 
+        case MidiProtocol.Cmd.setRouting:
+            // Data format (with F0/F7 stripped): 7D <sender> <cmd> <slot> <inputL> <inputR>
+            if data.count >= 6 {
+                let slot = data[3]
+                let inputL = MidiProtocol.decodeRoute(data[4])
+                let inputR = MidiProtocol.decodeRoute(data[5])
+                updateSlotRouting(slot: slot, inputL: inputL, inputR: inputR)
+            }
+
+        case MidiProtocol.Cmd.setSumToMono:
+            // 7D <sender> <cmd> <slot> <sumToMono>
+            if data.count >= 5 {
+                let slot = data[3]
+                let sumToMono = data[4] != 0
+                updateSlotSumToMono(slot: slot, sumToMono: sumToMono)
+            }
+
+        case MidiProtocol.Cmd.setMix:
+            // 7D <sender> <cmd> <slot> <dry> <wet>
+            if data.count >= 6 {
+                let slot = data[3]
+                let dry = data[4]
+                let wet = data[5]
+                updateSlotMix(slot: slot, dry: dry, wet: wet)
+            }
+
+        case MidiProtocol.Cmd.setChannelPolicy:
+            // 7D <sender> <cmd> <slot> <policy>
+            if data.count >= 5 {
+                let slot = data[3]
+                let policy = data[4]
+                updateSlotChannelPolicy(slot: slot, channelPolicy: policy)
+            }
+
         default:
             break
         }
@@ -574,9 +608,9 @@ final class DaisyMidiController: @unchecked Sendable {
             offset += 1
             slot.enabled = data[offset] != 0
             offset += 1
-            slot.inputL = data[offset]
+            slot.inputL = MidiProtocol.decodeRoute(data[offset])
             offset += 1
-            slot.inputR = data[offset]
+            slot.inputR = MidiProtocol.decodeRoute(data[offset])
             offset += 1
             slot.sumToMono = data[offset] != 0
             offset += 1
@@ -584,7 +618,8 @@ final class DaisyMidiController: @unchecked Sendable {
             offset += 1
             slot.wet = data[offset]
             offset += 1
-            offset += 1  // policy
+            slot.channelPolicy = data[offset]
+            offset += 1
             let numParams = data[offset]
             offset += 1
 
@@ -970,6 +1005,44 @@ final class DaisyMidiController: @unchecked Sendable {
         onPatchUpdate?(p)
     }
 
+    private func updateSlotRouting(slot: UInt8, inputL: UInt8, inputR: UInt8) {
+        guard var p = patch, Int(slot) < p.slots.count else { return }
+        if p.slots[Int(slot)].inputL == inputL && p.slots[Int(slot)].inputR == inputR { return }
+
+        p.slots[Int(slot)].inputL = inputL
+        p.slots[Int(slot)].inputR = inputR
+        patch = p
+        onPatchUpdate?(p)
+    }
+
+    private func updateSlotSumToMono(slot: UInt8, sumToMono: Bool) {
+        guard var p = patch, Int(slot) < p.slots.count else { return }
+        if p.slots[Int(slot)].sumToMono == sumToMono { return }
+
+        p.slots[Int(slot)].sumToMono = sumToMono
+        patch = p
+        onPatchUpdate?(p)
+    }
+
+    private func updateSlotMix(slot: UInt8, dry: UInt8, wet: UInt8) {
+        guard var p = patch, Int(slot) < p.slots.count else { return }
+        if p.slots[Int(slot)].dry == dry && p.slots[Int(slot)].wet == wet { return }
+
+        p.slots[Int(slot)].dry = dry
+        p.slots[Int(slot)].wet = wet
+        patch = p
+        onPatchUpdate?(p)
+    }
+
+    private func updateSlotChannelPolicy(slot: UInt8, channelPolicy: UInt8) {
+        guard var p = patch, Int(slot) < p.slots.count else { return }
+        if p.slots[Int(slot)].channelPolicy == channelPolicy { return }
+
+        p.slots[Int(slot)].channelPolicy = channelPolicy
+        patch = p
+        onPatchUpdate?(p)
+    }
+
     // MARK: - Commands (outgoing MIDI)
 
     func setSlotEnabled(slot: UInt8, enabled: Bool) {
@@ -1002,6 +1075,52 @@ final class DaisyMidiController: @unchecked Sendable {
         patch = p
 
         sendSysex(MidiProtocol.encodeSetParam(slot: slot, paramId: paramId, value: value))
+        onPatchUpdate?(p)
+    }
+
+    func setSlotRouting(slot: UInt8, inputL: UInt8, inputR: UInt8) {
+        guard var p = patch, Int(slot) < p.slots.count else { return }
+        if p.slots[Int(slot)].inputL == inputL && p.slots[Int(slot)].inputR == inputR { return }
+
+        p.slots[Int(slot)].inputL = inputL
+        p.slots[Int(slot)].inputR = inputR
+        patch = p
+
+        sendSysex(MidiProtocol.encodeSetRouting(slot: slot, inputL: inputL, inputR: inputR))
+        onPatchUpdate?(p)
+    }
+
+    func setSlotSumToMono(slot: UInt8, sumToMono: Bool) {
+        guard var p = patch, Int(slot) < p.slots.count else { return }
+        if p.slots[Int(slot)].sumToMono == sumToMono { return }
+
+        p.slots[Int(slot)].sumToMono = sumToMono
+        patch = p
+
+        sendSysex(MidiProtocol.encodeSetSumToMono(slot: slot, sumToMono: sumToMono))
+        onPatchUpdate?(p)
+    }
+
+    func setSlotMix(slot: UInt8, dry: UInt8, wet: UInt8) {
+        guard var p = patch, Int(slot) < p.slots.count else { return }
+        if p.slots[Int(slot)].dry == dry && p.slots[Int(slot)].wet == wet { return }
+
+        p.slots[Int(slot)].dry = dry
+        p.slots[Int(slot)].wet = wet
+        patch = p
+
+        sendSysex(MidiProtocol.encodeSetMix(slot: slot, dry: dry, wet: wet))
+        onPatchUpdate?(p)
+    }
+
+    func setSlotChannelPolicy(slot: UInt8, channelPolicy: UInt8) {
+        guard var p = patch, Int(slot) < p.slots.count else { return }
+        if p.slots[Int(slot)].channelPolicy == channelPolicy { return }
+
+        p.slots[Int(slot)].channelPolicy = channelPolicy
+        patch = p
+
+        sendSysex(MidiProtocol.encodeSetChannelPolicy(slot: slot, channelPolicy: channelPolicy))
         onPatchUpdate?(p)
     }
 

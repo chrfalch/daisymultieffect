@@ -21,6 +21,8 @@ namespace daisyfx
         virtual void onSlotParamChanged(uint8_t slot, uint8_t paramId, uint8_t value) {}
         virtual void onSlotMixChanged(uint8_t slot, uint8_t wet, uint8_t dry) {}
         virtual void onSlotRoutingChanged(uint8_t slot, uint8_t inputL, uint8_t inputR) {}
+        virtual void onSlotSumToMonoChanged(uint8_t slot, bool sumToMono) {}
+        virtual void onSlotChannelPolicyChanged(uint8_t slot, uint8_t channelPolicy) {}
 
         // Full patch changes
         virtual void onPatchLoaded() {}

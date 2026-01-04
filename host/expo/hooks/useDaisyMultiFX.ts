@@ -10,6 +10,10 @@ import {
   setSlotEnabled,
   setSlotType,
   setSlotParam,
+  setSlotRouting,
+  setSlotSumToMono,
+  setSlotMix,
+  setSlotChannelPolicy,
   addPatchUpdateListener,
   addEffectMetaUpdateListener,
   addConnectionStatusListener,
@@ -41,6 +45,12 @@ export interface UseDaisyMultiFXResult {
   setSlotEnabled: (slot: number, enabled: boolean) => void;
   setSlotType: (slot: number, typeId: number) => void;
   setSlotParam: (slot: number, paramId: number, value: number) => void;
+
+  // Routing/mix control
+  setSlotRouting: (slot: number, inputL: number, inputR: number) => void;
+  setSlotSumToMono: (slot: number, sumToMono: boolean) => void;
+  setSlotMix: (slot: number, dry: number, wet: number) => void;
+  setSlotChannelPolicy: (slot: number, channelPolicy: number) => void;
 
   // Helpers
   getSlot: (slotIndex: number) => EffectSlot | undefined;
@@ -198,6 +208,12 @@ export function useDaisyMultiFX(
     setSlotEnabled,
     setSlotType,
     setSlotParam,
+
+    // Routing/mix control
+    setSlotRouting,
+    setSlotSumToMono,
+    setSlotMix,
+    setSlotChannelPolicy,
 
     // Helpers
     getSlot,

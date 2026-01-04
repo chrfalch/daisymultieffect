@@ -90,6 +90,9 @@ public:
     void onSlotTypeChanged(uint8_t slot, uint8_t typeId) override;
     void onSlotParamChanged(uint8_t slot, uint8_t paramId, uint8_t value) override;
     void onSlotMixChanged(uint8_t slot, uint8_t wet, uint8_t dry) override;
+    void onSlotRoutingChanged(uint8_t slot, uint8_t inputL, uint8_t inputR) override;
+    void onSlotSumToMonoChanged(uint8_t slot, bool sumToMono) override;
+    void onSlotChannelPolicyChanged(uint8_t slot, uint8_t channelPolicy) override;
     void onPatchLoaded() override;
     void onTempoChanged(float bpm) override;
 

@@ -63,6 +63,18 @@ extern "C"
         /** Set slot effect type: F0 7D 22 <slot> <typeId> F7 */
         SYSEX_CMD_SET_TYPE = 0x22,
 
+        /** Set slot routing: F0 7D <sender> 23 <slot> <inputL> <inputR> F7 */
+        SYSEX_CMD_SET_ROUTING = 0x23,
+
+        /** Set slot sum-to-mono flag: F0 7D <sender> 24 <slot> <sumToMono> F7 */
+        SYSEX_CMD_SET_SUM_TO_MONO = 0x24,
+
+        /** Set slot mix: F0 7D <sender> 25 <slot> <dry> <wet> F7 */
+        SYSEX_CMD_SET_MIX = 0x25,
+
+        /** Set slot channel policy: F0 7D <sender> 26 <slot> <policy> F7 */
+        SYSEX_CMD_SET_CHANNEL_POLICY = 0x26,
+
         /** Request all effect metadata: F0 7D 32 F7 */
         SYSEX_CMD_REQUEST_EFFECT_META = 0x32
     };

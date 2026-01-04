@@ -12,6 +12,7 @@ struct EffectSlot: Equatable {
     var sumToMono: Bool = false
     var dry: UInt8 = 0
     var wet: UInt8 = 127
+    var channelPolicy: UInt8 = 0
     var params: [UInt8: UInt8] = [:]
 
     func toDictionary() -> [String: Any] {
@@ -24,6 +25,7 @@ struct EffectSlot: Equatable {
             "sumToMono": sumToMono,
             "dry": Int(dry),
             "wet": Int(wet),
+            "channelPolicy": Int(channelPolicy),
             "params": params.reduce(into: [String: Int]()) { result, pair in
                 result[String(pair.key)] = Int(pair.value)
             },
