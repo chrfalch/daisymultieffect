@@ -216,7 +216,9 @@ const styles = StyleSheet.create({
   sliderContainer: {
     minHeight: 56,
     paddingVertical: 8,
-    backgroundColor: "#2a2a3e",
+    backgroundColor: "#fff",
+    borderWidth: 2,
+    borderColor: "#EEEEEE",
     borderRadius: 12,
     overflow: "hidden",
     flexDirection: "row",
@@ -227,7 +229,7 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: "#5b8def",
+    backgroundColor: "#E3F2FD",
     borderRadius: 12,
   },
   labelContainer: {
@@ -236,13 +238,13 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   label: {
-    color: "#fff",
+    color: "#333",
     fontSize: 18,
     fontWeight: "500",
   },
   description: {
     marginTop: 2,
-    color: "#cfd3ff",
+    color: "#666",
     fontSize: 12,
     fontWeight: "400",
   },
@@ -251,7 +253,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   value: {
-    color: "#fff",
+    color: "#333",
     fontSize: 18,
     fontWeight: "400",
   },
