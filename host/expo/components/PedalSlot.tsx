@@ -24,13 +24,15 @@ const ChannelIndicator: React.FC<{
   sumToMono: boolean;
   channelPolicy: number;
   selected: boolean;
-}> = ({ sumToMono, channelPolicy, selected }) => {
+  enabled: boolean;
+}> = ({ sumToMono, channelPolicy, selected, enabled }) => {
   // Policy: 0=Auto (A), 1=Mono (M), 2=Stereo (S)
   const policyLabel =
     channelPolicy === 1 ? "M" : channelPolicy === 2 ? "S" : "A";
-  const textColor = selected ? "#1976D2" : "#666";
-  const bgColor = selected ? "#E3F2FD" : "#F5F5F5";
-  const borderColor = selected ? "#90CAF9" : "#E0E0E0";
+  // Blue when selected (even if disabled), gray when disabled and not selected
+  const textColor = selected ? "#1976D2" : !enabled ? "#999" : "#666";
+  const bgColor = selected ? "#E3F2FD" : !enabled ? "#F0F0F0" : "#F5F5F5";
+  const borderColor = selected ? "#90CAF9" : !enabled ? "#D0D0D0" : "#E0E0E0";
 
   return (
     <View style={styles.channelIndicator}>
@@ -69,8 +71,19 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
   sumToMono = false,
   channelPolicy = 0,
 }) => {
-  const topStripBg = selected ? "#2196F3" : "#E3F2FD";
-  const topStripText = selected ? "#fff" : "#1976D2";
+  // Lighter gray header when disabled, blue when selected, light blue otherwise
+  // Text stays blue when selected even if disabled
+  const topStripBg = !enabled ? "#E0E0E0" : selected ? "#2196F3" : "#E3F2FD";
+  const topStripText = selected
+    ? enabled
+      ? "#fff"
+      : "#1976D2"
+    : !enabled
+    ? "#999"
+    : "#1976D2";
+
+  // Check if this is an empty slot (no effect assigned)
+  const isEmpty = !name || name === "Empty" || shortName === "--";
 
   return (
     <Pressable
@@ -89,7 +102,11 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
 
           <View style={styles.face}>
             <Text
-              style={[styles.name, selected && styles.nameSelected]}
+              style={[
+                styles.name,
+                selected && styles.nameSelected,
+                !enabled && !selected && styles.nameDisabled,
+              ]}
               numberOfLines={2}
             >
               {name}
@@ -99,9 +116,10 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
               sumToMono={sumToMono}
               channelPolicy={channelPolicy}
               selected={selected}
+              enabled={enabled}
             />
 
-            {showSwitch && onToggleEnabled ? (
+            {showSwitch && onToggleEnabled && !isEmpty ? (
               <Pressable
                 onPress={onToggleEnabled}
                 accessibilityRole="button"
@@ -180,6 +198,9 @@ const styles = StyleSheet.create({
   nameSelected: {
     color: "#1976D2",
     fontWeight: "600",
+  },
+  nameDisabled: {
+    color: "#999",
   },
 
   footswitchOuter: {

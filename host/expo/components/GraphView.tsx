@@ -347,7 +347,7 @@ export const GraphView: React.FC<{
               const shortName =
                 typeId !== 0
                   ? getShortName(typeId) || `S${(n.slotIndex ?? 0) + 1}`
-                  : "OFF";
+                  : "--";
 
               const name =
                 typeId !== 0

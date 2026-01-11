@@ -124,7 +124,6 @@ export const EditorScreen: React.FC = () => {
         {patch && (
           <Card>
             <VStack>
-              <CardTitle>Gain Staging</CardTitle>
               <GainControl
                 inputGainDb={patch.inputGainDb}
                 outputGainDb={patch.outputGainDb}
