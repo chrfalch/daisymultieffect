@@ -157,6 +157,55 @@ float value = (float)q / 65536.0f;
 | `21` | Neural Amp |
 | `22` | Cabinet IR |
 
+## Effect Metadata V5 Format (0x38)
+
+The V5 format provides complete effect metadata including parameter descriptions, units, ranges, and enum options:
+
+```
+F0 7D <sender> 38 <typeId> <nameLen> <name...>
+  <shortName[3]> <descLen> <description...>
+  <numParams>
+  [for each param:]
+    <paramId> <kind> <flags> <nameLen> <name...>
+    <descLen> <description...>
+    <unitPrefixLen> <unitPrefix...>
+    <unitSuffixLen> <unitSuffix...>
+    [if flags & 0x01: NumberRange]
+    [if flags & 0x02: EnumOptions]
+F7
+```
+
+### Parameter Kind Values
+- `0`: Number (continuous 0-127 value)
+- `1`: Enum (discrete selection)
+- `2`: File (reserved for future use)
+
+### Flags Byte
+- Bit 0 (`0x01`): Has NumberRange (min/max/step as Q16.16)
+- Bit 1 (`0x02`): Has EnumOptions (dropdown choices)
+
+### NumberRange (15 bytes, if flags & 0x01)
+```
+<min_Q16.16_5B> <max_Q16.16_5B> <step_Q16.16_5B>
+```
+
+### EnumOptions (variable, if flags & 0x02)
+```
+<numOptions>
+[for each option:]
+  <value> <nameLen> <name...>
+```
+
+Example enum options for Neural Amp model selector:
+```
+05                    // 5 options
+00 09 TW40 Clean      // value=0, name="TW40 Clean"
+01 0A TW40 Crunch     // value=1, name="TW40 Crunch"
+02 0A TW40 Blues      // value=2, name="TW40 Blues"
+03 0B TW40 Rhythm     // value=3, name="TW40 Rhythm"
+04 09 TW40 Lead       // value=4, name="TW40 Lead"
+```
+
 ## Patch Dump Format (0x13)
 
 The patch dump is the most complex message, containing full system state:

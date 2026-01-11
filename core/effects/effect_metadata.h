@@ -255,17 +255,29 @@ namespace Effects
     namespace NeuralAmp
     {
         constexpr uint8_t TypeId = 21;
+
+        // Model selection enum options (must match EmbeddedModels::Model order)
+        inline const EnumParamOption kModelOptions[] = {
+            {0, "TW40 Clean"},
+            {1, "TW40 Crunch"},
+            {2, "TW40 Blues"},
+            {3, "TW40 Rhythm"},
+            {4, "TW40 Lead"},
+        };
+        inline const EnumParamInfo kModelEnum = {kModelOptions, 5};
+
         inline const NumberParamRange kGainRange = {0.0f, 1.0f, 0.01f};
         inline const NumberParamRange kEqRange = {0.0f, 1.0f, 0.01f};
 
         inline const ParamInfo kParams[] = {
-            {0, "Input", "Input gain/drive", ParamValueKind::Number, &kGainRange, nullptr},
-            {1, "Output", "Output level", ParamValueKind::Number, &kGainRange, nullptr},
-            {2, "Bass", "Low frequency boost/cut", ParamValueKind::Number, &kEqRange, nullptr},
-            {3, "Mid", "Mid frequency boost/cut", ParamValueKind::Number, &kEqRange, nullptr},
-            {4, "Treble", "High frequency boost/cut", ParamValueKind::Number, &kEqRange, nullptr},
+            {0, "Model", "Amp model selection", ParamValueKind::Enum, nullptr, &kModelEnum},
+            {1, "Input", "Input gain/drive", ParamValueKind::Number, &kGainRange, nullptr},
+            {2, "Output", "Output level", ParamValueKind::Number, &kGainRange, nullptr},
+            {3, "Bass", "Low frequency boost/cut", ParamValueKind::Number, &kEqRange, nullptr},
+            {4, "Mid", "Mid frequency boost/cut", ParamValueKind::Number, &kEqRange, nullptr},
+            {5, "Treble", "High frequency boost/cut", ParamValueKind::Number, &kEqRange, nullptr},
         };
-        inline const ::EffectMeta kMeta = {"Neural Amp", "NAM", "AI-trained amp simulation (AIDA-X/RTNeural). Load JSON model files.", kParams, 5};
+        inline const ::EffectMeta kMeta = {"Neural Amp", "NAM", "AI-trained amp simulation (AIDA-X/RTNeural).", kParams, 6};
     }
 
     //=========================================================================
@@ -274,18 +286,30 @@ namespace Effects
     namespace CabinetIR
     {
         constexpr uint8_t TypeId = 22;
+
+        // IR selection enum options (must match EmbeddedIRs::IR order)
+        // NOTE: V1 is mono only. Stereo IR support deferred to V2.
+        inline const EnumParamOption kIROptions[] = {
+            {0, "V30 P1 Opus87"},
+            {1, "V30 P1 Sene935"},
+            {2, "V30 P2 Audix i5"},
+            {3, "V30 P2 Sene935"},
+        };
+        inline const EnumParamInfo kIREnum = {kIROptions, 4};
+
         inline const NumberParamRange kMixRange = {0.0f, 1.0f, 0.01f};
         inline const NumberParamRange kOutputRange = {0.0f, 1.0f, 0.01f};
         inline const NumberParamRange kLowCutRange = {0.0f, 1.0f, 0.01f};
         inline const NumberParamRange kHighCutRange = {0.0f, 1.0f, 0.01f};
 
         inline const ParamInfo kParams[] = {
-            {0, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
-            {1, "Output", "Output level (-20dB to +20dB)", ParamValueKind::Number, &kOutputRange, nullptr},
-            {2, "Low Cut", "Cuts bass (0=off, 1=800Hz)", ParamValueKind::Number, &kLowCutRange, nullptr},
-            {3, "High Cut", "Cuts treble (0=bright, 1=dark)", ParamValueKind::Number, &kHighCutRange, nullptr},
+            {0, "Cabinet", "Cabinet IR selection", ParamValueKind::Enum, nullptr, &kIREnum},
+            {1, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
+            {2, "Output", "Output level (-20dB to +20dB)", ParamValueKind::Number, &kOutputRange, nullptr},
+            {3, "Low Cut", "Cuts bass (0=off, 1=800Hz)", ParamValueKind::Number, &kLowCutRange, nullptr},
+            {4, "High Cut", "Cuts treble (0=bright, 1=dark)", ParamValueKind::Number, &kHighCutRange, nullptr},
         };
-        inline const ::EffectMeta kMeta = {"Cabinet IR", "CAB", "Impulse response convolution for speaker cabinet simulation. Load WAV files.", kParams, 4};
+        inline const ::EffectMeta kMeta = {"Cabinet IR", "CAB", "Impulse response convolution for speaker cabinet simulation.", kParams, 5};
     }
 
     //=========================================================================

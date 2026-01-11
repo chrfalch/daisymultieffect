@@ -69,12 +69,26 @@ struct NumberRangeMeta: Equatable {
     }
 }
 
+/// Enum option for dropdown parameters
+struct EnumOption: Equatable {
+    var value: UInt8
+    var name: String
+
+    func toDictionary() -> [String: Any] {
+        return [
+            "value": Int(value),
+            "name": name,
+        ]
+    }
+}
+
 /// Effect parameter metadata
 struct EffectParamMeta: Equatable {
     var id: UInt8
     var name: String
     var kind: UInt8
     var range: NumberRangeMeta?
+    var enumOptions: [EnumOption]?
     var description: String?
     var unitPrefix: String?
     var unitSuffix: String?
@@ -87,6 +101,9 @@ struct EffectParamMeta: Equatable {
         ]
         if let range {
             dict["range"] = range.toDictionary()
+        }
+        if let enumOptions, !enumOptions.isEmpty {
+            dict["enumOptions"] = enumOptions.map { $0.toDictionary() }
         }
         if let description, !description.isEmpty {
             dict["description"] = description

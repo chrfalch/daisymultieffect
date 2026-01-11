@@ -706,8 +706,11 @@ void DaisyMultiFXProcessor::sendEffectMeta()
 
             uint8_t flags = 0;
             const bool hasNumberRange = (par.kind == ParamValueKind::Number) && (par.number != nullptr);
+            const bool hasEnumOptions = (par.kind == ParamValueKind::Enum) && (par.enumeration != nullptr) && (par.enumeration->numOptions > 0);
             if (hasNumberRange)
                 flags |= 0x01;
+            if (hasEnumOptions)
+                flags |= 0x02;
             v5.push_back(flags & 0x7F);
 
             const char *pname = par.name ? par.name : "";
@@ -763,6 +766,25 @@ void DaisyMultiFXProcessor::sendEffectMeta()
                 DaisyMultiFX::Protocol::packQ16_16(
                     DaisyMultiFX::Protocol::floatToQ16_16(par.number->step), packed);
                 v5.insert(v5.end(), packed, packed + 5);
+            }
+
+            // Enum options (if Enum kind)
+            if (hasEnumOptions)
+            {
+                const uint8_t numOpts = par.enumeration->numOptions;
+                v5.push_back(numOpts & 0x7F);
+                for (uint8_t oi = 0; oi < numOpts; oi++)
+                {
+                    const auto &opt = par.enumeration->options[oi];
+                    v5.push_back(opt.value & 0x7F);
+                    const char *optName = opt.name ? opt.name : "";
+                    size_t optNameLen = std::strlen(optName);
+                    if (optNameLen > 24)
+                        optNameLen = 24;
+                    v5.push_back(static_cast<uint8_t>(optNameLen) & 0x7F);
+                    for (size_t c = 0; c < optNameLen; ++c)
+                        v5.push_back(static_cast<uint8_t>(optName[c]) & 0x7F);
+                }
             }
         }
 

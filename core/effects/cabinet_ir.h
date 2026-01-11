@@ -5,6 +5,11 @@
 #include <cstring>
 #include <string>
 
+// Include embedded IR registry for firmware builds
+#if defined(DAISY_SEED_BUILD)
+#include "embedded/ir_registry.h"
+#endif
+
 /**
  * Cabinet Impulse Response (IR) Effect
  *
@@ -15,8 +20,17 @@
  * Typical guitar cab IRs are 20-50ms, so we support up to 2048 samples
  * for flexibility (43ms at 48kHz).
  *
- * For VST: IR can be loaded from WAV files at runtime
- * For Firmware: IR can be baked in at compile time
+ * Parameters:
+ *   0: Cabinet - Enum selection of embedded cabinet IRs
+ *   1: Mix - Wet/dry mix
+ *   2: Output - Output level
+ *   3: Low Cut - High-pass filter
+ *   4: High Cut - Low-pass filter
+ *
+ * NOTE: V1 is mono only. Stereo IR support deferred to V2.
+ *
+ * For VST: IR can be loaded from WAV files at runtime OR from embedded data
+ * For Firmware: IR loaded from embedded data via ir_registry.h
  */
 
 struct CabinetIREffect : BaseEffect
@@ -27,6 +41,7 @@ struct CabinetIREffect : BaseEffect
     static constexpr int kMaxIRLength = 2048;
 
     // Parameters
+    uint8_t irIndex_ = 0;     // IR selection (enum)
     float mix_ = 1.0f;        // Wet/dry mix (0-1)
     float outputGain_ = 0.5f; // Output level (0-1 maps to -20dB to +20dB)
     float lowCut_ = 0.0f;     // High-pass filter (0-1 maps to 20Hz-500Hz)
@@ -65,6 +80,11 @@ struct CabinetIREffect : BaseEffect
         // Reset filter states
         hpfState_ = 0.0f;
         lpfState_ = 0.0f;
+        
+#if defined(DAISY_SEED_BUILD)
+        // Load default embedded IR on firmware
+        LoadEmbeddedIR(0);
+#endif
     }
 
     void SetParam(uint8_t id, float v) override
@@ -72,15 +92,35 @@ struct CabinetIREffect : BaseEffect
         switch (id)
         {
         case 0:
-            mix_ = v;
+            // IR selection (enum parameter)
+            {
+                uint8_t newIndex = static_cast<uint8_t>(v * 127.0f + 0.5f);
+                // Clamp to valid range
+#if defined(DAISY_SEED_BUILD)
+                if (newIndex >= EmbeddedIRs::kNumIRs)
+                    newIndex = EmbeddedIRs::kNumIRs - 1;
+#else
+                // For VST, limit to number of embedded IRs for now
+                if (newIndex >= 4)
+                    newIndex = 3;
+#endif
+                if (newIndex != irIndex_)
+                {
+                    irIndex_ = newIndex;
+                    LoadEmbeddedIR(newIndex);
+                }
+            }
             break;
         case 1:
-            outputGain_ = v;
+            mix_ = v;
             break;
         case 2:
-            lowCut_ = v;
+            outputGain_ = v;
             break;
         case 3:
+            lowCut_ = v;
+            break;
+        case 4:
             highCut_ = v;
             break;
         }
@@ -88,13 +128,14 @@ struct CabinetIREffect : BaseEffect
 
     uint8_t GetParamsSnapshot(ParamDesc *out, uint8_t max) const override
     {
-        if (max < 4)
+        if (max < 5)
             return 0;
-        out[0] = {0, (uint8_t)(mix_ * 127.0f + 0.5f)};
-        out[1] = {1, (uint8_t)(outputGain_ * 127.0f + 0.5f)};
-        out[2] = {2, (uint8_t)(lowCut_ * 127.0f + 0.5f)};
-        out[3] = {3, (uint8_t)(highCut_ * 127.0f + 0.5f)};
-        return 4;
+        out[0] = {0, irIndex_};  // Enum params use direct value
+        out[1] = {1, (uint8_t)(mix_ * 127.0f + 0.5f)};
+        out[2] = {2, (uint8_t)(outputGain_ * 127.0f + 0.5f)};
+        out[3] = {3, (uint8_t)(lowCut_ * 127.0f + 0.5f)};
+        out[4] = {4, (uint8_t)(highCut_ * 127.0f + 0.5f)};
+        return 5;
     }
 
     // Get the name of the currently loaded IR
@@ -174,6 +215,47 @@ struct CabinetIREffect : BaseEffect
         irName_ = "No IR";
         irPath_.clear();
         inputIndex_ = 0;
+    }
+    
+    /**
+     * Load embedded IR by index from IR registry
+     * 
+     * @param index Index into EmbeddedIRs::kIRRegistry
+     * @return true if IR was loaded successfully
+     */
+    bool LoadEmbeddedIR(int index)
+    {
+#if defined(DAISY_SEED_BUILD)
+        const auto* irInfo = EmbeddedIRs::GetIR(static_cast<size_t>(index));
+        if (!irInfo || !irInfo->samples || irInfo->length <= 0)
+        {
+            irLoaded_ = false;
+            irName_ = "Invalid IR";
+            return false;
+        }
+        
+        // Copy IR data (already normalized by converter)
+        int length = irInfo->length;
+        if (length > kMaxIRLength)
+            length = kMaxIRLength;
+            
+        std::memcpy(irBuffer_, irInfo->samples, length * sizeof(float));
+        irLength_ = length;
+        
+        // Clear input buffer for clean start
+        std::memset(inputBuffer_, 0, sizeof(inputBuffer_));
+        inputIndex_ = 0;
+        
+        irName_ = irInfo->name;
+        irIndex_ = static_cast<uint8_t>(index);
+        irLoaded_ = true;
+        
+        return true;
+#else
+        // For VST without embedded registry, use LoadIR with external data
+        (void)index;
+        return false;
+#endif
     }
 
     // Helper functions

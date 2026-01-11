@@ -1002,12 +1002,39 @@ final class DaisyMidiController: @unchecked Sendable {
                 range = NumberRangeMeta(min: minVal, max: maxVal, step: stepVal)
             }
 
+            // Parse enum options if flag 0x02 is set
+            var enumOptions: [EnumOption]? = nil
+            let hasEnumOptions = (flags & 0x02) != 0
+            if hasEnumOptions {
+                guard offset < data.count else { break }
+                let numOpts = Int(data[offset])
+                offset += 1
+                var opts: [EnumOption] = []
+                opts.reserveCapacity(numOpts)
+                for _ in 0..<numOpts {
+                    guard offset < data.count else { break }
+                    let optValue = data[offset]
+                    offset += 1
+                    guard offset < data.count else { break }
+                    let optNameLen = Int(data[offset])
+                    offset += 1
+                    guard offset + optNameLen <= data.count else { break }
+                    let optName = String(bytes: data[offset..<(offset + optNameLen)], encoding: .ascii) ?? "?"
+                    offset += optNameLen
+                    opts.append(EnumOption(value: optValue, name: optName))
+                }
+                if !opts.isEmpty {
+                    enumOptions = opts
+                }
+            }
+
             params.append(
                 EffectParamMeta(
                     id: paramId,
                     name: paramName,
                     kind: kind,
                     range: range,
+                    enumOptions: enumOptions,
                     description: desc.isEmpty ? nil : desc,
                     unitPrefix: unitPrefix.isEmpty ? nil : unitPrefix,
                     unitSuffix: unitSuffix.isEmpty ? nil : unitSuffix

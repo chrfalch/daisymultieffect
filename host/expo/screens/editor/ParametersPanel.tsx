@@ -2,7 +2,15 @@ import React from "react";
 import { Text, StyleSheet } from "react-native";
 import type { EffectParam, EffectSlot } from "../../modules/daisy-multi-fx";
 import { Slider } from "../../components/Slider";
+import { EnumPicker } from "../../components/EnumPicker";
 import { VStack } from "../../components/Stack";
+
+// ParamValueKind enum values (must match firmware base_effect.h)
+const ParamValueKind = {
+  Number: 0,
+  Enum: 1,
+  File: 2,
+} as const;
 
 export const ParametersPanel: React.FC<{
   slot: EffectSlot;
@@ -47,13 +55,31 @@ export const ParametersPanel: React.FC<{
   }
 
   return (
-    <VStack>
+    <VStack gap={12}>
       {Object.entries(slot.params).map(([paramId, value]) => {
         const id = Number(paramId);
         const name = getParamName(slot.typeId, id);
         if (!name) return null;
 
         const meta = getParamMeta(slot.typeId, id);
+        
+        // Render enum picker for Enum parameters
+        if (meta?.kind === ParamValueKind.Enum && meta.enumOptions) {
+          return (
+            <EnumPicker
+              key={paramId}
+              label={name}
+              description={meta.description}
+              value={value}
+              options={meta.enumOptions}
+              onValueChange={(newValue) =>
+                setSlotParam(slot.slotIndex, id, newValue)
+              }
+            />
+          );
+        }
+        
+        // Default: render slider for Number parameters
         return (
           <Slider
             key={paramId}

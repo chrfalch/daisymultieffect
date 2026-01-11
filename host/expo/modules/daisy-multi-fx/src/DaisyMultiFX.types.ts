@@ -7,7 +7,7 @@ export interface EffectParam {
   /** Human-readable name */
   name: string;
 
-  /** Parameter kind (matches firmware ParamValueKind) */
+  /** Parameter kind (matches firmware ParamValueKind: 0=Number, 1=Enum, 2=File) */
   kind: number;
 
   /** Optional help/description text */
@@ -23,6 +23,12 @@ export interface EffectParam {
     max: number;
     step: number;
   };
+  
+  /** Optional enum options (for kind==Enum) */
+  enumOptions?: {
+    value: number;
+    name: string;
+  }[];
 }
 
 /**

@@ -22,3 +22,5 @@ host/expo/android/app/build/
 .idea/
 *.xcworkspace/
 *.xcuserdata/
+
+tmp/**/*

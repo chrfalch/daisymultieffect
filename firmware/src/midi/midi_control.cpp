@@ -385,8 +385,11 @@ void MidiControl::SendEffectList()
 
                 uint8_t flags = 0;
                 const bool hasNumberRange = (par.kind == ParamValueKind::Number && par.number);
+                const bool hasEnumOptions = (par.kind == ParamValueKind::Enum && par.enumeration && par.enumeration->numOptions > 0);
                 if (hasNumberRange)
                     flags |= 0x01;
+                if (hasEnumOptions)
+                    flags |= 0x02;
                 msg[p++] = (uint8_t)(flags & 0x7F);
 
                 const char *pname = par.name ? par.name : "";
@@ -429,6 +432,25 @@ void MidiControl::SendEffectList()
                     packQ16_16(floatToQ16_16(par.number->step), q);
                     for (int k = 0; k < 5; k++)
                         msg[p++] = q[k];
+                }
+
+                // Enum options (if Enum kind)
+                if (hasEnumOptions)
+                {
+                    const uint8_t numOpts = par.enumeration->numOptions;
+                    msg[p++] = (uint8_t)(numOpts & 0x7F);
+                    for (uint8_t oi = 0; oi < numOpts; oi++)
+                    {
+                        const EnumParamOption &opt = par.enumeration->options[oi];
+                        msg[p++] = (uint8_t)(opt.value & 0x7F);
+                        const char *optName = opt.name ? opt.name : "";
+                        size_t optNameLen = std::strlen(optName);
+                        if (optNameLen > 24)
+                            optNameLen = 24;
+                        msg[p++] = (uint8_t)(optNameLen & 0x7F);
+                        for (size_t j = 0; j < optNameLen; j++)
+                            msg[p++] = (uint8_t)(optName[j] & 0x7F);
+                    }
                 }
             }
 
