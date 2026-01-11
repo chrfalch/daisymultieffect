@@ -7,11 +7,11 @@ class DaisyMidiBridgeApplication : public juce::JUCEApplication
 public:
     DaisyMidiBridgeApplication() {}
 
-    const juce::String getApplicationName() override       { return "Daisy MIDI Bridge"; }
-    const juce::String getApplicationVersion() override    { return "1.0.0"; }
-    bool moreThanOneInstanceAllowed() override             { return false; }
+    const juce::String getApplicationName() override { return "Daisy MIDI Bridge"; }
+    const juce::String getApplicationVersion() override { return "1.0.0"; }
+    bool moreThanOneInstanceAllowed() override { return false; }
 
-    void initialise(const juce::String& /*commandLine*/) override
+    void initialise(const juce::String & /*commandLine*/) override
     {
         mainWindow = std::make_unique<MainWindow>(getApplicationName());
     }
@@ -26,7 +26,7 @@ public:
         quit();
     }
 
-    void anotherInstanceStarted(const juce::String& /*commandLine*/) override
+    void anotherInstanceStarted(const juce::String & /*commandLine*/) override
     {
     }
 
@@ -36,8 +36,8 @@ public:
     public:
         MainWindow(juce::String name)
             : DocumentWindow(name,
-                            juce::Colour(0xff2d2d3a),
-                            DocumentWindow::allButtons)
+                             juce::Colour(0xff2d2d3a),
+                             DocumentWindow::allButtons)
         {
             setUsingNativeTitleBar(true);
             setContentOwned(new MainComponent(), true);
