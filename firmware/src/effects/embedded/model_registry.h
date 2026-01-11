@@ -26,9 +26,9 @@ namespace EmbeddedModels
      */
     struct ModelInfo
     {
-        const char *name;       // Display name
-        int hiddenSize;         // Hidden layer size (should be 12 for all)
-        const float *kernel;    // Input kernel weights
+        const char *name;    // Display name
+        int hiddenSize;      // Hidden layer size (should be 12 for all)
+        const float *kernel; // Input kernel weights
         size_t kernelSize;
         const float *recurrent; // Recurrent kernel weights
         size_t recurrentSize;

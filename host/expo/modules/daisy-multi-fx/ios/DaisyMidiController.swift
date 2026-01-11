@@ -1019,7 +1019,8 @@ final class DaisyMidiController: @unchecked Sendable {
                     let optNameLen = Int(data[offset])
                     offset += 1
                     guard offset + optNameLen <= data.count else { break }
-                    let optName = String(bytes: data[offset..<(offset + optNameLen)], encoding: .ascii) ?? "?"
+                    let optName =
+                        String(bytes: data[offset..<(offset + optNameLen)], encoding: .ascii) ?? "?"
                     offset += optNameLen
                     opts.append(EnumOption(value: optValue, name: optName))
                 }

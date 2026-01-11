@@ -80,7 +80,7 @@ struct CabinetIREffect : BaseEffect
         // Reset filter states
         hpfState_ = 0.0f;
         lpfState_ = 0.0f;
-        
+
 #if defined(DAISY_SEED_BUILD)
         // Load default embedded IR on firmware
         LoadEmbeddedIR(0);
@@ -130,7 +130,7 @@ struct CabinetIREffect : BaseEffect
     {
         if (max < 5)
             return 0;
-        out[0] = {0, irIndex_};  // Enum params use direct value
+        out[0] = {0, irIndex_}; // Enum params use direct value
         out[1] = {1, (uint8_t)(mix_ * 127.0f + 0.5f)};
         out[2] = {2, (uint8_t)(outputGain_ * 127.0f + 0.5f)};
         out[3] = {3, (uint8_t)(lowCut_ * 127.0f + 0.5f)};
@@ -216,40 +216,40 @@ struct CabinetIREffect : BaseEffect
         irPath_.clear();
         inputIndex_ = 0;
     }
-    
+
     /**
      * Load embedded IR by index from IR registry
-     * 
+     *
      * @param index Index into EmbeddedIRs::kIRRegistry
      * @return true if IR was loaded successfully
      */
     bool LoadEmbeddedIR(int index)
     {
 #if defined(DAISY_SEED_BUILD)
-        const auto* irInfo = EmbeddedIRs::GetIR(static_cast<size_t>(index));
+        const auto *irInfo = EmbeddedIRs::GetIR(static_cast<size_t>(index));
         if (!irInfo || !irInfo->samples || irInfo->length <= 0)
         {
             irLoaded_ = false;
             irName_ = "Invalid IR";
             return false;
         }
-        
+
         // Copy IR data (already normalized by converter)
         int length = irInfo->length;
         if (length > kMaxIRLength)
             length = kMaxIRLength;
-            
+
         std::memcpy(irBuffer_, irInfo->samples, length * sizeof(float));
         irLength_ = length;
-        
+
         // Clear input buffer for clean start
         std::memset(inputBuffer_, 0, sizeof(inputBuffer_));
         inputIndex_ = 0;
-        
+
         irName_ = irInfo->name;
         irIndex_ = static_cast<uint8_t>(index);
         irLoaded_ = true;
-        
+
         return true;
 #else
         // For VST without embedded registry, use LoadIR with external data

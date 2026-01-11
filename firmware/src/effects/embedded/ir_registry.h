@@ -27,10 +27,10 @@ namespace EmbeddedIRs
      */
     struct IRInfo
     {
-        const char *name;      // Display name
-        int sampleRate;        // Sample rate (should be 48000 for all)
-        int length;            // Number of samples
-        const float *samples;  // IR sample data
+        const char *name;     // Display name
+        int sampleRate;       // Sample rate (should be 48000 for all)
+        int length;           // Number of samples
+        const float *samples; // IR sample data
     };
 
     /**

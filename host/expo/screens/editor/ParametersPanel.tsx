@@ -62,7 +62,7 @@ export const ParametersPanel: React.FC<{
         if (!name) return null;
 
         const meta = getParamMeta(slot.typeId, id);
-        
+
         // Render enum picker for Enum parameters
         if (meta?.kind === ParamValueKind.Enum && meta.enumOptions) {
           return (
@@ -78,7 +78,7 @@ export const ParametersPanel: React.FC<{
             />
           );
         }
-        
+
         // Default: render slider for Number parameters
         return (
           <Slider

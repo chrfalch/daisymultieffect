@@ -23,7 +23,7 @@ export interface EffectParam {
     max: number;
     step: number;
   };
-  
+
   /** Optional enum options (for kind==Enum) */
   enumOptions?: {
     value: number;

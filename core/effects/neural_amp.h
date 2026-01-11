@@ -170,7 +170,7 @@ struct NeuralAmpEffect : BaseEffect
 
 #if HAS_RTNEURAL
         model_.reset();
-        
+
 #if defined(DAISY_SEED_BUILD)
         // Load default embedded model on firmware
         LoadEmbeddedModel(0);
@@ -227,7 +227,7 @@ struct NeuralAmpEffect : BaseEffect
     {
         if (max < 6)
             return 0;
-        out[0] = {0, modelIndex_};  // Enum params use direct value
+        out[0] = {0, modelIndex_}; // Enum params use direct value
         out[1] = {1, (uint8_t)(inputGain_ * 127.0f + 0.5f)};
         out[2] = {2, (uint8_t)(outputGain_ * 127.0f + 0.5f)};
         out[3] = {3, (uint8_t)(bass_ * 127.0f + 0.5f)};
@@ -244,76 +244,76 @@ struct NeuralAmpEffect : BaseEffect
 
     // Check if a model is loaded and ready
     bool IsModelLoaded() const { return modelLoaded_; }
-    
+
     /**
      * Load embedded model by index from model registry
-     * 
+     *
      * @param index Index into EmbeddedModels::kModelRegistry
      * @return true if model was loaded successfully
      */
     bool LoadEmbeddedModel(int index)
     {
 #if HAS_RTNEURAL && defined(DAISY_SEED_BUILD)
-        const auto* modelInfo = EmbeddedModels::GetModel(static_cast<size_t>(index));
+        const auto *modelInfo = EmbeddedModels::GetModel(static_cast<size_t>(index));
         if (!modelInfo)
         {
             modelLoaded_ = false;
             modelName_ = "Invalid Model";
             return false;
         }
-        
+
         // Load LSTM layer weights
         // RTNeural LSTM expects:
         //   setWVals: kernel weights [input_size][4*hidden_size]
         //   setUVals: recurrent weights [hidden_size][4*hidden_size]
         //   setBVals: biases [4*hidden_size]
-        
+
         constexpr int hiddenSize = 12;
         constexpr int gateSize = 4 * hiddenSize; // 48 for LSTM
-        
+
         // Convert flat arrays to vector<vector> for RTNeural API
         // Kernel: shape (1, 48) -> vector<vector>[1][48]
         std::vector<std::vector<float>> wVals(1, std::vector<float>(gateSize));
         for (int j = 0; j < gateSize; ++j)
             wVals[0][j] = modelInfo->kernel[j];
-        
+
         // Recurrent: shape (12, 48) -> vector<vector>[12][48]
         std::vector<std::vector<float>> uVals(hiddenSize, std::vector<float>(gateSize));
         for (int i = 0; i < hiddenSize; ++i)
             for (int j = 0; j < gateSize; ++j)
                 uVals[i][j] = modelInfo->recurrent[i * gateSize + j];
-        
+
         // Biases: shape (48,) -> vector[48]
         std::vector<float> bVals(gateSize);
         for (int j = 0; j < gateSize; ++j)
             bVals[j] = modelInfo->bias[j];
-        
+
         // Set LSTM weights (layer 0)
-        auto& lstmLayer = model_.template get<0>();
+        auto &lstmLayer = model_.template get<0>();
         lstmLayer.setWVals(wVals);
         lstmLayer.setUVals(uVals);
         lstmLayer.setBVals(bVals);
-        
+
         // Load Dense layer weights
         // Dense: shape (12, 1) -> vector<vector>[1][12]
         std::vector<std::vector<float>> denseW(1, std::vector<float>(hiddenSize));
         for (int j = 0; j < hiddenSize; ++j)
             denseW[0][j] = modelInfo->denseW[j];
-        
+
         // Dense bias: shape (1,)
         float denseB[1] = {modelInfo->denseB[0]};
-        
+
         // Set Dense weights (layer 1)
-        auto& denseLayer = model_.template get<1>();
+        auto &denseLayer = model_.template get<1>();
         denseLayer.setWeights(denseW);
         denseLayer.setBias(denseB);
-        
+
         // Reset model state and mark as loaded
         model_.reset();
         modelLoaded_ = true;
         modelName_ = modelInfo->name;
         modelIndex_ = static_cast<uint8_t>(index);
-        
+
         return true;
 #else
         // For VST without embedded registry, just mark as loaded
