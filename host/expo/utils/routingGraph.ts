@@ -1,3 +1,5 @@
+import { PEDAL_SLOT_WIDTH, PEDAL_SLOT_HEIGHT } from "../components/PedalSlot";
+
 export type GraphViewMode = "grid" | "graph";
 
 export type GraphNodeId = "IN" | `S${number}`;
@@ -55,9 +57,9 @@ export function buildRoutingGraphLayout(args: {
 }): GraphLayout {
   const { slots, numSlots, getShortName } = args;
 
-  // Match PedalSlot sizing so we can render slots using that component.
-  const nodeWidth = 90;
-  const nodeHeight = 120;
+  // Use shared PedalSlot dimensions so we can render slots using that component.
+  const nodeWidth = PEDAL_SLOT_WIDTH;
+  const nodeHeight = PEDAL_SLOT_HEIGHT;
   const gapX = 28;
   const gapY = 36;
   const padding = 16;

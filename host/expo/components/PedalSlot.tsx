@@ -2,6 +2,10 @@ import React from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Card } from "./Card";
 
+/** Pedal slot dimensions - shared with routing graph layout */
+export const PEDAL_SLOT_WIDTH = 90;
+export const PEDAL_SLOT_HEIGHT = 120;
+
 interface PedalSlotProps {
   name: string;
   shortName: string;
@@ -10,7 +14,49 @@ interface PedalSlotProps {
   onPress: () => void;
   onToggleEnabled?: () => void;
   showSwitch?: boolean;
+  /** Sum L+R to mono before processing */
+  sumToMono?: boolean;
+  /** Channel policy: 0=Auto, 1=Mono, 2=Stereo */
+  channelPolicy?: number;
 }
+
+const ChannelIndicator: React.FC<{
+  sumToMono: boolean;
+  channelPolicy: number;
+  selected: boolean;
+}> = ({ sumToMono, channelPolicy, selected }) => {
+  // Policy: 0=Auto (A), 1=Mono (M), 2=Stereo (S)
+  const policyLabel =
+    channelPolicy === 1 ? "M" : channelPolicy === 2 ? "S" : "A";
+  const textColor = selected ? "#1976D2" : "#666";
+  const bgColor = selected ? "#E3F2FD" : "#F5F5F5";
+  const borderColor = selected ? "#90CAF9" : "#E0E0E0";
+
+  return (
+    <View style={styles.channelIndicator}>
+      {sumToMono && (
+        <View
+          style={[
+            styles.indicatorBadge,
+            { backgroundColor: bgColor, borderColor },
+          ]}
+        >
+          <Text style={[styles.indicatorText, { color: textColor }]}>Σ</Text>
+        </View>
+      )}
+      <View
+        style={[
+          styles.indicatorBadge,
+          { backgroundColor: bgColor, borderColor },
+        ]}
+      >
+        <Text style={[styles.indicatorText, { color: textColor }]}>
+          {policyLabel}
+        </Text>
+      </View>
+    </View>
+  );
+};
 
 export const PedalSlot: React.FC<PedalSlotProps> = ({
   name,
@@ -20,6 +66,8 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
   onToggleEnabled,
   showSwitch = true,
   onPress,
+  sumToMono = false,
+  channelPolicy = 0,
 }) => {
   const topStripBg = selected ? "#2196F3" : "#E3F2FD";
   const topStripText = selected ? "#fff" : "#1976D2";
@@ -46,6 +94,12 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
             >
               {name}
             </Text>
+
+            <ChannelIndicator
+              sumToMono={sumToMono}
+              channelPolicy={channelPolicy}
+              selected={selected}
+            />
 
             {showSwitch && onToggleEnabled ? (
               <Pressable
@@ -94,8 +148,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   pedal: {
-    width: 90,
-    height: 120,
+    width: PEDAL_SLOT_WIDTH,
+    height: PEDAL_SLOT_HEIGHT,
   },
 
   topStrip: {
@@ -113,10 +167,11 @@ const styles = StyleSheet.create({
   face: {
     flex: 1,
     paddingHorizontal: 10,
-    paddingTop: 10,
-    paddingBottom: 12,
+    paddingTop: 8,
+    paddingBottom: 10,
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 4,
   },
   name: {
     fontSize: 10,
@@ -142,5 +197,22 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     borderWidth: 2,
     backgroundColor: "#fff",
+  },
+
+  channelIndicator: {
+    flexDirection: "row",
+    gap: 3,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  indicatorBadge: {
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+  },
+  indicatorText: {
+    fontSize: 9,
+    fontWeight: "600",
   },
 });
