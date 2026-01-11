@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useLayoutEffect, useRef } from "react";
 import { View, Text, StyleSheet, LayoutChangeEvent } from "react-native";
 import Animated, {
   useSharedValue,
@@ -185,10 +185,21 @@ export const Slider: React.FC<SliderProps> = ({
     width.value = e.nativeEvent.layout.width;
   };
 
+  const viewRef = useRef<View>(null);
+  useLayoutEffect(() => {
+    viewRef.current?.measure((x, y, w, h, pageX, pageY) => {
+      width.value = w;
+    });
+  }, []);
+
   return (
     <View style={styles.container}>
       <GestureDetector gesture={gesture}>
-        <View style={styles.sliderContainer} onLayout={handleLayout}>
+        <View
+          style={styles.sliderContainer}
+          onLayout={handleLayout}
+          ref={viewRef}
+        >
           <Animated.View style={[styles.fill, fillStyle]} />
           <View style={styles.labelContainer}>
             <Text style={styles.label}>{label}</Text>
