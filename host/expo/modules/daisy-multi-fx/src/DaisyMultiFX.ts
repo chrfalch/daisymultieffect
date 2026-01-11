@@ -4,9 +4,11 @@ import {
   Patch,
   EffectMeta,
   ConnectionStatus,
+  DeviceStatus,
   PatchUpdateEvent,
   EffectMetaUpdateEvent,
   ConnectionStatusEvent,
+  StatusUpdateEvent,
 } from "./DaisyMultiFX.types";
 
 /**
@@ -176,4 +178,14 @@ export function addConnectionStatusListener(
   listener: (event: ConnectionStatusEvent) => void
 ): EventSubscription {
   return DaisyMultiFXModule.addListener("onConnectionStatusChange", listener);
+}
+
+/**
+ * Subscribe to device status updates (audio levels + CPU load).
+ * Called at ~30Hz when connected to the device.
+ */
+export function addStatusUpdateListener(
+  listener: (event: StatusUpdateEvent) => void
+): EventSubscription {
+  return DaisyMultiFXModule.addListener("onStatusUpdate", listener);
 }

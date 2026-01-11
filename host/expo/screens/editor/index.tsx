@@ -7,6 +7,7 @@ import { Card } from "../../components/Card";
 import { CardTitle } from "../../components/CardTitle";
 import { GraphView } from "../../components/GraphView";
 import { ConnectionStatus } from "../../components/ConnectionStatus";
+import { StatusMeter } from "../../components/StatusMeter";
 import { Button } from "../../components/Button";
 import { HStack, VStack } from "../../components/Stack";
 import { ParametersPanel } from "./ParametersPanel";
@@ -52,6 +53,7 @@ export const EditorScreen: React.FC = () => {
   const {
     isConnected,
     connectionStatus,
+    deviceStatus,
     patch,
     effectMeta,
     refreshPatch,
@@ -90,21 +92,31 @@ export const EditorScreen: React.FC = () => {
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
       >
-        <Card>
-          <CardTitle>Connection Status</CardTitle>
-          <HStack justify="space-between" align="center">
+        <HStack justify="space-between" align="stretch" gap={16}>
+          <Card flex={1}>
             <VStack>
-              <ConnectionStatus
-                isConnected={isConnected}
-                connectionStatus={connectionStatus}
-              />
+              <CardTitle>Connection Status</CardTitle>
+              <HStack justify="space-between" align="center">
+                <VStack>
+                  <ConnectionStatus
+                    isConnected={isConnected}
+                    connectionStatus={connectionStatus}
+                  />
+                </VStack>
+                <VStack gap={8}>
+                  <Button title="Load Patch from VST" onPress={refreshPatch} />
+                  <Button title="Push Patch to VST" onPress={pushPatchToVst} />
+                </VStack>
+              </HStack>
             </VStack>
-            <VStack gap={8}>
-              <Button title="Load Patch from VST" onPress={refreshPatch} />
-              <Button title="Push Patch to VST" onPress={pushPatchToVst} />
+          </Card>
+          <Card flex={1}>
+            <VStack>
+              <CardTitle>Device Status</CardTitle>
+              <StatusMeter deviceStatus={deviceStatus} />
             </VStack>
-          </HStack>
-        </Card>
+          </Card>
+        </HStack>
 
         {patch && (
           <Card style={styles.graphCard}>

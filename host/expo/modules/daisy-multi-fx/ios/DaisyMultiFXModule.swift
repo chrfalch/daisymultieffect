@@ -6,7 +6,7 @@ public class DaisyMultiFXModule: Module {
     public func definition() -> ModuleDefinition {
         Name("DaisyMultiFX")
 
-        Events("onPatchUpdate", "onEffectMetaUpdate", "onConnectionStatusChange")
+        Events("onPatchUpdate", "onEffectMetaUpdate", "onConnectionStatusChange", "onStatusUpdate")
 
         OnCreate {
             // Wire up callbacks to emit events
@@ -29,6 +29,14 @@ public class DaisyMultiFXModule: Module {
             self.controller.onConnectionStatusChange = { [weak self] status in
                 self?.sendEvent(
                     "onConnectionStatusChange",
+                    [
+                        "status": status.toDictionary()
+                    ])
+            }
+
+            self.controller.onStatusUpdate = { [weak self] status in
+                self?.sendEvent(
+                    "onStatusUpdate",
                     [
                         "status": status.toDictionary()
                     ])

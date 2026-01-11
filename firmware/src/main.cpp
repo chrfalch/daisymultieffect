@@ -6,6 +6,10 @@
 #include "patch/ui_control.h"
 
 #include "daisy_seed.h"
+#include "util/CpuLoadMeter.h"
+
+#include <algorithm>
+#include <cmath>
 
 static daisy::DaisySeed g_hw;
 static MidiControl g_midi;
@@ -14,6 +18,13 @@ static TempoSource g_tempo;
 static TempoControl g_tempoControl;
 static AudioProcessor g_processor(g_tempo);
 static UiControl g_ui;
+
+// CPU load metering
+static daisy::CpuLoadMeter g_cpuMeter;
+
+// Level metering (updated per-block in audio callback, read by main loop)
+static volatile float g_inputLevel = 0.0f;
+static volatile float g_outputLevel = 0.0f;
 
 // Buffer binding helper - called at startup to bind SDRAM buffers
 extern void BindProcessorBuffers(AudioProcessor &processor);
@@ -27,6 +38,8 @@ static void AudioCallback(daisy::AudioHandle::InputBuffer in,
                           daisy::AudioHandle::OutputBuffer out,
                           size_t size)
 {
+    g_cpuMeter.OnBlockStart();
+
     g_midi.ApplyPendingInAudioThread();
 
     // Detect mono input: check if right channel is essentially silent while left has signal
@@ -57,6 +70,23 @@ static void AudioCallback(daisy::AudioHandle::InputBuffer in,
         // Normal stereo processing
         g_processor.ProcessBlock(in, out, size);
     }
+
+    // Level metering: compute peak levels per block (efficient - one pass after processing)
+    float maxIn = 0.0f, maxOut = 0.0f;
+    for (size_t i = 0; i < size; ++i)
+    {
+        maxIn = std::max(maxIn, std::max(std::abs(in[0][i]), std::abs(in[1][i])));
+        maxOut = std::max(maxOut, std::max(std::abs(out[0][i]), std::abs(out[1][i])));
+    }
+
+    // Apply release smoothing (ballistics) - done once per block, not per sample
+    constexpr float release = 0.97f;
+    float curIn = g_inputLevel;
+    float curOut = g_outputLevel;
+    g_inputLevel = maxIn > curIn ? maxIn : curIn * release;
+    g_outputLevel = maxOut > curOut ? maxOut : curOut * release;
+
+    g_cpuMeter.OnBlockEnd();
 }
 
 int main()
@@ -70,7 +100,11 @@ int main()
 
     g_ui.Init(g_hw, g_processor, g_midi, g_tempoControl);
 
-    g_hw.SetAudioBlockSize(48);
+    constexpr size_t kBlockSize = 48;
+    g_hw.SetAudioBlockSize(kBlockSize);
+
+    // Initialize CPU load meter
+    g_cpuMeter.Init(g_hw.AudioSampleRate(), kBlockSize);
 
     auto pw =
 #if defined(DEBUG_PATCH_PASSTHROUGH)
@@ -82,10 +116,37 @@ int main()
 
     g_hw.StartAudio(AudioCallback);
 
+    // Timing for status updates and CPU meter reset
+    uint32_t lastStatusMs = 0;
+    uint32_t lastCpuResetMs = 0;
+    constexpr uint32_t kStatusIntervalMs = 33;     // ~30Hz status updates
+    constexpr uint32_t kCpuResetIntervalMs = 5000; // Reset CPU max every 5 seconds
+
     while (true)
     {
+        uint32_t nowMs = daisy::System::GetNow();
+
         g_ui.Process();
         g_midi.Process();
+
+        // Send status update at ~30Hz
+        if (nowMs - lastStatusMs >= kStatusIntervalMs)
+        {
+            lastStatusMs = nowMs;
+            g_midi.SendStatusUpdate(
+                g_inputLevel,
+                g_outputLevel,
+                g_cpuMeter.GetAvgCpuLoad(),
+                g_cpuMeter.GetMaxCpuLoad());
+        }
+
+        // Reset CPU max periodically to keep it meaningful ("recent peak")
+        if (nowMs - lastCpuResetMs >= kCpuResetIntervalMs)
+        {
+            lastCpuResetMs = nowMs;
+            g_cpuMeter.Reset();
+        }
+
         g_hw.DelayMs(10);
     }
 }

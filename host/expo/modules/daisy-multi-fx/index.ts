@@ -6,6 +6,7 @@ export type {
   EffectParam,
   Patch,
   ConnectionStatus,
+  DeviceStatus,
 } from "./src/DaisyMultiFX.types";
 
 export {
@@ -32,6 +33,7 @@ export {
   addPatchUpdateListener,
   addEffectMetaUpdateListener,
   addConnectionStatusListener,
+  addStatusUpdateListener,
 } from "./src/DaisyMultiFX";
 
 export default DaisyMultiFXModule;

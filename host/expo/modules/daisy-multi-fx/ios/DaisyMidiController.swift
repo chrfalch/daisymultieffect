@@ -76,6 +76,7 @@ final class DaisyMidiController: @unchecked Sendable {
     var onPatchUpdate: ((Patch) -> Void)?
     var onEffectMetaUpdate: (([EffectMeta]) -> Void)?
     var onConnectionStatusChange: ((ConnectionStatus) -> Void)?
+    var onStatusUpdate: ((DeviceStatus) -> Void)?
 
     private init() {}
 
@@ -595,6 +596,24 @@ final class DaisyMidiController: @unchecked Sendable {
                 let slot = data[3]
                 let policy = data[4]
                 updateSlotChannelPolicy(slot: slot, channelPolicy: policy)
+            }
+
+        case MidiProtocol.Resp.statusUpdate:
+            // 7D <sender> 42 [inputLevel 5B] [outputLevel 5B] [cpuAvg 5B] [cpuMax 5B]
+            // Total: 3 header + 4*5 values = 23 bytes
+            if data.count >= 23 {
+                let inputLevel = MidiProtocol.q16_16ToFloat(MidiProtocol.unpackQ16_16(data[3..<8]))
+                let outputLevel = MidiProtocol.q16_16ToFloat(MidiProtocol.unpackQ16_16(data[8..<13]))
+                let cpuAvg = MidiProtocol.q16_16ToFloat(MidiProtocol.unpackQ16_16(data[13..<18]))
+                let cpuMax = MidiProtocol.q16_16ToFloat(MidiProtocol.unpackQ16_16(data[18..<23]))
+
+                let status = DeviceStatus(
+                    inputLevel: inputLevel,
+                    outputLevel: outputLevel,
+                    cpuAvg: cpuAvg,
+                    cpuMax: cpuMax
+                )
+                onStatusUpdate?(status)
             }
 
         default:

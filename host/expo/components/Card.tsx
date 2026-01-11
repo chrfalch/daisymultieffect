@@ -5,15 +5,24 @@ interface CardProps {
   children: React.ReactNode;
   selected?: boolean;
   style?: StyleProp<ViewStyle>;
+  flex?: number;
 }
 
 export const Card: React.FC<CardProps> = ({
   children,
   selected = false,
   style,
+  flex,
 }) => {
   return (
-    <View style={[styles.card, selected && styles.cardSelected, style]}>
+    <View
+      style={[
+        styles.card,
+        selected && styles.cardSelected,
+        style,
+        flex !== undefined && { flex },
+      ]}
+    >
       {children}
     </View>
   );

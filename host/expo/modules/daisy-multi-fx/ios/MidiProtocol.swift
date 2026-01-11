@@ -39,6 +39,9 @@ enum MidiProtocol {
         static let effectMetaV3: UInt8 = 0x36
         static let effectMetaV4: UInt8 = 0x37
         static let effectMetaV5: UInt8 = 0x38
+        static let buttonState: UInt8 = 0x40
+        static let tempoUpdate: UInt8 = 0x41
+        static let statusUpdate: UInt8 = 0x42
     }
 
     // MARK: - Encoders
@@ -91,5 +94,25 @@ enum MidiProtocol {
             0xF0, manufacturerId, Sender.swift, Cmd.setChannelPolicy, slot & 0x7F,
             channelPolicy & 0x7F, 0xF7,
         ]
+    }
+
+    // MARK: - Q16.16 Decoders
+
+    /// Unpack 5 bytes (7-bit safe) into Q16.16 fixed-point value
+    static func unpackQ16_16(_ bytes: ArraySlice<UInt8>) -> Int32 {
+        guard bytes.count >= 5 else { return 0 }
+        let b = Array(bytes)
+        var u: UInt32 = 0
+        u |= UInt32(b[0] & 0x7F)
+        u |= UInt32(b[1] & 0x7F) << 7
+        u |= UInt32(b[2] & 0x7F) << 14
+        u |= UInt32(b[3] & 0x7F) << 21
+        u |= UInt32(b[4] & 0x7F) << 28
+        return Int32(bitPattern: u)
+    }
+
+    /// Convert Q16.16 fixed-point to Float
+    static func q16_16ToFloat(_ v: Int32) -> Float {
+        return Float(v) / 65536.0
     }
 }

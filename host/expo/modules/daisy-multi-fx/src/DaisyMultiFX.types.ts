@@ -128,3 +128,10 @@ export interface EffectMetaUpdateEvent {
 export interface ConnectionStatusEvent {
   status: ConnectionStatus;
 }
+
+/**
+ * Event payload for device status updates (levels + CPU)
+ */
+export interface StatusUpdateEvent {
+  status: DeviceStatus;
+}

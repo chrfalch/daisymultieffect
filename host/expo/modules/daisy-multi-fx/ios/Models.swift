@@ -139,3 +139,26 @@ struct ConnectionStatus {
         ]
     }
 }
+
+// MARK: - Device Status
+
+/// Device status with audio levels and CPU load
+struct DeviceStatus {
+    /// Input level (linear, 0.0-1.0+)
+    var inputLevel: Float
+    /// Output level (linear, 0.0-1.0+)
+    var outputLevel: Float
+    /// Average CPU load (0.0-1.0)
+    var cpuAvg: Float
+    /// Maximum CPU load since last reset (0.0-1.0)
+    var cpuMax: Float
+
+    func toDictionary() -> [String: Any] {
+        return [
+            "inputLevel": inputLevel,
+            "outputLevel": outputLevel,
+            "cpuAvg": cpuAvg,
+            "cpuMax": cpuMax,
+        ]
+    }
+}

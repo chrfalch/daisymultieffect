@@ -134,7 +134,16 @@ extern "C"
         SYSEX_RESP_BUTTON_STATE = 0x40,
 
         /** Tempo update: F0 7D 41 <bpmQ16_16_5bytes> F7 */
-        SYSEX_RESP_TEMPO_UPDATE = 0x41
+        SYSEX_RESP_TEMPO_UPDATE = 0x41,
+
+        /**
+         * Device status update (levels + CPU load):
+         * F0 7D <sender> 42 <inputLevelQ16.16_5B> <outputLevelQ16.16_5B>
+         *                   <cpuAvgQ16.16_5B> <cpuMaxQ16.16_5B> F7
+         * All values are Q16.16 fixed point (0.0-1.0 range for levels/CPU)
+         * Total: 24 bytes
+         */
+        SYSEX_RESP_STATUS_UPDATE = 0x42
     };
 
     /* =============================================================================

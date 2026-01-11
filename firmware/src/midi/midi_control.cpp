@@ -196,6 +196,26 @@ void MidiControl::SendButtonStateChange(uint8_t btn, uint8_t slot, bool enabled)
     SendSysEx(msg, sizeof(msg));
 }
 
+void MidiControl::SendStatusUpdate(float inputLevel, float outputLevel, float cpuAvg, float cpuMax)
+{
+    // Pack 4 Q16.16 values: inputLevel, outputLevel, cpuAvg, cpuMax
+    uint8_t qIn[5], qOut[5], qAvg[5], qMax[5];
+    packQ16_16(floatToQ16_16(inputLevel), qIn);
+    packQ16_16(floatToQ16_16(outputLevel), qOut);
+    packQ16_16(floatToQ16_16(cpuAvg), qAvg);
+    packQ16_16(floatToQ16_16(cpuMax), qMax);
+
+    // F0 7D 01 42 [inputLevel 5B] [outputLevel 5B] [cpuAvg 5B] [cpuMax 5B] F7
+    uint8_t msg[] = {
+        0xF0, 0x7D, 0x01, 0x42,
+        qIn[0], qIn[1], qIn[2], qIn[3], qIn[4],
+        qOut[0], qOut[1], qOut[2], qOut[3], qOut[4],
+        qAvg[0], qAvg[1], qAvg[2], qAvg[3], qAvg[4],
+        qMax[0], qMax[1], qMax[2], qMax[3], qMax[4],
+        0xF7};
+    SendSysEx(msg, sizeof(msg));
+}
+
 void MidiControl::SendSetParam(uint8_t slot, uint8_t paramId, uint8_t value)
 {
     // SysEx: F0 7D 20 <slot> <paramId> <value> F7

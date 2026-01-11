@@ -48,6 +48,7 @@ public:
 
     void SendTempoUpdate(float bpm);
     void SendButtonStateChange(uint8_t btn, uint8_t slot, bool enabled);
+    void SendStatusUpdate(float inputLevel, float outputLevel, float cpuAvg, float cpuMax);
 
     // Send individual state changes (for bidirectional sync)
     void SendSetParam(uint8_t slot, uint8_t paramId, uint8_t value);

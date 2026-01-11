@@ -17,12 +17,14 @@ import {
   addPatchUpdateListener,
   addEffectMetaUpdateListener,
   addConnectionStatusListener,
+  addStatusUpdateListener,
   requestEffectMeta,
 } from "../modules/daisy-multi-fx";
 import type {
   Patch,
   EffectMeta,
   ConnectionStatus,
+  DeviceStatus,
   EffectSlot,
   EffectParam,
 } from "../modules/daisy-multi-fx";
@@ -31,6 +33,9 @@ export interface UseDaisyMultiFXResult {
   // Connection
   isConnected: boolean;
   connectionStatus: ConnectionStatus | null;
+
+  // Device status (levels + CPU)
+  deviceStatus: DeviceStatus | null;
 
   // State
   patch: Patch | null;
@@ -75,6 +80,7 @@ export function useDaisyMultiFX(
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatus | null>(null);
+  const [deviceStatus, setDeviceStatus] = useState<DeviceStatus | null>(null);
   const [patch, setPatch] = useState<Patch | null>(null);
   const [effectMeta, setEffectMeta] = useState<EffectMeta[]>([]);
 
@@ -131,6 +137,10 @@ export function useDaisyMultiFX(
       setIsConnected(event.status.connected);
     });
 
+    const deviceStatusSub = addStatusUpdateListener((event) => {
+      setDeviceStatus(event.status);
+    });
+
     // Auto-initialize if requested
     if (autoInitialize) {
       initializeMidi();
@@ -141,6 +151,7 @@ export function useDaisyMultiFX(
       patchSub.remove();
       metaSub.remove();
       statusSub.remove();
+      deviceStatusSub.remove();
     };
   }, [autoInitialize, initializeMidi]);
 
@@ -249,6 +260,9 @@ export function useDaisyMultiFX(
     // Connection
     isConnected,
     connectionStatus,
+
+    // Device status (levels + CPU)
+    deviceStatus,
 
     // State
     patch,
