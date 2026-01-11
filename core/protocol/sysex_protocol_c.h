@@ -150,7 +150,13 @@ extern "C"
         SYSEX_EFFECT_MIXER = 13,
         SYSEX_EFFECT_REVERB = 14,
         SYSEX_EFFECT_COMPRESSOR = 15,
-        SYSEX_EFFECT_CHORUS = 16
+        SYSEX_EFFECT_CHORUS = 16,
+        SYSEX_EFFECT_NOISE_GATE = 17,
+        SYSEX_EFFECT_GRAPHIC_EQ = 18,
+        SYSEX_EFFECT_FLANGER = 19,
+        SYSEX_EFFECT_PHASER = 20,
+        SYSEX_EFFECT_NEURAL_AMP = 21,
+        SYSEX_EFFECT_CABINET_IR = 22
     };
 
     /* =============================================================================

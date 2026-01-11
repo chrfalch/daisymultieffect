@@ -89,7 +89,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout DaisyMultiFXProcessor::creat
             juce::ParameterID(prefix + "_type", 1),
             "Slot " + juce::String(slot + 1) + " Type",
             effectNames,
-            def.typeIndex)); // Use default effect type index
+            Effects::getIndexByTypeId(def.typeId))); // Compute index from typeId at runtime
 
         params.push_back(std::make_unique<juce::AudioParameterFloat>(
             juce::ParameterID(prefix + "_mix", 1),
@@ -110,27 +110,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout DaisyMultiFXProcessor::creat
 
 void DaisyMultiFXProcessor::initializeDefaultPatch()
 {
-    // Create default patch from kDefaultSlots configuration
-    PatchWireDesc patch = {};
-    patch.numSlots = kNumSlots;
-
-    for (int slot = 0; slot < kNumSlots; ++slot)
-    {
-        const auto &def = kDefaultSlots[slot];
-        patch.slots[slot].slotIndex = static_cast<uint8_t>(slot);
-        patch.slots[slot].typeId = def.typeId;
-        patch.slots[slot].enabled = 1;
-        patch.slots[slot].inputL = (slot == 0) ? ROUTE_INPUT : static_cast<uint8_t>(slot - 1);
-        patch.slots[slot].inputR = (slot == 0) ? ROUTE_INPUT : static_cast<uint8_t>(slot - 1);
-        patch.slots[slot].sumToMono = (slot == 0) ? 1 : 0;
-        patch.slots[slot].wet = 127;
-        patch.slots[slot].numParams = 5;
-        for (int p = 0; p < 5; ++p)
-        {
-            patch.slots[slot].params[p] = {static_cast<uint8_t>(p),
-                                           static_cast<uint8_t>(def.params[p] * 127.0f)};
-        }
-    }
+    // Use shared default patch from core
+    PatchWireDesc patch = daisyfx::MakeDefaultPatch();
 
     // Load into PatchState (will notify observers)
     patchState_.loadPatch(patch);

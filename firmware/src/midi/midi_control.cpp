@@ -13,6 +13,12 @@
 #include "effects/reverb.h"
 #include "effects/compressor.h"
 #include "effects/chorus.h"
+#include "effects/noise_gate.h"
+#include "effects/eq.h"
+#include "effects/flanger.h"
+#include "effects/phaser.h"
+#include "effects/neural_amp.h"
+#include "effects/cabinet_ir.h"
 
 namespace
 {
@@ -287,6 +293,12 @@ void MidiControl::SendEffectList()
         SimpleReverbEffect::TypeId,
         CompressorEffect::TypeId,
         ChorusEffect::TypeId,
+        NoiseGateEffect::TypeId,
+        GraphicEQEffect::TypeId,
+        FlangerEffect::TypeId,
+        PhaserEffect::TypeId,
+        NeuralAmpEffect::TypeId,
+        CabinetIREffect::TypeId,
     };
 
     for (uint8_t typeId : types)
