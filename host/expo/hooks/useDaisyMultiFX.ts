@@ -14,6 +14,8 @@ import {
   setSlotSumToMono,
   setSlotMix,
   setSlotChannelPolicy,
+  setInputGain,
+  setOutputGain,
   addPatchUpdateListener,
   addEffectMetaUpdateListener,
   addConnectionStatusListener,
@@ -58,6 +60,10 @@ export interface UseDaisyMultiFXResult {
   setSlotSumToMono: (slot: number, sumToMono: boolean) => void;
   setSlotMix: (slot: number, dry: number, wet: number) => void;
   setSlotChannelPolicy: (slot: number, channelPolicy: number) => void;
+
+  // Global gain control
+  setInputGain: (gainDb: number) => void;
+  setOutputGain: (gainDb: number) => void;
 
   // Helpers
   getSlot: (slotIndex: number) => EffectSlot | undefined;
@@ -285,6 +291,10 @@ export function useDaisyMultiFX(
     setSlotSumToMono,
     setSlotMix,
     setSlotChannelPolicy,
+
+    // Global gain control
+    setInputGain,
+    setOutputGain,
 
     // Helpers
     getSlot,

@@ -484,6 +484,12 @@ void MidiControl::SendPatchDump()
         msg[p++] = (uint8_t)((uint8_t)current_patch_.buttons[i].mode & 0x7F);
     }
 
+    // Append gain values (Q16.16 packed to 5 bytes each for 7-bit safety)
+    packQ16_16(floatToQ16_16(current_input_gain_db_), &msg[p]);
+    p += 5;
+    packQ16_16(floatToQ16_16(current_output_gain_db_), &msg[p]);
+    p += 5;
+
     msg[p++] = 0xF7;
     SendSysEx(msg, p);
 }
@@ -620,6 +626,27 @@ void MidiControl::HandleSysexMessage(const uint8_t *bytes, size_t len)
             }
         }
         break;
+
+    case 0x27: // set input gain: F0 7D <sender> 27 <gainDb_Q16.16_5bytes> F7
+        if (payload + 5 <= len)
+        {
+            float gainDb = unpackQ16_16(&bytes[payload]);
+            daisy::ScopedIrqBlocker lock;
+            pending_input_gain_q16_ = floatToQ16_16(gainDb);
+            pending_input_gain_valid_ = true;
+        }
+        break;
+
+    case 0x28: // set output gain: F0 7D <sender> 28 <gainDb_Q16.16_5bytes> F7
+        if (payload + 5 <= len)
+        {
+            float gainDb = unpackQ16_16(&bytes[payload]);
+            daisy::ScopedIrqBlocker lock;
+            pending_output_gain_q16_ = floatToQ16_16(gainDb);
+            pending_output_gain_valid_ = true;
+        }
+        break;
+
     default:
         break;
     }
@@ -665,8 +692,44 @@ void MidiControl::Process()
 
 void MidiControl::ApplyPendingInAudioThread()
 {
-    if (!board_)
+    if (!board_ || !processor_)
         return;
+
+    // Handle pending input gain change
+    if (pending_input_gain_valid_)
+    {
+        pending_input_gain_valid_ = false;
+
+        float gainDb = (float)pending_input_gain_q16_ / 65536.0f;
+        // Clamp to safe range: 0dB to +24dB
+        if (gainDb < 0.0f)
+            gainDb = 0.0f;
+        if (gainDb > 24.0f)
+            gainDb = 24.0f;
+
+        // Convert dB to linear: gain = 10^(dB/20)
+        float linear = std::pow(10.0f, gainDb / 20.0f);
+        processor_->SetInputGain(linear);
+        current_input_gain_db_ = gainDb;
+    }
+
+    // Handle pending output gain change
+    if (pending_output_gain_valid_)
+    {
+        pending_output_gain_valid_ = false;
+
+        float gainDb = (float)pending_output_gain_q16_ / 65536.0f;
+        // Clamp to safe range: -12dB to +12dB
+        if (gainDb < -12.0f)
+            gainDb = -12.0f;
+        if (gainDb > 12.0f)
+            gainDb = 12.0f;
+
+        // Convert dB to linear: gain = 10^(dB/20)
+        float linear = std::pow(10.0f, gainDb / 20.0f);
+        processor_->SetOutputGain(linear);
+        current_output_gain_db_ = gainDb;
+    }
 
     const uint32_t w = pending_word_;
     if (w == 0)

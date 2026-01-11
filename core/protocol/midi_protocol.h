@@ -43,6 +43,8 @@ namespace daisyfx
             constexpr uint8_t SET_SUM_TO_MONO = 0x24;
             constexpr uint8_t SET_MIX = 0x25;
             constexpr uint8_t SET_CHANNEL_POLICY = 0x26;
+            constexpr uint8_t SET_INPUT_GAIN = 0x27;
+            constexpr uint8_t SET_OUTPUT_GAIN = 0x28;
             constexpr uint8_t REQUEST_META = 0x32;
         }
 
@@ -70,6 +72,32 @@ namespace daisyfx
         }
 
         //=========================================================================
+        // Q16.16 Fixed-Point Encoding (for float values over SysEx)
+        //=========================================================================
+
+        inline int32_t floatToQ16_16(float v) { return static_cast<int32_t>(v * 65536.0f + 0.5f); }
+
+        inline void packQ16_16(int32_t value, uint8_t out[5])
+        {
+            uint32_t u = static_cast<uint32_t>(value);
+            out[0] = u & 0x7F;
+            out[1] = (u >> 7) & 0x7F;
+            out[2] = (u >> 14) & 0x7F;
+            out[3] = (u >> 21) & 0x7F;
+            out[4] = (u >> 28) & 0x7F;
+        }
+
+        inline float unpackQ16_16(const uint8_t in[5])
+        {
+            uint32_t u = static_cast<uint32_t>(in[0]) |
+                         (static_cast<uint32_t>(in[1]) << 7) |
+                         (static_cast<uint32_t>(in[2]) << 14) |
+                         (static_cast<uint32_t>(in[3]) << 21) |
+                         (static_cast<uint32_t>(in[4]) << 28);
+            return static_cast<float>(static_cast<int32_t>(u)) / 65536.0f;
+        }
+
+        //=========================================================================
         // Decoded Command Structure
         //=========================================================================
 
@@ -88,6 +116,8 @@ namespace daisyfx
             uint8_t dry = 0;
             uint8_t wet = 0;
             uint8_t channelPolicy = 0;
+            float inputGainDb = 0.0f;  // For SET_INPUT_GAIN
+            float outputGainDb = 0.0f; // For SET_OUTPUT_GAIN
             bool valid = false;
         };
 
@@ -138,9 +168,10 @@ namespace daisyfx
 
         /**
          * Encode a full patch dump response.
-         * Format: F0 7D <sender> 13 <numSlots> [slot data...] [button data...] F7
+         * Format: F0 7D <sender> 13 <numSlots> [slot data...] [button data...] [inputGainDb] [outputGainDb] F7
          */
-        inline std::vector<uint8_t> encodePatchDump(uint8_t sender, const PatchWireDesc &patch)
+        inline std::vector<uint8_t> encodePatchDump(uint8_t sender, const PatchWireDesc &patch,
+                                                    float inputGainDb = 18.0f, float outputGainDb = 0.0f)
         {
             std::vector<uint8_t> sysex;
             sysex.reserve(512);
@@ -181,8 +212,43 @@ namespace daisyfx
                 sysex.push_back(0);
             }
 
+            // Global gain settings (Q16.16 encoded, 5 bytes each)
+            uint8_t inGain[5], outGain[5];
+            packQ16_16(floatToQ16_16(inputGainDb), inGain);
+            packQ16_16(floatToQ16_16(outputGainDb), outGain);
+            for (int i = 0; i < 5; ++i)
+                sysex.push_back(inGain[i]);
+            for (int i = 0; i < 5; ++i)
+                sysex.push_back(outGain[i]);
+
             sysex.push_back(0xF7);
             return sysex;
+        }
+
+        /**
+         * Encode SET_INPUT_GAIN command.
+         * Format: F0 7D <sender> 27 <gainDb_Q16.16_5bytes> F7
+         * @param gainDb Input gain in dB (0 to +24 dB typical)
+         */
+        inline std::vector<uint8_t> encodeSetInputGain(uint8_t sender, float gainDb)
+        {
+            uint8_t q[5];
+            packQ16_16(floatToQ16_16(gainDb), q);
+            return {0xF0, MANUFACTURER_ID, sender, Cmd::SET_INPUT_GAIN,
+                    q[0], q[1], q[2], q[3], q[4], 0xF7};
+        }
+
+        /**
+         * Encode SET_OUTPUT_GAIN command.
+         * Format: F0 7D <sender> 28 <gainDb_Q16.16_5bytes> F7
+         * @param gainDb Output gain in dB (-12 to +12 dB typical)
+         */
+        inline std::vector<uint8_t> encodeSetOutputGain(uint8_t sender, float gainDb)
+        {
+            uint8_t q[5];
+            packQ16_16(floatToQ16_16(gainDb), q);
+            return {0xF0, MANUFACTURER_ID, sender, Cmd::SET_OUTPUT_GAIN,
+                    q[0], q[1], q[2], q[3], q[4], 0xF7};
         }
 
         //=========================================================================
@@ -278,6 +344,24 @@ namespace daisyfx
                 }
                 break;
 
+            case Cmd::SET_INPUT_GAIN:
+                // 7D <sender> 27 <gainDb_Q16.16_5bytes>
+                if (size >= 8)
+                {
+                    msg.inputGainDb = unpackQ16_16(&data[3]);
+                    msg.valid = true;
+                }
+                break;
+
+            case Cmd::SET_OUTPUT_GAIN:
+                // 7D <sender> 28 <gainDb_Q16.16_5bytes>
+                if (size >= 8)
+                {
+                    msg.outputGainDb = unpackQ16_16(&data[3]);
+                    msg.valid = true;
+                }
+                break;
+
             case Cmd::REQUEST_PATCH:
             case Cmd::REQUEST_META:
                 msg.valid = true;
@@ -294,7 +378,8 @@ namespace daisyfx
          * Decode a full patch dump.
          * Input format (with F0/F7 stripped): 7D 13 <numSlots> [slot data...] [button data...]
          */
-        inline bool decodePatchDump(const uint8_t *data, int size, PatchWireDesc &outPatch)
+        inline bool decodePatchDump(const uint8_t *data, int size, PatchWireDesc &outPatch,
+                                    float *outInputGainDb = nullptr, float *outOutputGainDb = nullptr)
         {
             if (size < 4)
                 return false;
@@ -335,7 +420,26 @@ namespace daisyfx
             }
 
             // Skip button data (4 bytes)
-            // offset += 4;
+            offset += 4;
+
+            // Read global gain settings if present (10 bytes: 5 for input, 5 for output)
+            if (offset + 10 <= size)
+            {
+                if (outInputGainDb)
+                    *outInputGainDb = unpackQ16_16(&data[offset]);
+                offset += 5;
+                if (outOutputGainDb)
+                    *outOutputGainDb = unpackQ16_16(&data[offset]);
+                offset += 5;
+            }
+            else
+            {
+                // Default values if not present (backwards compatibility)
+                if (outInputGainDb)
+                    *outInputGainDb = 18.0f;
+                if (outOutputGainDb)
+                    *outOutputGainDb = 0.0f;
+            }
 
             return true;
         }

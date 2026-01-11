@@ -111,5 +111,13 @@ public class DaisyMultiFXModule: Module {
             self.controller.setSlotChannelPolicy(
                 slot: UInt8(slot), channelPolicy: UInt8(channelPolicy))
         }
+
+        Function("setInputGain") { (gainDb: Double) in
+            self.controller.setInputGain(gainDb: Float(gainDb))
+        }
+
+        Function("setOutputGain") { (gainDb: Double) in
+            self.controller.setOutputGain(gainDb: Float(gainDb))
+        }
     }
 }

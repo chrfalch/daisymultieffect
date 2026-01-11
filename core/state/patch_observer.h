@@ -29,6 +29,8 @@ namespace daisyfx
 
         // Global changes
         virtual void onTempoChanged(float bpm) {}
+        virtual void onInputGainChanged(float gainDb) {}
+        virtual void onOutputGainChanged(float gainDb) {}
     };
 
 } // namespace daisyfx

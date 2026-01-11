@@ -166,6 +166,11 @@ void AudioProcessor::ProcessFrame(float inL, float inR, float &outL, float &outR
     inL *= inputGain_;
     inR *= inputGain_;
 
+    // Track post-gain input peak level
+    float inPeak = std::max(std::abs(inL), std::abs(inR));
+    if (inPeak > inputPeakLevel_)
+        inputPeakLevel_ = inPeak;
+
     // Fade time for bypass/enable transitions
     const float fadeSeconds = 0.005f; // 5ms
     const float fadeStep = (fadeSeconds > 0.0f && board_.sampleRate > 0.0f)
@@ -254,4 +259,9 @@ void AudioProcessor::ProcessFrame(float inL, float inR, float &outL, float &outR
     // Apply output gain staging
     outL = curL * outputGain_;
     outR = curR * outputGain_;
+
+    // Track post-processing output peak level
+    float outPeak = std::max(std::abs(outL), std::abs(outR));
+    if (outPeak > outputPeakLevel_)
+        outputPeakLevel_ = outPeak;
 }

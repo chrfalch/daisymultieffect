@@ -8,6 +8,7 @@ import { CardTitle } from "../../components/CardTitle";
 import { GraphView } from "../../components/GraphView";
 import { ConnectionStatus } from "../../components/ConnectionStatus";
 import { StatusMeter } from "../../components/StatusMeter";
+import { GainControl } from "../../components/GainControl";
 import { Button } from "../../components/Button";
 import { HStack, VStack } from "../../components/Stack";
 import { ParametersPanel } from "./ParametersPanel";
@@ -64,6 +65,8 @@ export const EditorScreen: React.FC = () => {
     setSlotSumToMono,
     setSlotMix,
     setSlotChannelPolicy,
+    setInputGain,
+    setOutputGain,
     getEffectName,
     getEffectShortName,
     getParamName,
@@ -117,6 +120,20 @@ export const EditorScreen: React.FC = () => {
             </VStack>
           </Card>
         </HStack>
+
+        {patch && (
+          <Card>
+            <VStack>
+              <CardTitle>Gain Staging</CardTitle>
+              <GainControl
+                inputGainDb={patch.inputGainDb}
+                outputGainDb={patch.outputGainDb}
+                onInputGainChange={setInputGain}
+                onOutputGainChange={setOutputGain}
+              />
+            </VStack>
+          </Card>
+        )}
 
         {patch && (
           <Card style={styles.graphCard}>
@@ -197,7 +214,7 @@ export const EditorScreen: React.FC = () => {
               <RoutingPanel
                 patch={patch!}
                 slot={slot}
-                getEffectShortName={getEffectShortName}
+                getEffectName={getEffectName}
                 setSlotRouting={setSlotRouting}
                 setSlotSumToMono={setSlotSumToMono}
                 setSlotMix={setSlotMix}

@@ -151,6 +151,24 @@ export function setSlotChannelPolicy(
 }
 
 /**
+ * Set input gain (pre-effects).
+ * Used to boost instrument-level signals to line level.
+ * @param gainDb - Gain in dB (0 to +24 dB)
+ */
+export function setInputGain(gainDb: number): void {
+  DaisyMultiFXModule.setInputGain(gainDb);
+}
+
+/**
+ * Set output gain (post-effects).
+ * Used to adjust final output level.
+ * @param gainDb - Gain in dB (-12 to +12 dB)
+ */
+export function setOutputGain(gainDb: number): void {
+  DaisyMultiFXModule.setOutputGain(gainDb);
+}
+
+/**
  * Subscribe to patch updates.
  * Called when a new patch is received from the device.
  */

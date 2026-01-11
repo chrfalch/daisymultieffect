@@ -29,6 +29,9 @@ export {
   setSlotSumToMono,
   setSlotMix,
   setSlotChannelPolicy,
+  // Gain control
+  setInputGain,
+  setOutputGain,
   // Events
   addPatchUpdateListener,
   addEffectMetaUpdateListener,

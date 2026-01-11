@@ -603,7 +603,8 @@ final class DaisyMidiController: @unchecked Sendable {
             // Total: 3 header + 4*5 values = 23 bytes
             if data.count >= 23 {
                 let inputLevel = MidiProtocol.q16_16ToFloat(MidiProtocol.unpackQ16_16(data[3..<8]))
-                let outputLevel = MidiProtocol.q16_16ToFloat(MidiProtocol.unpackQ16_16(data[8..<13]))
+                let outputLevel = MidiProtocol.q16_16ToFloat(
+                    MidiProtocol.unpackQ16_16(data[8..<13]))
                 let cpuAvg = MidiProtocol.q16_16ToFloat(MidiProtocol.unpackQ16_16(data[13..<18]))
                 let cpuMax = MidiProtocol.q16_16ToFloat(MidiProtocol.unpackQ16_16(data[18..<23]))
 
@@ -666,6 +667,20 @@ final class DaisyMidiController: @unchecked Sendable {
             }
 
             newPatch.slots.append(slot)
+        }
+
+        // Parse button assignments (2x 2 bytes each = 4 bytes)
+        offset += 4
+
+        // Parse gain values if present (5 bytes each for Q16.16)
+        if offset + 10 <= data.count {
+            let inputGainQ16 = MidiProtocol.unpackQ16_16(data[offset..<(offset + 5)])
+            newPatch.inputGainDb = MidiProtocol.q16_16ToFloat(inputGainQ16)
+            offset += 5
+
+            let outputGainQ16 = MidiProtocol.unpackQ16_16(data[offset..<(offset + 5)])
+            newPatch.outputGainDb = MidiProtocol.q16_16ToFloat(outputGainQ16)
+            offset += 5
         }
 
         return newPatch
@@ -1153,6 +1168,32 @@ final class DaisyMidiController: @unchecked Sendable {
         patch = p
 
         sendSysex(MidiProtocol.encodeSetChannelPolicy(slot: slot, channelPolicy: channelPolicy))
+        onPatchUpdate?(p)
+    }
+
+    func setInputGain(gainDb: Float) {
+        guard var p = patch else { return }
+        // Clamp to valid range: 0 to +24 dB
+        let clampedGain = max(0.0, min(24.0, gainDb))
+        if abs(p.inputGainDb - clampedGain) < 0.001 { return }
+
+        p.inputGainDb = clampedGain
+        patch = p
+
+        sendSysex(MidiProtocol.encodeSetInputGain(gainDb: clampedGain))
+        onPatchUpdate?(p)
+    }
+
+    func setOutputGain(gainDb: Float) {
+        guard var p = patch else { return }
+        // Clamp to valid range: -12 to +12 dB
+        let clampedGain = max(-12.0, min(12.0, gainDb))
+        if abs(p.outputGainDb - clampedGain) < 0.001 { return }
+
+        p.outputGainDb = clampedGain
+        patch = p
+
+        sendSysex(MidiProtocol.encodeSetOutputGain(gainDb: clampedGain))
         onPatchUpdate?(p)
     }
 

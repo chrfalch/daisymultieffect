@@ -343,6 +343,20 @@ void DaisyMultiFXProcessor::onTempoChanged(float bpm)
     tempo_.valid = true;
 }
 
+void DaisyMultiFXProcessor::onInputGainChanged(float gainDb)
+{
+    // Convert dB to linear gain: gain = 10^(dB/20)
+    float linearGain = std::pow(10.0f, gainDb / 20.0f);
+    processor_->SetInputGain(linearGain);
+}
+
+void DaisyMultiFXProcessor::onOutputGainChanged(float gainDb)
+{
+    // Convert dB to linear gain: gain = 10^(dB/20)
+    float linearGain = std::pow(10.0f, gainDb / 20.0f);
+    processor_->SetOutputGain(linearGain);
+}
+
 //=============================================================================
 // MIDI Handling
 //=============================================================================
@@ -414,6 +428,14 @@ void DaisyMultiFXProcessor::handleIncomingMidi(const juce::MidiMessage &message)
 
     case MidiProtocol::Cmd::REQUEST_META:
         sendEffectMeta();
+        break;
+
+    case MidiProtocol::Cmd::SET_INPUT_GAIN:
+        patchState_.setInputGainDb(decoded.inputGainDb);
+        break;
+
+    case MidiProtocol::Cmd::SET_OUTPUT_GAIN:
+        patchState_.setOutputGainDb(decoded.outputGainDb);
         break;
     }
 }

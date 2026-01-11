@@ -72,6 +72,8 @@ public:
     void onSlotChannelPolicyChanged(uint8_t slot, uint8_t channelPolicy) override;
     void onPatchLoaded() override;
     void onTempoChanged(float bpm) override;
+    void onInputGainChanged(float gainDb) override;
+    void onOutputGainChanged(float gainDb) override;
 
     // Accessors
     juce::AudioProcessorValueTreeState &getValueTreeState() { return parameters_; }

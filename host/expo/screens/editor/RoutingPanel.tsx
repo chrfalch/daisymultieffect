@@ -46,7 +46,7 @@ const InputSelector: React.FC<{
 export const RoutingPanel: React.FC<{
   patch: Patch;
   slot: EffectSlot;
-  getEffectShortName: (typeId: number) => string;
+  getEffectName: (typeId: number) => string;
   setSlotRouting: (slot: number, inputL: number, inputR: number) => void;
   setSlotSumToMono: (slot: number, sumToMono: boolean) => void;
   setSlotMix: (slot: number, dry: number, wet: number) => void;
@@ -54,7 +54,7 @@ export const RoutingPanel: React.FC<{
 }> = ({
   patch,
   slot,
-  getEffectShortName,
+  getEffectName,
   setSlotRouting,
   setSlotSumToMono,
   setSlotMix,
@@ -68,12 +68,12 @@ export const RoutingPanel: React.FC<{
     for (let i = 0; i < 12; i++) {
       const enabled = i < slot.slotIndex;
       const s = patch.slots[i];
-      const short = s ? getEffectShortName(s.typeId) : `Slot ${i + 1}`;
+      const short = s ? getEffectName(s.typeId) : `Slot ${i + 1}`;
       options.push({ label: `${i + 1}:${short}`, value: i, enabled });
     }
 
     return options;
-  }, [patch, slot.slotIndex, getEffectShortName]);
+  }, [patch, slot.slotIndex, getEffectName]);
 
   const policyOptions = React.useMemo(
     () =>

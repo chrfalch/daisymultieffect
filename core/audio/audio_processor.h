@@ -50,6 +50,16 @@ public:
     float GetInputGain() const { return inputGain_; }
     float GetOutputGain() const { return outputGain_; }
 
+    // Get peak levels (post-gain for input, post-processing for output)
+    // Call ResetPeakLevels() after reading to start fresh measurement
+    float GetInputPeakLevel() const { return inputPeakLevel_; }
+    float GetOutputPeakLevel() const { return outputPeakLevel_; }
+    void ResetPeakLevels()
+    {
+        inputPeakLevel_ = 0.0f;
+        outputPeakLevel_ = 0.0f;
+    }
+
     // Process a block of audio (convenience wrapper)
     template <typename InBuf, typename OutBuf>
     void ProcessBlock(InBuf in, OutBuf out, size_t size)
@@ -168,4 +178,8 @@ private:
     // Guitar pickups output ~0.1 peak, this brings it to ~0.8 peak.
     float inputGain_ = 8.0f;  // ~+18dB boost for instrument level input
     float outputGain_ = 1.0f; // Unity output gain
+
+    // Peak level tracking (updated per frame)
+    float inputPeakLevel_ = 0.0f;  // Post-gain input peak
+    float outputPeakLevel_ = 0.0f; // Post-processing output peak
 };

@@ -75,6 +75,12 @@ extern "C"
         /** Set slot channel policy: F0 7D <sender> 26 <slot> <policy> F7 */
         SYSEX_CMD_SET_CHANNEL_POLICY = 0x26,
 
+        /** Set input gain (dB): F0 7D <sender> 27 <gainDb_Q16.16_5bytes> F7 */
+        SYSEX_CMD_SET_INPUT_GAIN = 0x27,
+
+        /** Set output gain (dB): F0 7D <sender> 28 <gainDb_Q16.16_5bytes> F7 */
+        SYSEX_CMD_SET_OUTPUT_GAIN = 0x28,
+
         /** Request all effect metadata: F0 7D 32 F7 */
         SYSEX_CMD_REQUEST_EFFECT_META = 0x32
     };

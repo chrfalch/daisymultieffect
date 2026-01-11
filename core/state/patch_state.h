@@ -169,6 +169,42 @@ namespace daisyfx
         }
 
         /**
+         * Set input gain in dB. Range: 0 to +24 dB.
+         * Clamped for safety.
+         */
+        void setInputGainDb(float gainDb)
+        {
+            // Clamp to safe range: 0dB to +24dB
+            if (gainDb < 0.0f)
+                gainDb = 0.0f;
+            if (gainDb > 24.0f)
+                gainDb = 24.0f;
+
+            if (inputGainDb_ == gainDb)
+                return;
+            inputGainDb_ = gainDb;
+            notifyInputGainChanged(gainDb);
+        }
+
+        /**
+         * Set output gain in dB. Range: -12 to +12 dB.
+         * Clamped for safety.
+         */
+        void setOutputGainDb(float gainDb)
+        {
+            // Clamp to safe range: -12dB to +12dB
+            if (gainDb < -12.0f)
+                gainDb = -12.0f;
+            if (gainDb > 12.0f)
+                gainDb = 12.0f;
+
+            if (outputGainDb_ == gainDb)
+                return;
+            outputGainDb_ = gainDb;
+            notifyOutputGainChanged(gainDb);
+        }
+
+        /**
          * Load a complete patch. Replaces current state and notifies onPatchLoaded.
          */
         void loadPatch(const PatchWireDesc &patch)
@@ -210,6 +246,8 @@ namespace daisyfx
 
         uint8_t getNumSlots() const { return patch_.numSlots; }
         float getTempo() const { return tempo_; }
+        float getInputGainDb() const { return inputGainDb_; }
+        float getOutputGainDb() const { return outputGainDb_; }
 
     private:
         void initializeDefault()
@@ -400,8 +438,32 @@ namespace daisyfx
                 o->onTempoChanged(bpm);
         }
 
+        void notifyInputGainChanged(float gainDb)
+        {
+            std::vector<PatchObserver *> obs;
+            {
+                std::lock_guard<std::mutex> lock(observerMutex_);
+                obs = observers_;
+            }
+            for (auto *o : obs)
+                o->onInputGainChanged(gainDb);
+        }
+
+        void notifyOutputGainChanged(float gainDb)
+        {
+            std::vector<PatchObserver *> obs;
+            {
+                std::lock_guard<std::mutex> lock(observerMutex_);
+                obs = observers_;
+            }
+            for (auto *o : obs)
+                o->onOutputGainChanged(gainDb);
+        }
+
         PatchWireDesc patch_;
         float tempo_ = 120.0f;
+        float inputGainDb_ = 18.0f; // Default +18dB for instrument level
+        float outputGainDb_ = 0.0f; // Default unity
 
         std::vector<PatchObserver *> observers_;
         std::mutex observerMutex_;

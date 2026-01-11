@@ -76,6 +76,10 @@ export interface Patch {
   numSlots: number;
   /** All effect slots */
   slots: EffectSlot[];
+  /** Input gain in dB (0 to +24 dB) */
+  inputGainDb: number;
+  /** Output gain in dB (-12 to +12 dB) */
+  outputGainDb: number;
 }
 
 /**

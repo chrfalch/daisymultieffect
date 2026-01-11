@@ -28,6 +28,8 @@ enum MidiProtocol {
         static let setSumToMono: UInt8 = 0x24
         static let setMix: UInt8 = 0x25
         static let setChannelPolicy: UInt8 = 0x26
+        static let setInputGain: UInt8 = 0x27
+        static let setOutputGain: UInt8 = 0x28
         static let requestMeta: UInt8 = 0x32
     }
 
@@ -93,6 +95,41 @@ enum MidiProtocol {
         [
             0xF0, manufacturerId, Sender.swift, Cmd.setChannelPolicy, slot & 0x7F,
             channelPolicy & 0x7F, 0xF7,
+        ]
+    }
+
+    /// Encode SET_INPUT_GAIN command (gain in dB, range 0-24)
+    static func encodeSetInputGain(gainDb: Float) -> [UInt8] {
+        var msg: [UInt8] = [0xF0, manufacturerId, Sender.swift, Cmd.setInputGain]
+        msg.append(contentsOf: packQ16_16(floatToQ16_16(gainDb)))
+        msg.append(0xF7)
+        return msg
+    }
+
+    /// Encode SET_OUTPUT_GAIN command (gain in dB, range -12 to +12)
+    static func encodeSetOutputGain(gainDb: Float) -> [UInt8] {
+        var msg: [UInt8] = [0xF0, manufacturerId, Sender.swift, Cmd.setOutputGain]
+        msg.append(contentsOf: packQ16_16(floatToQ16_16(gainDb)))
+        msg.append(0xF7)
+        return msg
+    }
+
+    // MARK: - Q16.16 Encoders
+
+    /// Convert Float to Q16.16 fixed-point
+    static func floatToQ16_16(_ v: Float) -> Int32 {
+        return Int32(v * 65536.0 + 0.5)
+    }
+
+    /// Pack Q16.16 value into 5 bytes (7-bit safe)
+    static func packQ16_16(_ value: Int32) -> [UInt8] {
+        let u = UInt32(bitPattern: value)
+        return [
+            UInt8(u & 0x7F),
+            UInt8((u >> 7) & 0x7F),
+            UInt8((u >> 14) & 0x7F),
+            UInt8((u >> 21) & 0x7F),
+            UInt8((u >> 28) & 0x7F),
         ]
     }
 

@@ -2,21 +2,40 @@
 #pragma once
 #include "effects/base_effect.h"
 #include "effects/effect_metadata.h"
+#include <algorithm>
 #include <cmath>
 
 struct CompressorEffect : BaseEffect
 {
     static constexpr uint8_t TypeId = Effects::Compressor::TypeId;
 
-    float threshold_ = 0.5f; // id0: threshold in dB mapped to 0..1 (-40dB to 0dB)
-    float ratio_ = 4.0f;     // id1: compression ratio (1:1 to 20:1)
-    float attack_ = 0.01f;   // id2: attack time in seconds
-    float release_ = 0.1f;   // id3: release time in seconds
-    float makeup_ = 1.0f;    // id4: makeup gain (0dB to +24dB)
+    // Fast dB conversion constants
+    // ln(10)/20 for dB to linear: linear = exp(dB * kDbToLinCoef)
+    static constexpr float kDbToLinCoef = 0.11512925464970228f;
+    // 20/ln(10) for linear to dB: dB = log(linear) * kLinToDbCoef
+    static constexpr float kLinToDbCoef = 8.685889638065035f;
 
-    // Envelope follower state
-    float envL_ = 0.0f;
-    float envR_ = 0.0f;
+    // Soft knee width in dB
+    static constexpr float kKneeWidthDb = 6.0f;
+    static constexpr float kHalfKneeDb = kKneeWidthDb * 0.5f;
+
+    // Raw parameter values (0..1 normalized)
+    float thresholdNorm_ = 0.5f; // id0: threshold normalized
+    float ratioNorm_ = 0.15789f; // id1: ratio normalized (default ~4:1)
+    float attackNorm_ = 0.099f;  // id2: attack normalized
+    float releaseNorm_ = 0.091f; // id3: release normalized
+    float makeupNorm_ = 0.0f;    // id4: makeup normalized
+
+    // Pre-computed coefficients (updated in SetParam/Init)
+    float threshDb_ = -20.0f;    // Threshold in dB
+    float threshLin_ = 0.1f;     // Threshold as linear amplitude
+    float ratio_ = 4.0f;         // Compression ratio
+    float attackCoef_ = 0.0f;    // Attack envelope coefficient
+    float releaseCoef_ = 0.0f;   // Release envelope coefficient
+    float makeupLin_ = 1.0f;     // Makeup gain as linear amplitude
+
+    // Envelope follower state (stereo-linked, single envelope)
+    float env_ = 0.0f;
     float sampleRate_ = 48000.0f;
 
     const EffectMeta &GetMetadata() const override { return Effects::Compressor::kMeta; }
@@ -27,7 +46,9 @@ struct CompressorEffect : BaseEffect
     void Init(float sr) override
     {
         sampleRate_ = sr;
-        envL_ = envR_ = 0.0f;
+        env_ = 0.0f;
+        // Recompute all coefficients with new sample rate
+        updateCoefficients();
     }
 
     void SetParam(uint8_t id, float v) override
@@ -35,19 +56,31 @@ struct CompressorEffect : BaseEffect
         switch (id)
         {
         case 0: // Threshold: 0..1 maps to -40dB to 0dB
-            threshold_ = v;
+            thresholdNorm_ = v;
+            threshDb_ = -40.0f + v * 40.0f;
+            threshLin_ = fastDbToLin(threshDb_);
             break;
         case 1: // Ratio: 0..1 maps to 1:1 to 20:1
+            ratioNorm_ = v;
             ratio_ = 1.0f + v * 19.0f;
             break;
         case 2: // Attack: 0..1 maps to 0.1ms to 100ms
-            attack_ = 0.0001f + v * 0.0999f;
+            attackNorm_ = v;
+            {
+                float attackTime = 0.0001f + v * 0.0999f;
+                attackCoef_ = expf(-1.0f / (attackTime * sampleRate_));
+            }
             break;
         case 3: // Release: 0..1 maps to 10ms to 1000ms
-            release_ = 0.01f + v * 0.99f;
+            releaseNorm_ = v;
+            {
+                float releaseTime = 0.01f + v * 0.99f;
+                releaseCoef_ = expf(-1.0f / (releaseTime * sampleRate_));
+            }
             break;
         case 4: // Makeup: 0..1 maps to 0dB to +24dB
-            makeup_ = std::pow(10.0f, v * 24.0f / 20.0f);
+            makeupNorm_ = v;
+            makeupLin_ = fastDbToLin(v * 24.0f);
             break;
         }
     }
@@ -56,58 +89,98 @@ struct CompressorEffect : BaseEffect
     {
         if (max < 5)
             return 0;
-        out[0] = {0, (uint8_t)(threshold_ * 127.0f + 0.5f)};
-        out[1] = {1, (uint8_t)(((ratio_ - 1.0f) / 19.0f) * 127.0f + 0.5f)};
-        out[2] = {2, (uint8_t)(((attack_ - 0.0001f) / 0.0999f) * 127.0f + 0.5f)};
-        out[3] = {3, (uint8_t)(((release_ - 0.01f) / 0.99f) * 127.0f + 0.5f)};
-        float makeupDb = 20.0f * std::log10(makeup_);
-        out[4] = {4, (uint8_t)((makeupDb / 24.0f) * 127.0f + 0.5f)};
+        out[0] = {0, (uint8_t)(thresholdNorm_ * 127.0f + 0.5f)};
+        out[1] = {1, (uint8_t)(ratioNorm_ * 127.0f + 0.5f)};
+        out[2] = {2, (uint8_t)(attackNorm_ * 127.0f + 0.5f)};
+        out[3] = {3, (uint8_t)(releaseNorm_ * 127.0f + 0.5f)};
+        out[4] = {4, (uint8_t)(makeupNorm_ * 127.0f + 0.5f)};
         return 5;
     }
 
     void ProcessStereo(float &l, float &r) override
     {
-        // Convert threshold from 0..1 to linear amplitude
-        // 0 = -40dB, 1 = 0dB
-        float threshDb = -40.0f + threshold_ * 40.0f;
-        float threshLin = std::pow(10.0f, threshDb / 20.0f);
+        // Stereo-linked envelope detection (max of L/R preserves stereo image)
+        float inputLevel = std::max(std::fabs(l), std::fabs(r));
 
-        // Envelope follower coefficients
-        float attackCoef = std::exp(-1.0f / (attack_ * sampleRate_));
-        float releaseCoef = std::exp(-1.0f / (release_ * sampleRate_));
-
-        // Get input levels
-        float inL = std::fabs(l);
-        float inR = std::fabs(r);
-
-        // Envelope follower (peak detection)
-        envL_ = (inL > envL_) ? attackCoef * envL_ + (1.0f - attackCoef) * inL
-                              : releaseCoef * envL_ + (1.0f - releaseCoef) * inL;
-        envR_ = (inR > envR_) ? attackCoef * envR_ + (1.0f - attackCoef) * inR
-                              : releaseCoef * envR_ + (1.0f - releaseCoef) * inR;
-
-        // Compute gain reduction for each channel
-        auto computeGain = [&](float env) -> float
+        // Envelope follower (peak detection) with pre-computed coefficients
+        if (inputLevel > env_)
         {
-            if (env <= threshLin || env < 1e-10f)
-                return 1.0f;
+            env_ = attackCoef_ * env_ + (1.0f - attackCoef_) * inputLevel;
+        }
+        else
+        {
+            env_ = releaseCoef_ * env_ + (1.0f - releaseCoef_) * inputLevel;
+        }
 
-            // Convert to dB
-            float envDb = 20.0f * std::log10(env);
-            float overDb = envDb - threshDb;
+        // Compute gain with soft knee
+        float gain = computeGainSoftKnee(env_);
 
-            // Apply ratio
-            float compressedDb = threshDb + overDb / ratio_;
-            float targetDb = compressedDb - envDb;
+        // Apply same gain to both channels (stereo-linked) with makeup
+        float totalGain = gain * makeupLin_;
+        l *= totalGain;
+        r *= totalGain;
+    }
 
-            return std::pow(10.0f, targetDb / 20.0f);
-        };
+private:
+    // Fast dB to linear conversion: pow(10, dB/20) = exp(dB * ln(10)/20)
+    static inline float fastDbToLin(float dB)
+    {
+        return expf(dB * kDbToLinCoef);
+    }
 
-        float gainL = computeGain(envL_);
-        float gainR = computeGain(envR_);
+    // Fast linear to dB conversion: 20 * log10(x) = 20/ln(10) * log(x)
+    static inline float fastLinToDb(float lin)
+    {
+        return logf(lin) * kLinToDbCoef;
+    }
 
-        // Apply gain reduction and makeup gain
-        l = l * gainL * makeup_;
-        r = r * gainR * makeup_;
+    // Recompute all coefficients (called from Init)
+    void updateCoefficients()
+    {
+        threshDb_ = -40.0f + thresholdNorm_ * 40.0f;
+        threshLin_ = fastDbToLin(threshDb_);
+        ratio_ = 1.0f + ratioNorm_ * 19.0f;
+
+        float attackTime = 0.0001f + attackNorm_ * 0.0999f;
+        attackCoef_ = expf(-1.0f / (attackTime * sampleRate_));
+
+        float releaseTime = 0.01f + releaseNorm_ * 0.99f;
+        releaseCoef_ = expf(-1.0f / (releaseTime * sampleRate_));
+
+        makeupLin_ = fastDbToLin(makeupNorm_ * 24.0f);
+    }
+
+    // Compute gain reduction with soft knee
+    inline float computeGainSoftKnee(float env) const
+    {
+        // Avoid log of zero/tiny values
+        if (env < 1e-10f)
+            return 1.0f;
+
+        float envDb = fastLinToDb(env);
+
+        // Below knee region: no compression
+        if (envDb < threshDb_ - kHalfKneeDb)
+            return 1.0f;
+
+        float gainReductionDb;
+
+        if (envDb < threshDb_ + kHalfKneeDb)
+        {
+            // Soft knee region: quadratic interpolation
+            // Smoothly ramps from 0 gain reduction to full ratio
+            float x = envDb - threshDb_ + kHalfKneeDb; // 0 to kKneeWidthDb
+            float slope = (1.0f - 1.0f / ratio_);
+            // Quadratic: gainReduction = slope * x^2 / (2 * kneeWidth)
+            gainReductionDb = slope * x * x / (2.0f * kKneeWidthDb);
+        }
+        else
+        {
+            // Above knee region: full compression
+            float overDb = envDb - threshDb_;
+            gainReductionDb = overDb * (1.0f - 1.0f / ratio_);
+        }
+
+        return fastDbToLin(-gainReductionDb);
     }
 };

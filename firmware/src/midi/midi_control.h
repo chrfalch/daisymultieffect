@@ -33,6 +33,8 @@ public:
         SetSlotSumToMono = 5,
         SetSlotMix = 6,
         SetSlotChannelPolicy = 7,
+        SetInputGain = 8,
+        SetOutputGain = 9,
     };
 
     void Init(daisy::DaisySeed &hw, AudioProcessor &processor, Board &board, TempoSource &tempo);
@@ -89,6 +91,16 @@ private:
     volatile uint32_t tx_pending_param_ = 0;   // Pack: slot<<24 | paramId<<16 | value<<8 | 1
     volatile uint32_t tx_pending_enabled_ = 0; // Pack: slot<<24 | enabled<<8 | 2
     volatile uint32_t tx_pending_type_ = 0;    // Pack: slot<<24 | typeId<<8 | 3
+
+    // Pending gain values (stored as Q16.16 fixed point)
+    volatile int32_t pending_input_gain_q16_ = 0;
+    volatile int32_t pending_output_gain_q16_ = 0;
+    volatile bool pending_input_gain_valid_ = false;
+    volatile bool pending_output_gain_valid_ = false;
+
+    // Current gain values for patch dump
+    float current_input_gain_db_ = 18.0f;
+    float current_output_gain_db_ = 0.0f;
 
     // Scratch storage used when re-applying patches.
     PatchWireDesc pending_patch_{};

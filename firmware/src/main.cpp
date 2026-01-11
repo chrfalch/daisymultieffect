@@ -71,13 +71,10 @@ static void AudioCallback(daisy::AudioHandle::InputBuffer in,
         g_processor.ProcessBlock(in, out, size);
     }
 
-    // Level metering: compute peak levels per block (efficient - one pass after processing)
-    float maxIn = 0.0f, maxOut = 0.0f;
-    for (size_t i = 0; i < size; ++i)
-    {
-        maxIn = std::max(maxIn, std::max(std::abs(in[0][i]), std::abs(in[1][i])));
-        maxOut = std::max(maxOut, std::max(std::abs(out[0][i]), std::abs(out[1][i])));
-    }
+    // Level metering: use processor's post-gain peak levels
+    float maxIn = g_processor.GetInputPeakLevel();
+    float maxOut = g_processor.GetOutputPeakLevel();
+    g_processor.ResetPeakLevels();
 
     // Apply release smoothing (ballistics) - done once per block, not per sample
     constexpr float release = 0.97f;

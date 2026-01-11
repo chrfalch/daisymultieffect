@@ -42,6 +42,8 @@ namespace DaisyMultiFX
             static constexpr uint8_t SET_SUM_TO_MONO = SYSEX_CMD_SET_SUM_TO_MONO;
             static constexpr uint8_t SET_MIX = SYSEX_CMD_SET_MIX;
             static constexpr uint8_t SET_CHANNEL_POLICY = SYSEX_CMD_SET_CHANNEL_POLICY;
+            static constexpr uint8_t SET_INPUT_GAIN = SYSEX_CMD_SET_INPUT_GAIN;
+            static constexpr uint8_t SET_OUTPUT_GAIN = SYSEX_CMD_SET_OUTPUT_GAIN;
             static constexpr uint8_t REQUEST_EFFECT_META = SYSEX_CMD_REQUEST_EFFECT_META;
         }
 

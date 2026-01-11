@@ -39,11 +39,15 @@ struct EffectSlot: Equatable {
 struct Patch: Equatable {
     var numSlots: UInt8 = 0
     var slots: [EffectSlot] = []
+    var inputGainDb: Float = 18.0  // Default +18dB for instrument level
+    var outputGainDb: Float = 0.0  // Default 0dB (unity)
 
     func toDictionary() -> [String: Any] {
         return [
             "numSlots": Int(numSlots),
             "slots": slots.map { $0.toDictionary() },
+            "inputGainDb": Double(inputGainDb),
+            "outputGainDb": Double(outputGainDb),
         ]
     }
 }
