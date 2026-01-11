@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include <mutex>
 #include "MidiBridge.h"
 
 class MainComponent : public juce::Component,
@@ -43,6 +44,7 @@ private:
     // Activity log
     juce::TextEditor logView_;
     juce::Label logLabel_;
+    juce::ComboBox logLevelCombo_;
 
     // Connection indicator
     juce::Label connectionIndicator_;
@@ -50,9 +52,25 @@ private:
     // Bridge
     std::unique_ptr<BidirectionalMidiBridge> bridge_;
 
-    // Message log (circular buffer)
+    // Log level filtering
+    enum class LogLevel
+    {
+        ErrorsOnly = 0,
+        Important = 1,
+        Verbose = 2
+    };
+    LogLevel currentLogLevel_ = LogLevel::Important;
+
+    // Message log (circular buffer) - reduced size since we filter now
     juce::StringArray logMessages_;
-    static constexpr int kMaxLogMessages = 100;
+    static constexpr int kMaxLogMessages = 50;
+
+    // Pending log messages (batched updates to avoid UI thrashing)
+    juce::StringArray pendingLogMessages_;
+    std::mutex logMutex_;
+
+    void flushPendingLogs();
+    void queueLogMessage(const juce::String &msg, LogLevel level);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

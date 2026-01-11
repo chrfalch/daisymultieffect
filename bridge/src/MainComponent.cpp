@@ -63,6 +63,18 @@ MainComponent::MainComponent()
     logLabel_.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible(logLabel_);
 
+    // Log level selector
+    logLevelCombo_.addItem("Errors Only", 1);
+    logLevelCombo_.addItem("Important", 2);
+    logLevelCombo_.addItem("Verbose (All MIDI)", 3);
+    logLevelCombo_.setSelectedId(2); // Default to Important
+    logLevelCombo_.onChange = [this]()
+    {
+        currentLogLevel_ = static_cast<LogLevel>(logLevelCombo_.getSelectedId() - 1);
+        queueLogMessage("Log level changed to: " + logLevelCombo_.getText(), LogLevel::Important);
+    };
+    addAndMakeVisible(logLevelCombo_);
+
     logView_.setMultiLine(true);
     logView_.setReadOnly(true);
     logView_.setScrollbarsShown(true);
@@ -81,6 +93,7 @@ MainComponent::MainComponent()
 
     addLogMessage("Daisy MIDI Bridge started");
     addLogMessage("Select devices and click Connect");
+    addLogMessage("Tip: Use 'Important' log level to reduce noise");
 }
 
 MainComponent::~MainComponent()
@@ -143,13 +156,16 @@ void MainComponent::resized()
     bounds.removeFromTop(20);
 
     // Log area
-    logLabel_.setBounds(bounds.removeFromTop(25));
+    auto logHeaderRow = bounds.removeFromTop(25);
+    logLabel_.setBounds(logHeaderRow.removeFromLeft(100));
+    logLevelCombo_.setBounds(logHeaderRow.removeFromRight(150));
     logView_.setBounds(bounds.reduced(0, 5));
 }
 
 void MainComponent::timerCallback()
 {
     updateStatus();
+    flushPendingLogs();
 }
 
 void MainComponent::refreshDevices()
@@ -230,8 +246,11 @@ void MainComponent::connectBridge()
                                    const juce::String &to)
     {
         juce::String msgType;
+        LogLevel msgLevel = LogLevel::Verbose; // Default: only show in verbose mode
+
         if (msg.isSysEx())
         {
+            msgLevel = LogLevel::Important; // SysEx messages are important
             auto *data = msg.getSysExData();
             int size = msg.getSysExDataSize();
             // Check if it's our manufacturer ID (0x7D)
@@ -333,31 +352,51 @@ void MainComponent::connectBridge()
             }
         }
         else if (msg.isNoteOn())
+        {
             msgType = "Note On " + juce::MidiMessage::getMidiNoteName(msg.getNoteNumber(), true, true, 4);
+            msgLevel = LogLevel::Important;
+        }
         else if (msg.isNoteOff())
+        {
             msgType = "Note Off " + juce::MidiMessage::getMidiNoteName(msg.getNoteNumber(), true, true, 4);
+            msgLevel = LogLevel::Verbose;
+        }
         else if (msg.isController())
+        {
             msgType = "CC#" + juce::String(msg.getControllerNumber()) + "=" + juce::String(msg.getControllerValue());
+            msgLevel = LogLevel::Verbose; // CC is often continuous, very noisy
+        }
         else if (msg.isProgramChange())
+        {
             msgType = "PC " + juce::String(msg.getProgramChangeNumber());
+            msgLevel = LogLevel::Important;
+        }
         else if (msg.isPitchWheel())
+        {
             msgType = "Pitch";
+            msgLevel = LogLevel::Verbose;
+        }
         else if (msg.isAftertouch())
+        {
             msgType = "AT";
+            msgLevel = LogLevel::Verbose;
+        }
         else if (msg.isChannelPressure())
+        {
             msgType = "ChPres";
+            msgLevel = LogLevel::Verbose;
+        }
         else
+        {
             msgType = "MIDI 0x" + juce::String::toHexString(msg.getRawData()[0]);
+            msgLevel = LogLevel::Verbose;
+        }
 
-        // Use MessageManager to safely update UI from MIDI thread
-        juce::MessageManager::callAsync([this, msgType, from, to]()
-                                        {
-            // Shorten device names for log
-            auto shortFrom = from.contains("Session") ? "Network" :
-                            (from.contains("Daisy") ? "Daisy" : from.substring(0, 12));
-            auto shortTo = to.contains("Session") ? "Network" :
-                          (to.contains("Daisy") ? "Daisy" : to.substring(0, 12));
-            addLogMessage(msgType + ": " + shortFrom + " -> " + shortTo); });
+        // Shorten device names for log
+        auto shortFrom = from.contains("Session") ? "Network" : (from.contains("Daisy") ? "Daisy" : from.substring(0, 12));
+        auto shortTo = to.contains("Session") ? "Network" : (to.contains("Daisy") ? "Daisy" : to.substring(0, 12));
+
+        queueLogMessage(msgType + ": " + shortFrom + " -> " + shortTo, msgLevel);
     };
 
     if (bridge_->connectDevices(deviceA, deviceB))
@@ -433,10 +472,47 @@ void MainComponent::updateStatus()
 
 void MainComponent::addLogMessage(const juce::String &msg)
 {
+    queueLogMessage(msg, LogLevel::ErrorsOnly); // Direct calls are always shown
+}
+
+void MainComponent::queueLogMessage(const juce::String &msg, LogLevel level)
+{
+    // Filter by current log level
+    if (static_cast<int>(level) > static_cast<int>(currentLogLevel_))
+        return;
+
     auto timestamp = juce::Time::getCurrentTime().toString(false, true, true, true);
     auto fullMsg = "[" + timestamp + "] " + msg;
 
-    logMessages_.add(fullMsg);
+    // Thread-safe queue for batched updates
+    std::lock_guard<std::mutex> lock(logMutex_);
+    pendingLogMessages_.add(fullMsg);
+
+    // Limit pending messages to avoid unbounded growth
+    while (pendingLogMessages_.size() > kMaxLogMessages)
+    {
+        pendingLogMessages_.remove(0);
+    }
+}
+
+void MainComponent::flushPendingLogs()
+{
+    juce::StringArray messagesToAdd;
+
+    {
+        std::lock_guard<std::mutex> lock(logMutex_);
+        if (pendingLogMessages_.isEmpty())
+            return;
+
+        messagesToAdd = std::move(pendingLogMessages_);
+        pendingLogMessages_.clear();
+    }
+
+    // Add messages to the main log
+    for (const auto &msg : messagesToAdd)
+    {
+        logMessages_.add(msg);
+    }
 
     // Keep log size bounded
     while (logMessages_.size() > kMaxLogMessages)
