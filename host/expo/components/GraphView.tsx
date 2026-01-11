@@ -395,6 +395,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingVertical: 8,
+    alignSelf: "center",
   },
   canvas: {
     position: "relative",

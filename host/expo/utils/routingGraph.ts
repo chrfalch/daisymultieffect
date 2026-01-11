@@ -63,6 +63,7 @@ export function buildRoutingGraphLayout(args: {
   const gapX = 28;
   const gapY = 36;
   const padding = 16;
+  const paddingBottom = 34;
   const rowGap = 24;
 
   const wrapMaxWidth = args.maxWidth;
@@ -289,7 +290,7 @@ export function buildRoutingGraphLayout(args: {
         )
       : maxX + nodeWidth + padding;
 
-  const height = maxY + nodeHeight + padding;
+  const height = maxY + nodeHeight + paddingBottom;
 
   return {
     nodes,
