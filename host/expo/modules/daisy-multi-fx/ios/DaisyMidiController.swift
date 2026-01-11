@@ -86,7 +86,7 @@ final class DaisyMidiController: @unchecked Sendable {
         defer { lock.unlock() }
 
         guard !isSetup else {
-            print("[DaisyMidi] Already setup")
+            NSLog("[DaisyMidi] Already setup")
             return
         }
 
@@ -135,7 +135,7 @@ final class DaisyMidiController: @unchecked Sendable {
         let networkSession = MIDINetworkSession.default()
         networkSession.isEnabled = true
         networkSession.connectionPolicy = .anyone
-        print(
+        NSLog(
             "[DaisyMidi] Network MIDI enabled: \(networkSession.isEnabled), policy: \(networkSession.connectionPolicy.rawValue)"
         )
 
@@ -183,7 +183,7 @@ final class DaisyMidiController: @unchecked Sendable {
 
         // Log all available sources
         let sourceCount = MIDIGetNumberOfSources()
-        print("[DaisyMidi] Found \(sourceCount) MIDI sources:")
+        NSLog("[DaisyMidi] Found \(sourceCount) MIDI sources:")
         var sourceNames: [String] = []
         for i in 0..<sourceCount {
             let src = MIDIGetSource(i)
@@ -191,20 +191,20 @@ final class DaisyMidiController: @unchecked Sendable {
             MIDIObjectGetStringProperty(src, kMIDIPropertyName, &name)
             let srcName = (name?.takeRetainedValue() as String?) ?? "Unknown"
             sourceNames.append(srcName)
-            print("[DaisyMidi]   Source \(i): \(srcName)")
+            NSLog("[DaisyMidi]   Source \(i): \(srcName)")
             MIDIPortConnectSource(inPort, src, nil)
         }
 
         // Also connect to the network session source if available
         let networkSourceEndpoint = networkSession.sourceEndpoint()
         if networkSourceEndpoint != 0 {
-            print("[DaisyMidi] Connecting to network session source endpoint")
+            NSLog("[DaisyMidi] Connecting to network session source endpoint")
             MIDIPortConnectSource(inPort, networkSourceEndpoint, nil)
         }
 
         // Find destination - log all available
         let destCount = MIDIGetNumberOfDestinations()
-        print("[DaisyMidi] Found \(destCount) MIDI destinations:")
+        NSLog("[DaisyMidi] Found \(destCount) MIDI destinations:")
         var destNames: [String] = []
         var selectedDestName = ""
 
@@ -214,7 +214,7 @@ final class DaisyMidiController: @unchecked Sendable {
             MIDIObjectGetStringProperty(dest, kMIDIPropertyName, &name)
             if let n = name?.takeRetainedValue() as String? {
                 destNames.append(n)
-                print("[DaisyMidi]   Destination \(i): \(n)")
+                NSLog("[DaisyMidi]   Destination \(i): \(n)")
                 // Match network MIDI, IAC, or Daisy
                 if destination == 0
                     && (n.contains("IAC") || n.contains("Bus") || n.contains("Daisy")
@@ -222,7 +222,7 @@ final class DaisyMidiController: @unchecked Sendable {
                 {
                     destination = dest
                     selectedDestName = n
-                    print("[DaisyMidi] Selected destination: \(n)")
+                    NSLog("[DaisyMidi] Selected destination: \(n)")
                 }
             }
         }
@@ -232,13 +232,13 @@ final class DaisyMidiController: @unchecked Sendable {
         if networkDestEndpoint != 0 && destination == 0 {
             destination = networkDestEndpoint
             selectedDestName = "Network Session"
-            print("[DaisyMidi] Using network session destination endpoint")
+            NSLog("[DaisyMidi] Using network session destination endpoint")
         }
 
         if destination == 0 && destCount > 0 {
             destination = MIDIGetDestination(0)
             selectedDestName = destNames.first ?? "unknown"
-            print("[DaisyMidi] Fallback to first destination: \(selectedDestName)")
+            NSLog("[DaisyMidi] Fallback to first destination: \(selectedDestName)")
         }
 
         updateConnectionStatus(
@@ -258,37 +258,37 @@ final class DaisyMidiController: @unchecked Sendable {
 
         switch messageID {
         case .msgSetupChanged:
-            print("[DaisyMidi] MIDI setup changed - rescanning devices")
+            NSLog("[DaisyMidi] MIDI setup changed - rescanning devices")
             DispatchQueue.main.async { [weak self] in
                 self?.rescanMidiDevices()
             }
 
         case .msgObjectAdded:
-            print("[DaisyMidi] MIDI object added")
+            NSLog("[DaisyMidi] MIDI object added")
             DispatchQueue.main.async { [weak self] in
                 self?.rescanMidiDevices()
             }
 
         case .msgObjectRemoved:
-            print("[DaisyMidi] MIDI object removed")
+            NSLog("[DaisyMidi] MIDI object removed")
             DispatchQueue.main.async { [weak self] in
                 self?.rescanMidiDevices()
             }
 
         case .msgPropertyChanged:
-            print("[DaisyMidi] MIDI property changed")
+            NSLog("[DaisyMidi] MIDI property changed")
 
         case .msgThruConnectionsChanged:
-            print("[DaisyMidi] MIDI thru connections changed")
+            NSLog("[DaisyMidi] MIDI thru connections changed")
 
         case .msgSerialPortOwnerChanged:
-            print("[DaisyMidi] Serial port owner changed")
+            NSLog("[DaisyMidi] Serial port owner changed")
 
         case .msgIOError:
-            print("[DaisyMidi] MIDI I/O error")
+            NSLog("[DaisyMidi] MIDI I/O error")
 
         @unknown default:
-            print("[DaisyMidi] Unknown MIDI notification: \(messageID.rawValue)")
+            NSLog("[DaisyMidi] Unknown MIDI notification: \(messageID.rawValue)")
         }
     }
 
@@ -299,7 +299,7 @@ final class DaisyMidiController: @unchecked Sendable {
 
         // Reconnect to all sources
         let sourceCount = MIDIGetNumberOfSources()
-        print("[DaisyMidi] Rescanning - found \(sourceCount) MIDI sources:")
+        NSLog("[DaisyMidi] Rescanning - found \(sourceCount) MIDI sources:")
         var sourceNames: [String] = []
 
         for i in 0..<sourceCount {
@@ -308,7 +308,7 @@ final class DaisyMidiController: @unchecked Sendable {
             MIDIObjectGetStringProperty(src, kMIDIPropertyName, &name)
             let srcName = (name?.takeRetainedValue() as String?) ?? "Unknown"
             sourceNames.append(srcName)
-            print("[DaisyMidi]   Source \(i): \(srcName)")
+            NSLog("[DaisyMidi]   Source \(i): \(srcName)")
             MIDIPortConnectSource(inPort, src, nil)
         }
 
@@ -320,7 +320,7 @@ final class DaisyMidiController: @unchecked Sendable {
 
         // Rescan destinations
         let destCount = MIDIGetNumberOfDestinations()
-        print("[DaisyMidi] Rescanning - found \(destCount) MIDI destinations:")
+        NSLog("[DaisyMidi] Rescanning - found \(destCount) MIDI destinations:")
         var selectedDestName = ""
         var newDestination: MIDIEndpointRef = 0
 
@@ -329,7 +329,7 @@ final class DaisyMidiController: @unchecked Sendable {
             var name: Unmanaged<CFString>?
             MIDIObjectGetStringProperty(dest, kMIDIPropertyName, &name)
             if let n = name?.takeRetainedValue() as String? {
-                print("[DaisyMidi]   Destination \(i): \(n)")
+                NSLog("[DaisyMidi]   Destination \(i): \(n)")
                 if newDestination == 0
                     && (n.contains("IAC") || n.contains("Bus") || n.contains("Daisy")
                         || n.contains("Network") || n.contains("Session"))
@@ -445,7 +445,7 @@ final class DaisyMidiController: @unchecked Sendable {
                 // Use the accumulator for multi-packet SysEx
                 if let completeSysex = sysexAccumulator.process(status: status, payload: packetData)
                 {
-                    print("[DaisyMidi] Accumulated complete SysEx: \(completeSysex.count) bytes")
+                    NSLog("[DaisyMidi] Accumulated complete SysEx: \(completeSysex.count) bytes")
                     return completeSysex
                 }
 
@@ -480,7 +480,7 @@ final class DaisyMidiController: @unchecked Sendable {
         // Ignore our own messages
         if sender == MidiProtocol.Sender.swift { return }
 
-        print("[DaisyMidi] Received SysEx cmd=0x\(String(format: "%02X", cmd))")
+        NSLog("[DaisyMidi] Received SysEx cmd=0x\(String(format: "%02X", cmd))")
 
         switch cmd {
         case MidiProtocol.Resp.patchDump:
@@ -1136,19 +1136,19 @@ final class DaisyMidiController: @unchecked Sendable {
 
     private func sendSysex(_ data: [UInt8]) {
         let hexString = data.map { String(format: "%02X", $0) }.joined(separator: " ")
-        print("[DaisyMidi] sendSysex called with \(data.count) bytes: \(hexString)")
+        NSLog("[DaisyMidi] sendSysex called with \(data.count) bytes: \(hexString)")
 
         guard destination != 0 else {
-            print("[DaisyMidi] ERROR: No destination set, cannot send MIDI")
+            NSLog("[DaisyMidi] ERROR: No destination set, cannot send MIDI")
             return
         }
 
         guard outPort != 0 else {
-            print("[DaisyMidi] ERROR: No output port, cannot send MIDI")
+            NSLog("[DaisyMidi] ERROR: No output port, cannot send MIDI")
             return
         }
 
-        print("[DaisyMidi] Sending to destination: \(destination), outPort: \(outPort)")
+        NSLog("[DaisyMidi] Sending to destination: \(destination), outPort: \(outPort)")
 
         let bufferSize = 1024
         var buffer = [UInt8](repeating: 0, count: bufferSize)
@@ -1163,9 +1163,9 @@ final class DaisyMidiController: @unchecked Sendable {
                 }
                 let status = MIDISend(outPort, destination, plist)
                 if status != noErr {
-                    print("[DaisyMidi] MIDISend failed with status: \(status)")
+                    NSLog("[DaisyMidi] MIDISend failed with status: \(status)")
                 } else {
-                    print("[DaisyMidi] MIDISend succeeded")
+                    NSLog("[DaisyMidi] MIDISend succeeded")
                 }
             }
         }
