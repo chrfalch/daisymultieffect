@@ -1,10 +1,22 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, StyleSheet } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 import type { DeviceStatus } from "../modules/daisy-multi-fx";
 
 interface StatusMeterProps {
   deviceStatus: DeviceStatus | null;
 }
+
+// Timing config for smooth meter movement
+const timingConfig = {
+  duration: 100,
+  easing: Easing.out(Easing.quad),
+};
 
 /**
  * Convert linear level (0.0-1.0+) to dB
@@ -30,7 +42,7 @@ function formatCpu(load: number): string {
 }
 
 /**
- * Horizontal level meter bar
+ * Animated horizontal level meter bar using Reanimated
  */
 const LevelBar: React.FC<{ level: number; color: string }> = ({
   level,
@@ -40,20 +52,27 @@ const LevelBar: React.FC<{ level: number; color: string }> = ({
   const db = linearToDb(level);
   const normalized = Math.max(0, Math.min(1, (db + 60) / 60));
 
+  const widthPercent = useSharedValue(0);
+
+  useEffect(() => {
+    widthPercent.value = withTiming(normalized * 100, timingConfig);
+  }, [normalized, widthPercent]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    width: `${widthPercent.value}%`,
+  }));
+
   return (
     <View style={styles.meterBarContainer}>
-      <View
-        style={[
-          styles.meterBarFill,
-          { width: `${normalized * 100}%`, backgroundColor: color },
-        ]}
+      <Animated.View
+        style={[styles.meterBarFill, { backgroundColor: color }, animatedStyle]}
       />
     </View>
   );
 };
 
 /**
- * CPU load bar (linear 0-100%)
+ * Animated CPU load bar using Reanimated
  */
 const CpuBar: React.FC<{ load: number; maxLoad: number }> = ({
   load,
@@ -66,20 +85,41 @@ const CpuBar: React.FC<{ load: number; maxLoad: number }> = ({
   const color =
     maxLoad >= 0.8 ? "#F44336" : maxLoad >= 0.5 ? "#FF9800" : "#4CAF50";
 
+  const avgWidth = useSharedValue(0);
+  const maxLeft = useSharedValue(0);
+
+  useEffect(() => {
+    avgWidth.value = withTiming(avgPercent, timingConfig);
+  }, [avgPercent, avgWidth]);
+
+  useEffect(() => {
+    maxLeft.value = withTiming(maxPercent, timingConfig);
+  }, [maxPercent, maxLeft]);
+
+  const avgAnimatedStyle = useAnimatedStyle(() => ({
+    width: `${avgWidth.value}%`,
+  }));
+
+  const maxAnimatedStyle = useAnimatedStyle(() => ({
+    left: `${maxLeft.value}%`,
+  }));
+
   return (
     <View style={styles.meterBarContainer}>
       {/* Max load marker */}
-      <View
+      <Animated.View
         style={[
           styles.cpuMaxMarker,
-          { left: `${maxPercent}%`, backgroundColor: color },
+          { backgroundColor: color },
+          maxAnimatedStyle,
         ]}
       />
       {/* Average load fill */}
-      <View
+      <Animated.View
         style={[
           styles.meterBarFill,
-          { width: `${avgPercent}%`, backgroundColor: color, opacity: 0.7 },
+          { backgroundColor: color, opacity: 0.7 },
+          avgAnimatedStyle,
         ]}
       />
     </View>

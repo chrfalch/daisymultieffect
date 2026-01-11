@@ -119,7 +119,7 @@ int main()
     // Timing for status updates and CPU meter reset
     uint32_t lastStatusMs = 0;
     uint32_t lastCpuResetMs = 0;
-    constexpr uint32_t kStatusIntervalMs = 33;     // ~30Hz status updates
+    constexpr uint32_t kStatusIntervalMs = 100;    // ~4Hz status updates
     constexpr uint32_t kCpuResetIntervalMs = 5000; // Reset CPU max every 5 seconds
 
     while (true)
