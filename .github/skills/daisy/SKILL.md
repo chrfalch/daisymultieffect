@@ -201,26 +201,6 @@ Create `.vscode/launch.json`:
 }
 ```
 
-### Serial Printing for Debugging
-
-```cpp
-#include "daisy_seed.h"
-
-daisy::DaisySeed hw;
-
-void Init() {
-    hw.Init();
-    hw.StartLog();  // Enable USB serial logging
-}
-
-void Loop() {
-    hw.PrintLine("Debug: value = %d", someValue);
-    System::Delay(1000);
-}
-```
-
-View output: `screen /dev/cu.usbmodemXXXXXX 115200`
-
 ## Core Programming Patterns
 
 ### Basic Program Structure
