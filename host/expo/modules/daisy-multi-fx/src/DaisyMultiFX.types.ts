@@ -95,6 +95,20 @@ export interface ConnectionStatus {
 }
 
 /**
+ * Device status with audio levels and CPU load
+ */
+export interface DeviceStatus {
+  /** Input level (linear, 0.0-1.0+) */
+  inputLevel: number;
+  /** Output level (linear, 0.0-1.0+) */
+  outputLevel: number;
+  /** Average CPU load (0.0-1.0) */
+  cpuAvg: number;
+  /** Maximum CPU load since last reset (0.0-1.0) */
+  cpuMax: number;
+}
+
+/**
  * Event payload for patch updates
  */
 export interface PatchUpdateEvent {
