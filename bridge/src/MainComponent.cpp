@@ -235,28 +235,80 @@ void MainComponent::connectBridge()
             auto *data = msg.getSysExData();
             int size = msg.getSysExDataSize();
             // Check if it's our manufacturer ID (0x7D)
-            if (size >= 2 && data[0] == 0x7D)
+            if (size >= 3 && data[0] == 0x7D)
             {
+                // Protocol: F0 7D <sender> <cmd> ... F7
+                // SysEx data excludes F0/F7, so: 7D <sender> <cmd> ...
+                uint8_t sender = data[1];
+                uint8_t cmd = data[2];
+
+                juce::String senderName;
+                switch (sender)
+                {
+                case 0x01:
+                    senderName = "FW";
+                    break; // Firmware
+                case 0x02:
+                    senderName = "VST";
+                    break; // VST
+                case 0x03:
+                    senderName = "App";
+                    break; // iOS App
+                default:
+                    senderName = "0x" + juce::String::toHexString(sender);
+                    break;
+                }
+
                 juce::String cmdName;
-                switch (data[1])
+                switch (cmd)
                 {
                 case 0x10:
                     cmdName = "SET_PATCH";
                     break;
-                case 0x11:
-                    cmdName = "PATCH_DUMP";
-                    break;
                 case 0x12:
                     cmdName = "GET_PATCH";
+                    break;
+                case 0x13:
+                    cmdName = "PATCH_DUMP";
+                    break;
+                case 0x20:
+                    cmdName = "SET_PARAM";
+                    break;
+                case 0x21:
+                    cmdName = "SET_ENABLED";
+                    break;
+                case 0x22:
+                    cmdName = "SET_TYPE";
+                    break;
+                case 0x23:
+                    cmdName = "SET_ROUTING";
                     break;
                 case 0x30:
                     cmdName = "GET_EFFECT_META";
                     break;
                 case 0x31:
-                    cmdName = "EFFECT_META_RESP";
+                    cmdName = "EFFECT_META_LIST";
                     break;
                 case 0x32:
                     cmdName = "GET_ALL_META";
+                    break;
+                case 0x33:
+                    cmdName = "EFFECT_META";
+                    break;
+                case 0x34:
+                    cmdName = "EFFECT_DISCOVERED";
+                    break;
+                case 0x35:
+                    cmdName = "META_V2";
+                    break;
+                case 0x36:
+                    cmdName = "META_V3";
+                    break;
+                case 0x37:
+                    cmdName = "META_V4";
+                    break;
+                case 0x38:
+                    cmdName = "META_V5";
                     break;
                 case 0x40:
                     cmdName = "BUTTON_STATE";
@@ -265,10 +317,15 @@ void MainComponent::connectBridge()
                     cmdName = "TEMPO_UPDATE";
                     break;
                 default:
-                    cmdName = "CMD_0x" + juce::String::toHexString(data[1]);
+                    cmdName = "0x" + juce::String::toHexString(cmd);
                     break;
                 }
-                msgType = "SysEx " + cmdName + " (" + juce::String(size) + "b)";
+                msgType = senderName + ":" + cmdName + " (" + juce::String(size) + "b)";
+            }
+            else if (size >= 2 && data[0] == 0x7D)
+            {
+                // Legacy format without sender
+                msgType = "SysEx legacy 0x" + juce::String::toHexString(data[1]) + " (" + juce::String(size) + "b)";
             }
             else
             {

@@ -214,13 +214,23 @@ void MidiControl::SendSetType(uint8_t slot, uint8_t typeId)
 void MidiControl::QueueSysexIfFree(const uint8_t *data, size_t len)
 {
     daisy::ScopedIrqBlocker lock;
-    if (sysex_ready_)
-        return;
-    if (len > sizeof(sysex_msg_))
-        return;
-    std::memcpy(sysex_msg_, data, len);
-    sysex_msg_len_ = len;
-    sysex_ready_ = true;
+
+    // Calculate next head position
+    size_t next_head = (sysex_queue_head_ + 1) % kSysexQueueSlots;
+
+    // Check if queue is full (head would catch up to tail)
+    if (next_head == sysex_queue_tail_)
+        return; // Queue full, drop message
+
+    if (len > kSysexSlotSize)
+        return; // Message too large
+
+    // Copy to current head slot
+    std::memcpy(sysex_queue_[sysex_queue_head_], data, len);
+    sysex_queue_len_[sysex_queue_head_] = len;
+
+    // Advance head
+    sysex_queue_head_ = next_head;
 }
 
 void MidiControl::OnUsbMidiRx(uint8_t *data, size_t size, void *context)
@@ -480,6 +490,8 @@ void MidiControl::HandleSysexMessage(const uint8_t *bytes, size_t len)
     case 0x12: // request patch dump
         // Bundle names with patch transfer by sending meta before the patch.
         SendEffectList();
+        if (hw_)
+            hw_->DelayMs(10); // Small delay to let effect list messages flush
         SendPatchDump();
         break;
     case 0x20: // set param: F0 7D 20 <slot> <paramId> <value> F7
@@ -583,21 +595,28 @@ void MidiControl::HandleSysexMessage(const uint8_t *bytes, size_t len)
 
 void MidiControl::Process()
 {
-    uint8_t local[512];
-    size_t local_len = 0;
+    // Process all queued SysEx messages
+    while (true)
     {
-        daisy::ScopedIrqBlocker lock;
-        if (sysex_ready_)
+        uint8_t local[kSysexSlotSize];
+        size_t local_len = 0;
         {
-            sysex_ready_ = false;
-            local_len = sysex_msg_len_;
-            if (local_len > sizeof(local))
-                local_len = sizeof(local);
-            std::memcpy(local, sysex_msg_, local_len);
+            daisy::ScopedIrqBlocker lock;
+            // Check if queue has messages (tail != head)
+            if (sysex_queue_tail_ != sysex_queue_head_)
+            {
+                local_len = sysex_queue_len_[sysex_queue_tail_];
+                if (local_len > sizeof(local))
+                    local_len = sizeof(local);
+                std::memcpy(local, sysex_queue_[sysex_queue_tail_], local_len);
+                // Advance tail
+                sysex_queue_tail_ = (sysex_queue_tail_ + 1) % kSysexQueueSlots;
+            }
         }
-    }
-    if (local_len)
+        if (local_len == 0)
+            break; // Queue empty
         HandleSysexMessage(local, local_len);
+    }
 
     bool sendPatch = false;
     {

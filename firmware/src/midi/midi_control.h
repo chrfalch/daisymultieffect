@@ -97,7 +97,11 @@ private:
     size_t sysex_build_len_ = 0;
     bool in_sysex_ = false;
 
-    uint8_t sysex_msg_[512]{};
-    size_t sysex_msg_len_ = 0;
-    volatile bool sysex_ready_ = false;
+    // Ring buffer for incoming SysEx messages (allows queueing multiple)
+    static constexpr size_t kSysexQueueSlots = 4;
+    static constexpr size_t kSysexSlotSize = 512;
+    uint8_t sysex_queue_[kSysexQueueSlots][kSysexSlotSize]{};
+    size_t sysex_queue_len_[kSysexQueueSlots]{};
+    volatile size_t sysex_queue_head_ = 0; // Next slot to write
+    volatile size_t sysex_queue_tail_ = 0; // Next slot to read
 };

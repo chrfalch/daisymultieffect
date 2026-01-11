@@ -102,13 +102,3 @@ PUBLIC
     juce::juce_recommended_lto_flags
     juce::juce_recommended_warning_flags
 )
-
-# Standalone test (no JUCE dependency)
-add_executable(daisy_multifx_test
-    src/standalone_test.cpp
-)
-
-target_link_libraries(daisy_multifx_test PRIVATE core_dsp)
-target_include_directories(daisy_multifx_test PRIVATE
-    ${CMAKE_SOURCE_DIR}/..
-)

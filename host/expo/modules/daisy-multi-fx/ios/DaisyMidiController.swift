@@ -484,9 +484,13 @@ final class DaisyMidiController: @unchecked Sendable {
 
         switch cmd {
         case MidiProtocol.Resp.patchDump:
+            NSLog("[DaisyMidi] Decoding PATCH_DUMP, data size=\(data.count)")
             if let newPatch = decodePatchDump(data) {
+                NSLog("[DaisyMidi] Patch decoded: \(newPatch.numSlots) slots")
                 patch = newPatch
                 onPatchUpdate?(newPatch)
+            } else {
+                NSLog("[DaisyMidi] PATCH_DUMP decode FAILED")
             }
 
         case MidiProtocol.Resp.effectMeta:
@@ -519,13 +523,22 @@ final class DaisyMidiController: @unchecked Sendable {
 
         case MidiProtocol.Resp.effectMetaV5:
             // Single effect V5 metadata with descriptions + units + optional ranges
+            NSLog("[DaisyMidi] Decoding effectMetaV5, data size=\(data.count)")
             if let effect = decodeEffectMetaV5(data) {
+                NSLog(
+                    "[DaisyMidi] V5 decoded: \(effect.name) (typeId=\(effect.typeId), params=\(effect.params.count))"
+                )
                 if let idx = effectsMeta.firstIndex(where: { $0.typeId == effect.typeId }) {
                     effectsMeta[idx] = effect
                 } else {
                     effectsMeta.append(effect)
                 }
+                NSLog("[DaisyMidi] effectsMeta now has \(effectsMeta.count) effects")
                 onEffectMetaUpdate?(effectsMeta)
+            } else {
+                NSLog(
+                    "[DaisyMidi] V5 decode FAILED for data: \(data.prefix(20).map { String(format: "%02X", $0) }.joined(separator: " "))"
+                )
             }
 
         case MidiProtocol.Cmd.setEnabled:

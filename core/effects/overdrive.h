@@ -46,20 +46,19 @@ struct OverdriveEffect : BaseEffect
         return x < min ? min : (x > max ? max : x);
     }
 
-    // Parameter taper: keep 0..1 range and max drive, but make the response
-    // less aggressive in the 0..~0.6 region.
+    // Parameter taper: concave curve to slow the mid-drive ramp while keeping full scale.
     static inline float ApplyDriveTaper(float drive)
     {
         drive = fclamp(drive, 0.0f, 1.0f);
-        constexpr float kLinearMix = 0.35f; // 0=quadratic, 1=linear
-        return drive * (kLinearMix + (1.0f - kLinearMix) * drive);
+        return powf(drive, 1.8f);
     }
 
     // Exact DaisySP SetDrive implementation
     void SetDrive(float drive)
     {
         drive = fclamp(drive, 0.0f, 1.0f);
-        float d = 2.0f * drive;
+        float d = 1.6f * drive; // slightly reduce pre-gain build-up vs stock
+        d = fclamp(d, 0.0f, 2.0f);
 
         // Compute pre-gain with polynomial curve for musical response
         float d2 = d * d;
@@ -68,8 +67,9 @@ struct OverdriveEffect : BaseEffect
         pre_gain_ = pre_a + (pre_b - pre_a) * d2;
 
         // Auto-leveling: compute post-gain to maintain consistent volume
-        float drive_squashed = d * (2.0f - d);
-        post_gain_ = 1.0f / SoftClip(0.33f + drive_squashed * (pre_gain_ - 0.33f));
+        float drive_squashed = d * (1.8f - 0.8f * d); // gentler than (2 - d)
+        float target = SoftClip(0.25f + drive_squashed * (pre_gain_ - 0.25f));
+        post_gain_ = 0.85f / target; // add small downward trim at higher drive
     }
 
     const EffectMeta &GetMetadata() const override { return Effects::Distortion::kMeta; }
