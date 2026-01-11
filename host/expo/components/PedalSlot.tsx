@@ -119,9 +119,9 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
               enabled={enabled}
             />
 
-            {showSwitch && onToggleEnabled && !isEmpty ? (
+            {showSwitch && onToggleEnabled ? (
               <Pressable
-                onPress={onToggleEnabled}
+                onPress={isEmpty ? undefined : onToggleEnabled}
                 accessibilityRole="button"
                 accessibilityLabel={`Turn ${name} ${enabled ? "off" : "on"}`}
               >
@@ -130,16 +130,24 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
                     style={[
                       styles.footswitchOuter,
                       {
-                        borderColor: enabled ? "#2196F3" : "#9E9E9E",
+                        borderColor: enabled
+                          ? "#2196F3"
+                          : isEmpty
+                          ? "#E0E0E0"
+                          : "#D0D0D0",
                       },
-                      pressed && { opacity: 0.7 },
+                      !isEmpty && pressed && { opacity: 0.7 },
                     ]}
                   >
                     <View
                       style={[
                         styles.footswitchInner,
                         {
-                          borderColor: enabled ? "#1976D2" : "#9E9E9E",
+                          borderColor: enabled
+                            ? "#1976D2"
+                            : isEmpty
+                            ? "#E0E0E0"
+                            : "#9E9E9E",
                           backgroundColor: enabled ? "#4CAF50" : "#fff",
                         },
                       ]}
