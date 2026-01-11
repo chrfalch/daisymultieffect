@@ -53,23 +53,24 @@ struct OverdriveEffect : BaseEffect
         return powf(drive, 1.8f);
     }
 
-    // Exact DaisySP SetDrive implementation
+    // Compute gains for overdrive processing
     void SetDrive(float drive)
     {
         drive = fclamp(drive, 0.0f, 1.0f);
-        float d = 1.6f * drive; // slightly reduce pre-gain build-up vs stock
+        float d = 2.0f * drive; // Full range 0-2
         d = fclamp(d, 0.0f, 2.0f);
 
-        // Compute pre-gain with polynomial curve for musical response
+        // Compute pre-gain: starts at 1.0 (unity) and increases with drive
+        // At d=0: pre_gain = 1.0 (clean passthrough)
+        // At d=2: pre_gain gets very high (heavy clipping)
         float d2 = d * d;
-        float pre_a = d * 0.5f;
-        float pre_b = d2 * d2 * d * 24.0f;
-        pre_gain_ = pre_a + (pre_b - pre_a) * d2;
+        float extra_gain = d2 * d2 * d * 24.0f; // Exponential curve for drive
+        pre_gain_ = 1.0f + extra_gain;
 
-        // Auto-leveling: compute post-gain to maintain consistent volume
-        float drive_squashed = d * (1.8f - 0.8f * d); // gentler than (2 - d)
-        float target = SoftClip(0.25f + drive_squashed * (pre_gain_ - 0.25f));
-        post_gain_ = 0.85f / target; // add small downward trim at higher drive
+        // Output leveling: compensate for clipping making signal louder
+        // At low drive: near unity (signal passes through cleanly)
+        // At high drive: reduce output since clipping compresses peaks
+        post_gain_ = 1.0f / (1.0f + 0.3f * d); // Ranges from 1.0 to 0.625
     }
 
     const EffectMeta &GetMetadata() const override { return Effects::Distortion::kMeta; }

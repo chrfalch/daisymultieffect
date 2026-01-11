@@ -42,6 +42,14 @@ public:
     // Process a single stereo frame
     void ProcessFrame(float inL, float inR, float &outL, float &outR);
 
+    // Input/Output gain staging for instrument-to-line level conversion
+    // Input gain: boost low-level instrument signals before processing
+    // Output gain: scale output to match line level expectations
+    void SetInputGain(float gain) { inputGain_ = gain; }
+    void SetOutputGain(float gain) { outputGain_ = gain; }
+    float GetInputGain() const { return inputGain_; }
+    float GetOutputGain() const { return outputGain_; }
+
     // Process a block of audio (convenience wrapper)
     template <typename InBuf, typename OutBuf>
     void ProcessBlock(InBuf in, OutBuf out, size_t size)
@@ -153,4 +161,11 @@ private:
     int phaser_next_ = 0;
     int neuralamp_next_ = 0;
     int cabinetir_next_ = 0;
+
+    // Input/output gain staging
+    // Default: +18dB input boost to bring instrument level signals
+    // into a range where effects (especially overdrive) respond properly.
+    // Guitar pickups output ~0.1 peak, this brings it to ~0.8 peak.
+    float inputGain_ = 8.0f;  // ~+18dB boost for instrument level input
+    float outputGain_ = 1.0f; // Unity output gain
 };
