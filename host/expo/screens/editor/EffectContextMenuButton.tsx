@@ -14,14 +14,29 @@ export const EffectContextMenuButton: React.FC<{
     return effectMeta.find((e) => e.typeId === slot.typeId)?.name ?? "Unknown";
   }, [effectMeta, slot.typeId]);
 
+  // Filter out "Off" from effectMeta since we add it explicitly
+  const effectsToShow = React.useMemo(
+    () => effectMeta.filter((e) => e.typeId !== 0),
+    [effectMeta]
+  );
+
   return (
     <Host matchContents={{ horizontal: true, vertical: true }}>
       <ContextMenu activationMethod="singlePress">
         <ContextMenu.Items>
-          {effectMeta.length === 0 ? (
+          {/* Always show Off option at the top */}
+          <SwiftUIButton
+            label="Off"
+            onPress={() => {
+              if (slot.typeId !== 0) {
+                setSlotType(slot.slotIndex, 0);
+              }
+            }}
+          />
+          {effectsToShow.length === 0 ? (
             <SwiftUIButton label="No effects loaded" />
           ) : (
-            effectMeta.map((effect) => (
+            effectsToShow.map((effect) => (
               <SwiftUIButton
                 key={effect.typeId}
                 label={effect.name}
