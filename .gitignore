@@ -4,3 +4,21 @@ lib
 # Build folders
 firmware/build/
 vst/build/
+bridge/build/
+
+# Expo/React Native
+host/expo/node_modules/
+host/expo/.expo/
+host/expo/ios/Pods/
+host/expo/ios/build/
+host/expo/android/.gradle/
+host/expo/android/build/
+host/expo/android/app/build/
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+*.xcworkspace/
+*.xcuserdata/
