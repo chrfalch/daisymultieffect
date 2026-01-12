@@ -2,7 +2,7 @@
 #pragma once
 #include "effects/base_effect.h"
 #include "effects/effect_metadata.h"
-#include <cmath>
+#include "effects/fast_math.h"
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -329,21 +329,16 @@ struct NeuralAmpEffect : BaseEffect
         return x < lo ? lo : (x > hi ? hi : x);
     }
 
-    static inline float dBToLinear(float dB)
-    {
-        return std::pow(10.0f, dB / 20.0f);
-    }
-
     // Calculate low shelf biquad coefficients
     // freq: center frequency, gainDb: boost/cut in dB, Q: quality factor
     void calcLowShelf(BiquadCoeffs &c, float freq, float gainDb, float Q = 0.707f)
     {
-        float A = dBToLinear(gainDb / 2.0f); // sqrt of linear gain
-        float w0 = 2.0f * 3.14159265f * freq / sampleRate_;
-        float cosw0 = std::cos(w0);
-        float sinw0 = std::sin(w0);
+        float A = FastMath::fastDbToLin(gainDb / 2.0f); // sqrt of linear gain
+        float w0 = FastMath::kTwoPi * freq / sampleRate_;
+        float cosw0 = FastMath::fastCos(w0 / FastMath::kTwoPi);
+        float sinw0 = FastMath::fastSin(w0 / FastMath::kTwoPi);
         float alpha = sinw0 / (2.0f * Q);
-        float sqrtA = std::sqrt(A);
+        float sqrtA = FastMath::fastPow2(FastMath::fastLog2(A) * 0.5f); // sqrt via log2/pow2
 
         float a0 = (A + 1) + (A - 1) * cosw0 + 2 * sqrtA * alpha;
         c.b0 = (A * ((A + 1) - (A - 1) * cosw0 + 2 * sqrtA * alpha)) / a0;
@@ -356,12 +351,12 @@ struct NeuralAmpEffect : BaseEffect
     // Calculate high shelf biquad coefficients
     void calcHighShelf(BiquadCoeffs &c, float freq, float gainDb, float Q = 0.707f)
     {
-        float A = dBToLinear(gainDb / 2.0f);
-        float w0 = 2.0f * 3.14159265f * freq / sampleRate_;
-        float cosw0 = std::cos(w0);
-        float sinw0 = std::sin(w0);
+        float A = FastMath::fastDbToLin(gainDb / 2.0f);
+        float w0 = FastMath::kTwoPi * freq / sampleRate_;
+        float cosw0 = FastMath::fastCos(w0 / FastMath::kTwoPi);
+        float sinw0 = FastMath::fastSin(w0 / FastMath::kTwoPi);
         float alpha = sinw0 / (2.0f * Q);
-        float sqrtA = std::sqrt(A);
+        float sqrtA = FastMath::fastPow2(FastMath::fastLog2(A) * 0.5f);
 
         float a0 = (A + 1) - (A - 1) * cosw0 + 2 * sqrtA * alpha;
         c.b0 = (A * ((A + 1) + (A - 1) * cosw0 + 2 * sqrtA * alpha)) / a0;
@@ -374,10 +369,10 @@ struct NeuralAmpEffect : BaseEffect
     // Calculate peaking EQ biquad coefficients
     void calcPeakingEQ(BiquadCoeffs &c, float freq, float gainDb, float Q = 1.0f)
     {
-        float A = dBToLinear(gainDb / 2.0f);
-        float w0 = 2.0f * 3.14159265f * freq / sampleRate_;
-        float cosw0 = std::cos(w0);
-        float sinw0 = std::sin(w0);
+        float A = FastMath::fastDbToLin(gainDb / 2.0f);
+        float w0 = FastMath::kTwoPi * freq / sampleRate_;
+        float cosw0 = FastMath::fastCos(w0 / FastMath::kTwoPi);
+        float sinw0 = FastMath::fastSin(w0 / FastMath::kTwoPi);
         float alpha = sinw0 / (2.0f * Q);
 
         float a0 = 1 + alpha / A;
@@ -427,7 +422,7 @@ struct NeuralAmpEffect : BaseEffect
         float mono = 0.5f * (l + r);
 
         // Apply input gain (-20dB to +20dB range)
-        float inGain = dBToLinear((inputGain_ - 0.5f) * 40.0f);
+        float inGain = FastMath::fastDbToLin((inputGain_ - 0.5f) * 40.0f);
         mono *= inGain;
 
 #if HAS_RTNEURAL
@@ -451,19 +446,19 @@ struct NeuralAmpEffect : BaseEffect
         float output = mono;
 
         // Bass shelf
-        if (std::fabs(bass_ - 0.5f) > 0.01f)
+        if (FastMath::fabs(bass_ - 0.5f) > 0.01f)
             output = processBiquad(bassState_, bassCoeffs_, output);
 
         // Mid peak
-        if (std::fabs(mid_ - 0.5f) > 0.01f)
+        if (FastMath::fabs(mid_ - 0.5f) > 0.01f)
             output = processBiquad(midState_, midCoeffs_, output);
 
         // Treble shelf
-        if (std::fabs(treble_ - 0.5f) > 0.01f)
+        if (FastMath::fabs(treble_ - 0.5f) > 0.01f)
             output = processBiquad(trebleState_, trebleCoeffs_, output);
 
         // Apply output gain (-20dB to +20dB range)
-        float outGain = dBToLinear((outputGain_ - 0.5f) * 40.0f);
+        float outGain = FastMath::fastDbToLin((outputGain_ - 0.5f) * 40.0f);
         output *= outGain;
 
         // Soft limit to prevent clipping

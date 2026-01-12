@@ -2,7 +2,7 @@
 #pragma once
 #include "effects/time_synced_effect.h"
 #include "effects/effect_metadata.h"
-#include <cmath>
+#include "effects/fast_math.h"
 
 struct StereoSweepDelayEffect : TimeSyncedEffect
 {
@@ -18,6 +18,7 @@ struct StereoSweepDelayEffect : TimeSyncedEffect
     float panDepth_ = 1.0f;  // id5
     float panRateHz_ = 0.5f; // id6
     float phase_ = 0.0f;
+    float panInc_ = 0.0f; // Pre-computed pan LFO increment
 
     const EffectMeta &GetMetadata() const override { return Effects::SweepDelay::kMeta; }
 
@@ -37,6 +38,7 @@ struct StereoSweepDelayEffect : TimeSyncedEffect
         TimeSyncedEffect::Init(sr);
         wp = 0;
         phase_ = 0;
+        updatePanInc(); // Pre-compute pan increment
         if (bufL_ && bufR_)
         {
             for (int i = 0; i < MAX_SAMPLES; i++)
@@ -58,7 +60,10 @@ struct StereoSweepDelayEffect : TimeSyncedEffect
         else if (id == 5)
             panDepth_ = v;
         else if (id == 6)
+        {
             panRateHz_ = 0.05f + v * 4.95f;
+            updatePanInc(); // Recompute pan increment when rate changes
+        }
     }
 
     uint8_t GetParamsSnapshot(ParamDesc *out, uint8_t max) const override
@@ -93,12 +98,11 @@ struct StereoSweepDelayEffect : TimeSyncedEffect
 
         float dl = bufL_[rp], dr = bufR_[rp];
 
-        // pan LFO
-        float dt = 1.0f / sampleRate_;
-        phase_ += panRateHz_ * dt;
+        // pan LFO using pre-computed increment and fast sine
+        phase_ += panInc_;
         if (phase_ >= 1.0f)
             phase_ -= 1.0f;
-        float pan = 0.5f * (1.0f + std::sin(2 * 3.14159265f * phase_)); // 0..1
+        float pan = 0.5f * (1.0f + FastMath::fastSin(phase_)); // 0..1
         float baseL = 1.0f - pan, baseR = pan;
         float panL = (1.0f - panDepth_) * 0.5f + panDepth_ * baseL;
         float panR = (1.0f - panDepth_) * 0.5f + panDepth_ * baseR;
@@ -113,5 +117,12 @@ struct StereoSweepDelayEffect : TimeSyncedEffect
         float dry = 1.0f - mix_, wet = mix_;
         l = inL * dry + wetL * wet;
         r = inR * dry + wetR * wet;
+    }
+
+private:
+    // Pre-compute pan LFO phase increment when rate or sample rate changes
+    void updatePanInc()
+    {
+        panInc_ = panRateHz_ / sampleRate_;
     }
 };

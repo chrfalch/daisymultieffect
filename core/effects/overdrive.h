@@ -15,10 +15,11 @@ struct OverdriveEffect : BaseEffect
 {
     static constexpr uint8_t TypeId = Effects::Distortion::TypeId;
 
-    float drive_ = 0.5f;     // id0: drive amount (0-1)
-    float tone_ = 0.5f;      // id1: tone control (dark to bright)
-    float pre_gain_ = 1.0f;  // Calculated from drive
-    float post_gain_ = 1.0f; // Auto-leveling gain
+    float drive_ = 0.5f;      // id0: drive amount (0-1)
+    float tone_ = 0.5f;       // id1: tone control (dark to bright)
+    float pre_gain_ = 1.0f;   // Calculated from drive
+    float post_gain_ = 1.0f;  // Auto-leveling gain
+    float toneCoeff_ = 0.25f; // Pre-computed lowpass coefficient
     float lpL_ = 0, lpR_ = 0;
 
     uint8_t GetTypeId() const override { return TypeId; }
@@ -78,6 +79,7 @@ struct OverdriveEffect : BaseEffect
     void Init(float) override
     {
         SetDrive(ApplyDriveTaper(drive_));
+        updateToneCoeff();
         lpL_ = lpR_ = 0;
     }
 
@@ -89,7 +91,10 @@ struct OverdriveEffect : BaseEffect
             SetDrive(ApplyDriveTaper(drive_));
         }
         else if (id == 1)
+        {
             tone_ = v;
+            updateToneCoeff();
+        }
     }
 
     uint8_t GetParamsSnapshot(ParamDesc *out, uint8_t max) const override
@@ -109,11 +114,16 @@ struct OverdriveEffect : BaseEffect
 
         // Tone: one-pole lowpass for warmth control
         // Low tone = warmer (more lowpass), high tone = brighter (more direct)
-        float coeff = 0.05f + 0.4f * (1.0f - tone_);
-        lpL_ += coeff * (xL - lpL_);
-        lpR_ += coeff * (xR - lpR_);
+        lpL_ += toneCoeff_ * (xL - lpL_);
+        lpR_ += toneCoeff_ * (xR - lpR_);
 
         l = tone_ * xL + (1.0f - tone_) * lpL_;
         r = tone_ * xR + (1.0f - tone_) * lpR_;
+    }
+
+private:
+    void updateToneCoeff()
+    {
+        toneCoeff_ = 0.05f + 0.4f * (1.0f - tone_);
     }
 };

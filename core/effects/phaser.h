@@ -2,7 +2,7 @@
 #pragma once
 #include "effects/base_effect.h"
 #include "effects/effect_metadata.h"
-#include <cmath>
+#include "effects/fast_math.h"
 
 // Classic phaser effect using cascaded first-order all-pass filters
 // Like MXR Phase 90/100 - creates sweeping notches in frequency response
@@ -24,6 +24,7 @@ struct PhaserEffect : BaseEffect
 
     // LFO state
     float lfoPhase_ = 0.0f;
+    float lfoInc_ = 0.0f; // Pre-computed LFO phase increment
 
     // Feedback state
     float fbL_ = 0.0f;
@@ -51,6 +52,9 @@ struct PhaserEffect : BaseEffect
         fbL_ = 0.0f;
         fbR_ = 0.0f;
 
+        // Pre-compute LFO increment
+        updateLfoInc();
+
         // Clear all-pass states
         for (int i = 0; i < MAX_STAGES; i++)
         {
@@ -65,6 +69,7 @@ struct PhaserEffect : BaseEffect
         {
         case 0:
             rate_ = v;
+            updateLfoInc(); // Recompute LFO increment when rate changes
             break;
         case 1:
             depth_ = v;
@@ -97,13 +102,13 @@ struct PhaserEffect : BaseEffect
     {
         float dryL = l, dryR = r;
 
-        // Update LFO (sine wave for smooth sweep)
-        float lfoRate = 0.1f + rate_ * 4.9f; // 0.1 to 5 Hz
-        lfoPhase_ += lfoRate / sampleRate_;
+        // Update LFO using pre-computed increment
+        lfoPhase_ += lfoInc_;
         if (lfoPhase_ >= 1.0f)
             lfoPhase_ -= 1.0f;
 
-        float lfo = std::sin(2.0f * 3.14159265f * lfoPhase_);
+        // Fast sine lookup for LFO
+        float lfo = FastMath::fastSin(lfoPhase_);
 
         // Calculate all-pass coefficient from LFO
         // Sweep frequency range: 200Hz to 2000Hz (typical phaser range)
@@ -112,15 +117,13 @@ struct PhaserEffect : BaseEffect
         float currentFreq = centerFreq + lfo * sweepRange;
 
         // Clamp frequency
-        if (currentFreq < 100.0f)
-            currentFreq = 100.0f;
-        if (currentFreq > 4000.0f)
-            currentFreq = 4000.0f;
+        currentFreq = FastMath::fclamp(currentFreq, 100.0f, 4000.0f);
 
-        // Calculate all-pass coefficient
+        // Calculate all-pass coefficient using fast tan
         // a = (tan(π*f/sr) - 1) / (tan(π*f/sr) + 1)
-        float w = 3.14159265f * currentFreq / sampleRate_;
-        float tanw = std::tan(w);
+        float w = FastMath::kPi * currentFreq / sampleRate_;
+        float wPhase = w * (1.0f / FastMath::kTwoPi); // Convert to normalized phase
+        float tanw = FastMath::fastTan(wPhase);
         float coeff = (tanw - 1.0f) / (tanw + 1.0f);
 
         // Feedback amount (0 to 0.7 for stability)
@@ -135,14 +138,11 @@ struct PhaserEffect : BaseEffect
         fbL_ = wetL;
 
         // Process right channel (slightly offset phase for stereo width)
-        float lfoR = std::sin(2.0f * 3.14159265f * (lfoPhase_ + 0.25f));
-        float freqR = centerFreq + lfoR * sweepRange;
-        if (freqR < 100.0f)
-            freqR = 100.0f;
-        if (freqR > 4000.0f)
-            freqR = 4000.0f;
-        float wR = 3.14159265f * freqR / sampleRate_;
-        float tanwR = std::tan(wR);
+        float lfoR = FastMath::fastSin(lfoPhase_ + 0.25f);
+        float freqR = FastMath::fclamp(centerFreq + lfoR * sweepRange, 100.0f, 4000.0f);
+        float wR = FastMath::kPi * freqR / sampleRate_;
+        float wRPhase = wR * (1.0f / FastMath::kTwoPi);
+        float tanwR = FastMath::fastTan(wRPhase);
         float coeffR = (tanwR - 1.0f) / (tanwR + 1.0f);
 
         float wetR = r + fbR_ * fb;
@@ -163,6 +163,14 @@ struct PhaserEffect : BaseEffect
     }
 
 private:
+    // Pre-compute LFO phase increment when rate or sample rate changes
+    void updateLfoInc()
+    {
+        // LFO: 0.1 to 5 Hz
+        float lfoRate = 0.1f + rate_ * 4.9f;
+        lfoInc_ = lfoRate / sampleRate_;
+    }
+
     // First-order all-pass filter
     // H(z) = (a + z^-1) / (1 + a*z^-1)
     // y[n] = a*x[n] + x[n-1] - a*y[n-1]

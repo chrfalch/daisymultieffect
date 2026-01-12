@@ -1,7 +1,7 @@
 #pragma once
 #include "effects/base_effect.h"
 #include "effects/effect_metadata.h"
-#include <cmath>
+#include "effects/fast_math.h"
 #include <algorithm>
 
 /**
@@ -18,11 +18,17 @@ struct NoiseGateEffect : BaseEffect
 {
     static constexpr uint8_t TypeId = Effects::NoiseGate::TypeId;
 
+    // Normalized parameter values
     float threshold_ = 0.3f; // id0: threshold (0..1 maps to -80dB to -20dB)
     float attack_ = 0.001f;  // id1: attack time in seconds
     float hold_ = 0.1f;      // id2: hold time in seconds
     float release_ = 0.1f;   // id3: release time in seconds
     float range_ = 0.0f;     // id4: range/floor (0 = full cut, 1 = no cut)
+
+    // Pre-computed coefficients
+    float threshLin_ = 0.001f; // Threshold as linear amplitude
+    float attackCoef_ = 0.0f;  // Attack envelope coefficient
+    float releaseCoef_ = 0.0f; // Release envelope coefficient
 
     // Gate state
     float gateGain_ = 0.0f;    // Current gate gain (0 = closed, 1 = open)
@@ -39,6 +45,7 @@ struct NoiseGateEffect : BaseEffect
         sampleRate_ = sr;
         gateGain_ = 0.0f;
         holdCounter_ = 0.0f;
+        updateCoefficients();
     }
 
     void SetParam(uint8_t id, float v) override
@@ -47,15 +54,21 @@ struct NoiseGateEffect : BaseEffect
         {
         case 0: // Threshold: 0..1 maps to -80dB to -20dB
             threshold_ = v;
+            {
+                float threshDb = -80.0f + threshold_ * 60.0f;
+                threshLin_ = FastMath::fastDbToLin(threshDb);
+            }
             break;
         case 1: // Attack: 0..1 maps to 0.1ms to 50ms
             attack_ = 0.0001f + v * 0.0499f;
+            attackCoef_ = FastMath::calcEnvelopeCoeff(attack_, sampleRate_);
             break;
         case 2: // Hold: 0..1 maps to 10ms to 500ms
             hold_ = 0.01f + v * 0.49f;
             break;
         case 3: // Release: 0..1 maps to 10ms to 500ms
             release_ = 0.01f + v * 0.49f;
+            releaseCoef_ = FastMath::calcEnvelopeCoeff(release_, sampleRate_);
             break;
         case 4: // Range: 0..1 (0 = full cut -inf dB, 1 = 0dB no attenuation)
             range_ = v;
@@ -77,23 +90,17 @@ struct NoiseGateEffect : BaseEffect
 
     void ProcessStereo(float &l, float &r) override
     {
-        // Convert threshold from 0..1 to linear amplitude
-        // 0 = -80dB, 1 = -20dB
-        float threshDb = -80.0f + threshold_ * 60.0f;
-        float threshLin = std::pow(10.0f, threshDb / 20.0f);
+        // Get input level (max of L and R) using pre-computed threshold
+        float inputLevel = FastMath::fmax(FastMath::fabs(l), FastMath::fabs(r));
 
-        // Get input level (max of L and R)
-        float inputLevel = std::max(std::fabs(l), std::fabs(r));
-
-        // Gate logic
-        if (inputLevel > threshLin)
+        // Gate logic using pre-computed coefficients
+        if (inputLevel > threshLin_)
         {
             // Signal above threshold - open gate
             holdCounter_ = hold_ * sampleRate_;
 
-            // Attack - smoothly open
-            float attackCoef = std::exp(-1.0f / (attack_ * sampleRate_));
-            gateGain_ = attackCoef * gateGain_ + (1.0f - attackCoef) * 1.0f;
+            // Attack - smoothly open using pre-computed coefficient
+            gateGain_ = attackCoef_ * gateGain_ + (1.0f - attackCoef_) * 1.0f;
         }
         else if (holdCounter_ > 0.0f)
         {
@@ -103,9 +110,8 @@ struct NoiseGateEffect : BaseEffect
         }
         else
         {
-            // Release - smoothly close
-            float releaseCoef = std::exp(-1.0f / (release_ * sampleRate_));
-            gateGain_ = releaseCoef * gateGain_;
+            // Release - smoothly close using pre-computed coefficient
+            gateGain_ = releaseCoef_ * gateGain_;
         }
 
         // Apply gate with range floor
@@ -115,5 +121,15 @@ struct NoiseGateEffect : BaseEffect
 
         l *= effectiveGain;
         r *= effectiveGain;
+    }
+
+private:
+    // Recompute all coefficients (called from Init)
+    void updateCoefficients()
+    {
+        float threshDb = -80.0f + threshold_ * 60.0f;
+        threshLin_ = FastMath::fastDbToLin(threshDb);
+        attackCoef_ = FastMath::calcEnvelopeCoeff(attack_, sampleRate_);
+        releaseCoef_ = FastMath::calcEnvelopeCoeff(release_, sampleRate_);
     }
 };

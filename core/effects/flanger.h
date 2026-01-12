@@ -2,7 +2,7 @@
 #pragma once
 #include "effects/base_effect.h"
 #include "effects/effect_metadata.h"
-#include <cmath>
+#include "effects/fast_math.h"
 
 // Classic flanger effect inspired by DaisySP
 // Uses very short modulated delay with triangle LFO
@@ -160,12 +160,12 @@ private:
         if (phase > 1.0f)
         {
             phase = 1.0f - (phase - 1.0f);
-            lfoFreq_ = -std::fabs(lfoFreq_);
+            lfoFreq_ = -FastMath::fabs(lfoFreq_);
         }
         else if (phase < -1.0f)
         {
             phase = -1.0f - (phase + 1.0f);
-            lfoFreq_ = std::fabs(lfoFreq_);
+            lfoFreq_ = FastMath::fabs(lfoFreq_);
         }
 
         return phase * lfoAmp_;

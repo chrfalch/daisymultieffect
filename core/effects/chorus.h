@@ -2,7 +2,7 @@
 #pragma once
 #include "effects/base_effect.h"
 #include "effects/effect_metadata.h"
-#include <cmath>
+#include "effects/fast_math.h"
 
 // Pure C++ chorus implementation (no DaisySP dependency)
 // Uses a modulated delay line with LFO
@@ -19,6 +19,7 @@ struct ChorusEffect : BaseEffect
     // LFO state
     float lfoPhase_ = 0.0f;
     float lfoPhaseR_ = 0.25f; // Offset for stereo spread
+    float lfoInc_ = 0.0f;     // Pre-computed LFO phase increment
 
     // Parameters
     float rate_ = 0.3f;     // id0: LFO rate (0.1-2 Hz)
@@ -41,6 +42,9 @@ struct ChorusEffect : BaseEffect
         lfoPhase_ = 0.0f;
         lfoPhaseR_ = 0.25f;
 
+        // Pre-compute LFO increment
+        updateLfoInc();
+
         // Clear delay buffers
         for (int i = 0; i < MAX_DELAY_SAMPLES; i++)
         {
@@ -55,6 +59,7 @@ struct ChorusEffect : BaseEffect
         {
         case 0:
             rate_ = v;
+            updateLfoInc(); // Recompute LFO increment when rate changes
             break;
         case 1:
             depth_ = v;
@@ -87,16 +92,12 @@ struct ChorusEffect : BaseEffect
     {
         float dryL = l, dryR = r;
 
-        // LFO: 0.1 to 2 Hz
-        float lfoFreq = 0.1f + rate_ * 1.9f;
-        float lfoInc = lfoFreq / sampleRate_;
-
-        // Update LFO phases
-        lfoPhase_ += lfoInc;
+        // Update LFO phases using pre-computed increment
+        lfoPhase_ += lfoInc_;
         if (lfoPhase_ >= 1.0f)
             lfoPhase_ -= 1.0f;
 
-        lfoPhaseR_ += lfoInc;
+        lfoPhaseR_ += lfoInc_;
         if (lfoPhaseR_ >= 1.0f)
             lfoPhaseR_ -= 1.0f;
 
@@ -105,9 +106,9 @@ struct ChorusEffect : BaseEffect
         float baseDelayMs = 5.0f + delay_ * 20.0f;
         float baseDelaySamples = baseDelayMs * 0.001f * sampleRate_;
 
-        // LFO modulation (scaled by depth)
-        float lfoL = std::sin(2.0f * 3.14159265f * lfoPhase_);
-        float lfoR = std::sin(2.0f * 3.14159265f * lfoPhaseR_);
+        // LFO modulation using fast sine lookup
+        float lfoL = FastMath::fastSin(lfoPhase_);
+        float lfoR = FastMath::fastSin(lfoPhaseR_);
 
         // Modulation depth in samples (up to ±3ms)
         float modDepthSamples = depth_ * 0.003f * sampleRate_;
@@ -152,5 +153,14 @@ struct ChorusEffect : BaseEffect
         // Mix dry/wet
         l = dryL * (1.0f - mix_) + wetL * mix_;
         r = dryR * (1.0f - mix_) + wetR * mix_;
+    }
+
+private:
+    // Pre-compute LFO phase increment when rate or sample rate changes
+    void updateLfoInc()
+    {
+        // LFO: 0.1 to 2 Hz
+        float lfoFreq = 0.1f + rate_ * 1.9f;
+        lfoInc_ = lfoFreq / sampleRate_;
     }
 };

@@ -2,19 +2,12 @@
 #pragma once
 #include "effects/base_effect.h"
 #include "effects/effect_metadata.h"
+#include "effects/fast_math.h"
 #include <algorithm>
-#include <cmath>
-#include <cstdint>
 
 struct CompressorEffect : BaseEffect
 {
     static constexpr uint8_t TypeId = Effects::Compressor::TypeId;
-
-    // dB conversion constants
-    // For log2-based: dB = 6.0206 * log2(x), so log2 to dB multiply by 6.0206
-    static constexpr float kLog2ToDb = 6.0205999132796239f; // 20 / log2(10)
-    // For dB to log2: log2(x) = dB / 6.0206
-    static constexpr float kDbToLog2 = 0.16609640474436813f; // log2(10) / 20
 
     // Soft knee width in dB
     static constexpr float kKneeWidthDb = 6.0f;
@@ -59,7 +52,7 @@ struct CompressorEffect : BaseEffect
         case 0: // Threshold: 0..1 maps to -40dB to 0dB
             thresholdNorm_ = v;
             threshDb_ = -40.0f + v * 40.0f;
-            threshLin_ = fastDbToLin(threshDb_);
+            threshLin_ = FastMath::fastDbToLin(threshDb_);
             break;
         case 1: // Ratio: 0..1 maps to 1:1 to 20:1
             ratioNorm_ = v;
@@ -69,19 +62,19 @@ struct CompressorEffect : BaseEffect
             attackNorm_ = v;
             {
                 float attackTime = 0.0001f + v * 0.0999f;
-                attackCoef_ = expf(-1.0f / (attackTime * sampleRate_));
+                attackCoef_ = FastMath::calcEnvelopeCoeff(attackTime, sampleRate_);
             }
             break;
         case 3: // Release: 0..1 maps to 10ms to 1000ms
             releaseNorm_ = v;
             {
                 float releaseTime = 0.01f + v * 0.99f;
-                releaseCoef_ = expf(-1.0f / (releaseTime * sampleRate_));
+                releaseCoef_ = FastMath::calcEnvelopeCoeff(releaseTime, sampleRate_);
             }
             break;
         case 4: // Makeup: 0..1 maps to 0dB to +24dB
             makeupNorm_ = v;
-            makeupLin_ = fastDbToLin(v * 24.0f);
+            makeupLin_ = FastMath::fastDbToLin(v * 24.0f);
             break;
         }
     }
@@ -101,7 +94,7 @@ struct CompressorEffect : BaseEffect
     void ProcessStereo(float &l, float &r) override
     {
         // Stereo-linked envelope detection (max of L/R preserves stereo image)
-        float inputLevel = std::max(std::fabs(l), std::fabs(r));
+        float inputLevel = FastMath::fmax(FastMath::fabs(l), FastMath::fabs(r));
 
         // Envelope follower (peak detection) with pre-computed coefficients
         if (inputLevel > env_)
@@ -123,61 +116,20 @@ struct CompressorEffect : BaseEffect
     }
 
 private:
-    // Ultra-fast log2 approximation using IEEE 754 float bit representation
-    // Accuracy: ~0.1dB, Speed: ~5x faster than logf()
-    static inline float fastLog2(float x)
-    {
-        union
-        {
-            float f;
-            int32_t i;
-        } vx = {x};
-        float y = static_cast<float>(vx.i);
-        y *= 1.1920928955078125e-7f; // 1/(2^23)
-        return y - 126.94269504f;
-    }
-
-    // Ultra-fast pow2 approximation using IEEE 754 float bit representation
-    // Accuracy: ~0.1dB, Speed: ~5x faster than expf()
-    static inline float fastPow2(float p)
-    {
-        // Clamp to avoid overflow/underflow
-        float clipp = (p < -126.0f) ? -126.0f : ((p > 126.0f) ? 126.0f : p);
-        union
-        {
-            int32_t i;
-            float f;
-        } v;
-        v.i = static_cast<int32_t>((1 << 23) * (clipp + 126.94269504f));
-        return v.f;
-    }
-
-    // Fast dB to linear: pow(10, dB/20) = pow2(dB / 6.0206)
-    static inline float fastDbToLin(float dB)
-    {
-        return fastPow2(dB * kDbToLog2);
-    }
-
-    // Fast linear to dB: 20 * log10(x) = 6.0206 * log2(x)
-    static inline float fastLinToDb(float lin)
-    {
-        return fastLog2(lin) * kLog2ToDb;
-    }
-
     // Recompute all coefficients (called from Init)
     void updateCoefficients()
     {
         threshDb_ = -40.0f + thresholdNorm_ * 40.0f;
-        threshLin_ = fastDbToLin(threshDb_);
+        threshLin_ = FastMath::fastDbToLin(threshDb_);
         ratio_ = 1.0f + ratioNorm_ * 19.0f;
 
         float attackTime = 0.0001f + attackNorm_ * 0.0999f;
-        attackCoef_ = expf(-1.0f / (attackTime * sampleRate_));
+        attackCoef_ = FastMath::calcEnvelopeCoeff(attackTime, sampleRate_);
 
         float releaseTime = 0.01f + releaseNorm_ * 0.99f;
-        releaseCoef_ = expf(-1.0f / (releaseTime * sampleRate_));
+        releaseCoef_ = FastMath::calcEnvelopeCoeff(releaseTime, sampleRate_);
 
-        makeupLin_ = fastDbToLin(makeupNorm_ * 24.0f);
+        makeupLin_ = FastMath::fastDbToLin(makeupNorm_ * 24.0f);
     }
 
     // Compute gain reduction with soft knee
@@ -187,7 +139,7 @@ private:
         if (env < 1e-10f)
             return 1.0f;
 
-        float envDb = fastLinToDb(env);
+        float envDb = FastMath::fastLinToDb(env);
 
         // Below knee region: no compression
         if (envDb < threshDb_ - kHalfKneeDb)
@@ -211,6 +163,6 @@ private:
             gainReductionDb = overDb * (1.0f - 1.0f / ratio_);
         }
 
-        return fastDbToLin(-gainReductionDb);
+        return FastMath::fastDbToLin(-gainReductionDb);
     }
 };

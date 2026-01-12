@@ -1,7 +1,7 @@
 #pragma once
 #include "effects/base_effect.h"
 #include "effects/effect_metadata.h"
-#include <cmath>
+#include "effects/fast_math.h"
 
 /**
  * GraphicEQEffect - 7-band graphic equalizer optimized for guitar
@@ -42,13 +42,14 @@ struct GraphicEQEffect : BaseEffect
             return out;
         }
 
-        // Peaking EQ filter design
+        // Peaking EQ filter design using fast trig
         void SetPeakingEQ(float sr, float freq, float gainDb, float Q)
         {
-            float A = std::pow(10.0f, gainDb / 40.0f);
-            float w0 = 2.0f * 3.14159265f * freq / sr;
-            float cosw0 = std::cos(w0);
-            float sinw0 = std::sin(w0);
+            float A = FastMath::fastDbToLin(gainDb * 0.5f); // sqrt of linear gain
+            float w0 = FastMath::kTwoPi * freq / sr;
+            float phase = w0 * (1.0f / FastMath::kTwoPi); // Convert to normalized phase
+            float cosw0 = FastMath::fastCos(phase);
+            float sinw0 = FastMath::fastSin(phase);
             float alpha = sinw0 / (2.0f * Q);
 
             float a0 = 1.0f + alpha / A;
@@ -66,6 +67,9 @@ struct GraphicEQEffect : BaseEffect
 
     // Band gains in dB (-12 to +12), stored as 0..1 (0.5 = 0dB)
     float gains_[NUM_BANDS] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
+
+    // Dirty flag for deferred filter coefficient updates
+    bool filtersDirty_ = true;
 
     float sampleRate_ = 48000.0f;
 
@@ -111,6 +115,7 @@ struct GraphicEQEffect : BaseEffect
             filtersL_[i].Reset();
             filtersR_[i].Reset();
         }
+        filtersDirty_ = true;
         UpdateAllFilters();
     }
 
@@ -119,7 +124,7 @@ struct GraphicEQEffect : BaseEffect
         if (id < NUM_BANDS)
         {
             gains_[id] = v;
-            UpdateFilter(id);
+            filtersDirty_ = true; // Defer coefficient update to ProcessStereo
         }
     }
 
@@ -136,6 +141,13 @@ struct GraphicEQEffect : BaseEffect
 
     void ProcessStereo(float &l, float &r) override
     {
+        // Update filter coefficients if dirty (deferred from SetParam)
+        if (filtersDirty_)
+        {
+            UpdateAllFilters();
+            filtersDirty_ = false;
+        }
+
         // Process through all bands in series
         float outL = l;
         float outR = r;
