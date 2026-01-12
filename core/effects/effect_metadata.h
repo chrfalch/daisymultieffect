@@ -263,8 +263,12 @@ namespace Effects
             {2, "TW40 Blues"},
             {3, "TW40 Rhythm"},
             {4, "TW40 Lead"},
+            {5, "Bandmaster Clean"},
+            {6, "Bandmaster Med"},
+            {7, "Bandmaster High"},
+            {8, "Mesa MK3 HiGain"},
         };
-        inline const EnumParamInfo kModelEnum = {kModelOptions, 5};
+        inline const EnumParamInfo kModelEnum = {kModelOptions, 9};
 
         inline const NumberParamRange kGainRange = {0.0f, 1.0f, 0.01f};
         inline const NumberParamRange kEqRange = {0.0f, 1.0f, 0.01f};
@@ -294,8 +298,16 @@ namespace Effects
             {1, "V30 P1 Sene935"},
             {2, "V30 P2 Audix i5"},
             {3, "V30 P2 Sene935"},
+            {4, "Mesa V30 SM57 1"},
+            {5, "Mesa V30 SM57 2"},
+            {6, "Mesa V30 SM58 1"},
+            {7, "Mesa V30 SM58 2"},
+            {8, "Mesa V30 AT2020 1"},
+            {9, "Mesa V30 AT2020 2"},
+            {10, "Mesa V30 SM57 Raw"},
+            {11, "Mesa V30 SM58 Raw"},
         };
-        inline const EnumParamInfo kIREnum = {kIROptions, 4};
+        inline const EnumParamInfo kIREnum = {kIROptions, 12};
 
         inline const NumberParamRange kMixRange = {0.0f, 1.0f, 0.01f};
         inline const NumberParamRange kOutputRange = {0.0f, 1.0f, 0.01f};
