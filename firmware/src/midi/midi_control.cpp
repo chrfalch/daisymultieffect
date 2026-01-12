@@ -300,6 +300,9 @@ void MidiControl::OnUsbMidiRx(uint8_t *data, size_t size, void *context)
 
 void MidiControl::SendEffectList()
 {
+    // Set flag to suppress status updates during bulk transfer
+    bulk_transfer_in_progress_ = true;
+
     // 7-bit safe effect list: one message per effect.
     // Legacy (name only): F0 7D 34 <typeId> <nameLen> <name...> F7
     // V2 (name + params): F0 7D 35 <typeId> <nameLen> <name...> <numParams>
@@ -351,7 +354,8 @@ void MidiControl::SendEffectList()
 
         // Send V5 metadata with effect/param descriptions + units + optional number ranges.
         {
-            uint8_t msg[512];
+            static constexpr size_t kMsgBufSize = 768; // Large enough for Cabinet IR with 12 enum options
+            static uint8_t msg[kMsgBufSize];           // Static to avoid stack overflow
             size_t p = 0;
             msg[p++] = 0xF0;
             msg[p++] = 0x7D;
@@ -454,12 +458,21 @@ void MidiControl::SendEffectList()
                 }
             }
 
+            // Safety check: ensure we haven't overflowed the buffer
+            if (p >= kMsgBufSize - 1)
+            {
+                // Truncate and close the message
+                p = kMsgBufSize - 1;
+            }
             msg[p++] = 0xF7;
             SendSysEx(msg, p);
         }
         if (hw_)
-            hw_->DelayMs(1);
+            hw_->DelayMs(2); // Delay between effects to prevent USB buffer overflow
     }
+
+    // Clear bulk transfer flag
+    bulk_transfer_in_progress_ = false;
 }
 
 void MidiControl::SendPatchDump()
@@ -548,10 +561,9 @@ void MidiControl::HandleSysexMessage(const uint8_t *bytes, size_t len)
         SendEffectList();
         break;
     case 0x12: // request patch dump
-        // Bundle names with patch transfer by sending meta before the patch.
-        SendEffectList();
+        // Small delay to let USB settle after any prior transmissions
         if (hw_)
-            hw_->DelayMs(10); // Small delay to let effect list messages flush
+            hw_->DelayMs(10);
         SendPatchDump();
         break;
     case 0x20: // set param: F0 7D 20 <slot> <paramId> <value> F7
@@ -699,17 +711,8 @@ void MidiControl::Process()
         HandleSysexMessage(local, local_len);
     }
 
-    bool sendPatch = false;
-    {
-        daisy::ScopedIrqBlocker lock;
-        if (tx_patch_dump_pending_)
-        {
-            tx_patch_dump_pending_ = false;
-            sendPatch = true;
-        }
-    }
-    if (sendPatch)
-        SendPatchDump();
+    // Handle deferred TX operations (currently unused - kept for future)
+    // If adding new deferred operations, check and clear flags here
 }
 
 void MidiControl::ApplyPendingInAudioThread()

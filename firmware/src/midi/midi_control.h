@@ -52,6 +52,9 @@ public:
     void SendButtonStateChange(uint8_t btn, uint8_t slot, bool enabled);
     void SendStatusUpdate(float inputLevel, float outputLevel, float cpuAvg, float cpuMax);
 
+    // Check if bulk transfer is in progress (status updates should be suppressed)
+    bool IsBulkTransferInProgress() const { return bulk_transfer_in_progress_; }
+
     // Send individual state changes (for bidirectional sync)
     void SendSetParam(uint8_t slot, uint8_t paramId, uint8_t value);
     void SendSetEnabled(uint8_t slot, bool enabled);
@@ -87,6 +90,9 @@ private:
     // When true, the main loop will transmit a patch dump (set by audio thread).
     volatile bool tx_patch_dump_pending_ = false;
 
+    // When true, the main loop will transmit effect metadata
+    volatile bool tx_meta_dump_pending_ = false;
+
     // Pending individual state changes to send (more efficient than full patch dump)
     volatile uint32_t tx_pending_param_ = 0;   // Pack: slot<<24 | paramId<<16 | value<<8 | 1
     volatile uint32_t tx_pending_enabled_ = 0; // Pack: slot<<24 | enabled<<8 | 2
@@ -117,4 +123,7 @@ private:
     size_t sysex_queue_len_[kSysexQueueSlots]{};
     volatile size_t sysex_queue_head_ = 0; // Next slot to write
     volatile size_t sysex_queue_tail_ = 0; // Next slot to read
+
+    // Flag to indicate bulk transfer in progress (suppresses status updates)
+    volatile bool bulk_transfer_in_progress_ = false;
 };

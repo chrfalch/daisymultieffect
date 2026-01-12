@@ -126,15 +126,18 @@ int main()
         g_ui.Process();
         g_midi.Process();
 
-        // Send status update at ~30Hz
+        // Send status update at ~10Hz (skip if bulk transfer in progress)
         if (nowMs - lastStatusMs >= kStatusIntervalMs)
         {
             lastStatusMs = nowMs;
-            g_midi.SendStatusUpdate(
-                g_inputLevel,
-                g_outputLevel,
-                g_cpuMeter.GetAvgCpuLoad(),
-                g_cpuMeter.GetMaxCpuLoad());
+            if (!g_midi.IsBulkTransferInProgress())
+            {
+                g_midi.SendStatusUpdate(
+                    g_inputLevel,
+                    g_outputLevel,
+                    g_cpuMeter.GetAvgCpuLoad(),
+                    g_cpuMeter.GetMaxCpuLoad());
+            }
         }
 
         // Reset CPU max periodically to keep it meaningful ("recent peak")
