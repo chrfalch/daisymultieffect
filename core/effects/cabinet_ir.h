@@ -5,10 +5,8 @@
 #include <cstring>
 #include <string>
 
-// Include embedded IR registry for firmware builds
-#if defined(DAISY_SEED_BUILD)
+// Include shared embedded IR registry for both firmware and VST
 #include "embedded/ir_registry.h"
-#endif
 
 /**
  * Cabinet Impulse Response (IR) Effect
@@ -81,10 +79,8 @@ struct CabinetIREffect : BaseEffect
         hpfState_ = 0.0f;
         lpfState_ = 0.0f;
 
-#if defined(DAISY_SEED_BUILD)
-        // Load default embedded IR on firmware
+        // Load default embedded IR
         LoadEmbeddedIR(0);
-#endif
     }
 
     void SetParam(uint8_t id, float v) override
@@ -96,14 +92,8 @@ struct CabinetIREffect : BaseEffect
             {
                 uint8_t newIndex = static_cast<uint8_t>(v * 127.0f + 0.5f);
                 // Clamp to valid range
-#if defined(DAISY_SEED_BUILD)
                 if (newIndex >= EmbeddedIRs::kNumIRs)
                     newIndex = EmbeddedIRs::kNumIRs - 1;
-#else
-                // For VST, limit to number of embedded IRs for now
-                if (newIndex >= 4)
-                    newIndex = 3;
-#endif
                 if (newIndex != irIndex_)
                 {
                     irIndex_ = newIndex;
@@ -225,7 +215,6 @@ struct CabinetIREffect : BaseEffect
      */
     bool LoadEmbeddedIR(int index)
     {
-#if defined(DAISY_SEED_BUILD)
         const auto *irInfo = EmbeddedIRs::GetIR(static_cast<size_t>(index));
         if (!irInfo || !irInfo->samples || irInfo->length <= 0)
         {
@@ -251,11 +240,6 @@ struct CabinetIREffect : BaseEffect
         irLoaded_ = true;
 
         return true;
-#else
-        // For VST without embedded registry, use LoadIR with external data
-        (void)index;
-        return false;
-#endif
     }
 
     // Helper functions

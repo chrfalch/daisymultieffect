@@ -17,9 +17,6 @@ public:
 
 private:
     void updateParameterLabels(int effectTypeIndex);
-    void loadModelButtonClicked();
-    void loadIRButtonClicked();
-    void updateModelLabel();
 
     DaisyMultiFXProcessor &processor_;
     int slotIndex_;
@@ -29,12 +26,6 @@ private:
     juce::ComboBox typeCombo_;
     juce::Slider mixSlider_;
     juce::Label mixLabel_;
-
-    // Neural Amp / Cabinet IR specific controls
-    juce::TextButton loadModelButton_;
-    juce::Label modelNameLabel_;
-    bool isNeuralAmpSlot_ = false;
-    bool isCabinetIRSlot_ = false;
 
     // Parameters - can be sliders or combo boxes depending on type
     std::vector<std::unique_ptr<juce::Slider>> paramSliders_;
@@ -46,9 +37,6 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mixAttachment_;
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> paramAttachments_;
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>> paramComboAttachments_;
-
-    // File chooser for model loading
-    std::unique_ptr<juce::FileChooser> fileChooser_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SlotComponent)
 };

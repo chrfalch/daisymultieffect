@@ -81,20 +81,8 @@ public:
     float getInputLevel() const { return inputLevel_.load(); }
     float getOutputLevel() const { return outputLevel_.load(); }
 
-    // Access to audio processor for Neural Amp model loading
+    // Access to audio processor
     CoreAudioProcessor *getAudioProcessor() { return processor_.get(); }
-
-    // Neural Amp model loading - returns true if successful
-    bool loadNeuralAmpModel(int slotIndex, const juce::File &modelFile);
-
-    // Get the current Neural Amp model name for a slot
-    juce::String getNeuralAmpModelName(int slotIndex) const;
-
-    // Cabinet IR loading - returns true if successful
-    bool loadCabinetIR(int slotIndex, const juce::File &irFile);
-
-    // Get the current Cabinet IR name for a slot
-    juce::String getCabinetIRName(int slotIndex) const;
 
 private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();

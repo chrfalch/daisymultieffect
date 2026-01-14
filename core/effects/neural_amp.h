@@ -2,7 +2,7 @@
 #pragma once
 #include "effects/base_effect.h"
 #include "effects/effect_metadata.h"
-#include "effects/fast_math.h"
+#include <cmath>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -44,10 +44,8 @@
 #define HAS_RTNEURAL 0
 #endif
 
-// Include embedded model registry for firmware builds
-#if defined(DAISY_SEED_BUILD)
+// Include shared embedded model registry for both firmware and VST
 #include "embedded/model_registry.h"
-#endif
 
 namespace NeuralAmpModels
 {
@@ -171,10 +169,8 @@ struct NeuralAmpEffect : BaseEffect
 #if HAS_RTNEURAL
         model_.reset();
 
-#if defined(DAISY_SEED_BUILD)
-        // Load default embedded model on firmware
+        // Load default embedded model
         LoadEmbeddedModel(0);
-#endif
 #endif
     }
 
@@ -187,14 +183,8 @@ struct NeuralAmpEffect : BaseEffect
             {
                 uint8_t newIndex = static_cast<uint8_t>(v * 127.0f + 0.5f);
                 // Clamp to valid range
-#if defined(DAISY_SEED_BUILD)
                 if (newIndex >= EmbeddedModels::kNumModels)
                     newIndex = EmbeddedModels::kNumModels - 1;
-#else
-                // For VST, limit to number of embedded models for now
-                if (newIndex >= 5)
-                    newIndex = 4;
-#endif
                 if (newIndex != modelIndex_)
                 {
                     modelIndex_ = newIndex;
@@ -253,7 +243,7 @@ struct NeuralAmpEffect : BaseEffect
      */
     bool LoadEmbeddedModel(int index)
     {
-#if HAS_RTNEURAL && defined(DAISY_SEED_BUILD)
+#if HAS_RTNEURAL
         const auto *modelInfo = EmbeddedModels::GetModel(static_cast<size_t>(index));
         if (!modelInfo)
         {
@@ -316,8 +306,6 @@ struct NeuralAmpEffect : BaseEffect
 
         return true;
 #else
-        // For VST without embedded registry, just mark as loaded
-        // (VST uses LoadModelFromJson for runtime loading)
         (void)index;
         return false;
 #endif
@@ -329,16 +317,21 @@ struct NeuralAmpEffect : BaseEffect
         return x < lo ? lo : (x > hi ? hi : x);
     }
 
+    static inline float dBToLinear(float dB)
+    {
+        return std::pow(10.0f, dB / 20.0f);
+    }
+
     // Calculate low shelf biquad coefficients
     // freq: center frequency, gainDb: boost/cut in dB, Q: quality factor
     void calcLowShelf(BiquadCoeffs &c, float freq, float gainDb, float Q = 0.707f)
     {
-        float A = FastMath::fastDbToLin(gainDb / 2.0f); // sqrt of linear gain
-        float w0 = FastMath::kTwoPi * freq / sampleRate_;
-        float cosw0 = FastMath::fastCos(w0 / FastMath::kTwoPi);
-        float sinw0 = FastMath::fastSin(w0 / FastMath::kTwoPi);
+        float A = dBToLinear(gainDb / 2.0f); // sqrt of linear gain
+        float w0 = 2.0f * 3.14159265f * freq / sampleRate_;
+        float cosw0 = std::cos(w0);
+        float sinw0 = std::sin(w0);
         float alpha = sinw0 / (2.0f * Q);
-        float sqrtA = FastMath::fastPow2(FastMath::fastLog2(A) * 0.5f); // sqrt via log2/pow2
+        float sqrtA = std::sqrt(A);
 
         float a0 = (A + 1) + (A - 1) * cosw0 + 2 * sqrtA * alpha;
         c.b0 = (A * ((A + 1) - (A - 1) * cosw0 + 2 * sqrtA * alpha)) / a0;
@@ -351,12 +344,12 @@ struct NeuralAmpEffect : BaseEffect
     // Calculate high shelf biquad coefficients
     void calcHighShelf(BiquadCoeffs &c, float freq, float gainDb, float Q = 0.707f)
     {
-        float A = FastMath::fastDbToLin(gainDb / 2.0f);
-        float w0 = FastMath::kTwoPi * freq / sampleRate_;
-        float cosw0 = FastMath::fastCos(w0 / FastMath::kTwoPi);
-        float sinw0 = FastMath::fastSin(w0 / FastMath::kTwoPi);
+        float A = dBToLinear(gainDb / 2.0f);
+        float w0 = 2.0f * 3.14159265f * freq / sampleRate_;
+        float cosw0 = std::cos(w0);
+        float sinw0 = std::sin(w0);
         float alpha = sinw0 / (2.0f * Q);
-        float sqrtA = FastMath::fastPow2(FastMath::fastLog2(A) * 0.5f);
+        float sqrtA = std::sqrt(A);
 
         float a0 = (A + 1) - (A - 1) * cosw0 + 2 * sqrtA * alpha;
         c.b0 = (A * ((A + 1) + (A - 1) * cosw0 + 2 * sqrtA * alpha)) / a0;
@@ -369,10 +362,10 @@ struct NeuralAmpEffect : BaseEffect
     // Calculate peaking EQ biquad coefficients
     void calcPeakingEQ(BiquadCoeffs &c, float freq, float gainDb, float Q = 1.0f)
     {
-        float A = FastMath::fastDbToLin(gainDb / 2.0f);
-        float w0 = FastMath::kTwoPi * freq / sampleRate_;
-        float cosw0 = FastMath::fastCos(w0 / FastMath::kTwoPi);
-        float sinw0 = FastMath::fastSin(w0 / FastMath::kTwoPi);
+        float A = dBToLinear(gainDb / 2.0f);
+        float w0 = 2.0f * 3.14159265f * freq / sampleRate_;
+        float cosw0 = std::cos(w0);
+        float sinw0 = std::sin(w0);
         float alpha = sinw0 / (2.0f * Q);
 
         float a0 = 1 + alpha / A;
@@ -422,7 +415,7 @@ struct NeuralAmpEffect : BaseEffect
         float mono = 0.5f * (l + r);
 
         // Apply input gain (-20dB to +20dB range)
-        float inGain = FastMath::fastDbToLin((inputGain_ - 0.5f) * 40.0f);
+        float inGain = dBToLinear((inputGain_ - 0.5f) * 40.0f);
         mono *= inGain;
 
 #if HAS_RTNEURAL
@@ -446,19 +439,19 @@ struct NeuralAmpEffect : BaseEffect
         float output = mono;
 
         // Bass shelf
-        if (FastMath::fabs(bass_ - 0.5f) > 0.01f)
+        if (std::fabs(bass_ - 0.5f) > 0.01f)
             output = processBiquad(bassState_, bassCoeffs_, output);
 
         // Mid peak
-        if (FastMath::fabs(mid_ - 0.5f) > 0.01f)
+        if (std::fabs(mid_ - 0.5f) > 0.01f)
             output = processBiquad(midState_, midCoeffs_, output);
 
         // Treble shelf
-        if (FastMath::fabs(treble_ - 0.5f) > 0.01f)
+        if (std::fabs(treble_ - 0.5f) > 0.01f)
             output = processBiquad(trebleState_, trebleCoeffs_, output);
 
         // Apply output gain (-20dB to +20dB range)
-        float outGain = FastMath::fastDbToLin((outputGain_ - 0.5f) * 40.0f);
+        float outGain = dBToLinear((outputGain_ - 0.5f) * 40.0f);
         output *= outGain;
 
         // Soft limit to prevent clipping
