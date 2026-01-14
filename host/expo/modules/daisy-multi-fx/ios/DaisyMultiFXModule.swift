@@ -119,5 +119,13 @@ public class DaisyMultiFXModule: Module {
         Function("setOutputGain") { (gainDb: Double) in
             self.controller.setOutputGain(gainDb: Float(gainDb))
         }
+
+        Function("setLoggingEnabled") { (enabled: Bool) in
+            DaisyMidiController.loggingEnabled = enabled
+        }
+
+        Function("isLoggingEnabled") { () -> Bool in
+            return DaisyMidiController.loggingEnabled
+        }
     }
 }
