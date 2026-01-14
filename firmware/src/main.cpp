@@ -31,6 +31,7 @@ extern void BindProcessorBuffers(AudioProcessor &processor);
 
 PatchWireDesc MakeExamplePatch();
 PatchWireDesc MakePassthroughPatch();
+PatchWireDesc MakeNeuralAmpTestPatch();
 
 // Mono input detection: copies left channel to right when right is silent
 // This handles the common case of a mono guitar input on a stereo codec
@@ -106,6 +107,8 @@ int main()
     auto pw =
 #if defined(DEBUG_PATCH_PASSTHROUGH)
         MakePassthroughPatch();
+#elif defined(DEBUG_PATCH_NEURALAMP)
+        MakeNeuralAmpTestPatch();
 #else
         MakeExamplePatch();
 #endif

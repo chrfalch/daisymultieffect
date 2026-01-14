@@ -15,6 +15,13 @@ ifeq ($(DEBUG_PATCH),1)
 C_DEFS += -DDEBUG_PATCH_PASSTHROUGH
 endif
 
+# Build-time debug: compile with Neural Amp only patch at boot.
+# Usage: `make clean && make -j DEBUG_NEURALAMP=1 && make flash`
+DEBUG_NEURALAMP ?= 0
+ifeq ($(DEBUG_NEURALAMP),1)
+C_DEFS += -DDEBUG_PATCH_NEURALAMP
+endif
+
 CPP_SOURCES = src/main.cpp \
               ../core/audio/audio_processor.cpp \
               $(wildcard src/effects/*.cpp) \
