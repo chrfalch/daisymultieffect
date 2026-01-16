@@ -264,10 +264,10 @@ namespace daisyfx
          * @param cpuMax Maximum CPU load since last reset (0.0-1.0)
          */
         inline std::vector<uint8_t> encodeStatusUpdate(uint8_t sender,
-                                                        float inputLevel,
-                                                        float outputLevel,
-                                                        float cpuAvg,
-                                                        float cpuMax)
+                                                       float inputLevel,
+                                                       float outputLevel,
+                                                       float cpuAvg,
+                                                       float cpuMax)
         {
             uint8_t qIn[5], qOut[5], qAvg[5], qMax[5];
             packQ16_16(floatToQ16_16(inputLevel), qIn);
