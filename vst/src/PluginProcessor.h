@@ -117,7 +117,7 @@ private:
     double lastPatchDumpTime_ = 0.0;
     double lastEffectMetaTime_ = 0.0;
     double lastStatusUpdateTime_ = 0.0;
-    static constexpr double kMinResponseIntervalMs = 500.0; // 500ms between responses
+    static constexpr double kMinResponseIntervalMs = 500.0;  // 500ms between responses
     static constexpr double kStatusUpdateIntervalMs = 100.0; // 100ms (~10Hz) for status updates
 
     // Level meters
