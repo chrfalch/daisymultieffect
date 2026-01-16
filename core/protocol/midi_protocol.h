@@ -56,6 +56,7 @@ namespace daisyfx
             constexpr uint8_t EFFECT_META_V3 = 0x36;
             constexpr uint8_t EFFECT_META_V4 = 0x37;
             constexpr uint8_t EFFECT_META_V5 = 0x38;
+            constexpr uint8_t STATUS_UPDATE = 0x42;
         }
 
         // Effect type IDs
@@ -249,6 +250,37 @@ namespace daisyfx
             packQ16_16(floatToQ16_16(gainDb), q);
             return {0xF0, MANUFACTURER_ID, sender, Cmd::SET_OUTPUT_GAIN,
                     q[0], q[1], q[2], q[3], q[4], 0xF7};
+        }
+
+        /**
+         * Encode STATUS_UPDATE response.
+         * Format: F0 7D <sender> 42 <inputLevel_Q16.16_5bytes> <outputLevel_Q16.16_5bytes>
+         *         <cpuAvg_Q16.16_5bytes> <cpuMax_Q16.16_5bytes> F7
+         *
+         * All values are linear (0.0-1.0+ range).
+         * @param inputLevel Peak input level (linear, 0.0-1.0+)
+         * @param outputLevel Peak output level (linear, 0.0-1.0+)
+         * @param cpuAvg Average CPU load (0.0-1.0)
+         * @param cpuMax Maximum CPU load since last reset (0.0-1.0)
+         */
+        inline std::vector<uint8_t> encodeStatusUpdate(uint8_t sender,
+                                                        float inputLevel,
+                                                        float outputLevel,
+                                                        float cpuAvg,
+                                                        float cpuMax)
+        {
+            uint8_t qIn[5], qOut[5], qAvg[5], qMax[5];
+            packQ16_16(floatToQ16_16(inputLevel), qIn);
+            packQ16_16(floatToQ16_16(outputLevel), qOut);
+            packQ16_16(floatToQ16_16(cpuAvg), qAvg);
+            packQ16_16(floatToQ16_16(cpuMax), qMax);
+
+            return {0xF0, MANUFACTURER_ID, sender, Resp::STATUS_UPDATE,
+                    qIn[0], qIn[1], qIn[2], qIn[3], qIn[4],
+                    qOut[0], qOut[1], qOut[2], qOut[3], qOut[4],
+                    qAvg[0], qAvg[1], qAvg[2], qAvg[3], qAvg[4],
+                    qMax[0], qMax[1], qMax[2], qMax[3], qMax[4],
+                    0xF7};
         }
 
         //=========================================================================
