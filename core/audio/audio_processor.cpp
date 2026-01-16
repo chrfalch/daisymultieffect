@@ -200,8 +200,17 @@ void AudioProcessor::ProcessFrame(float inL, float inR, float &outL, float &outR
         else if (s.enabledFade > target)
         {
             s.enabledFade -= fadeStep;
-            if (s.enabledFade < 0.0f)
+            // Snap to zero when close enough (avoids floating point precision issues)
+            if (s.enabledFade < 0.001f)
                 s.enabledFade = 0.0f;
+        }
+
+        // True bypass: skip all processing when fully disabled
+        if (s.enabledFade == 0.0f)
+        {
+            board_.outL[i] = curL;
+            board_.outR[i] = curR;
+            continue;
         }
 
         float srcL = ReadTap(s.inputL, inL, board_.outL);
