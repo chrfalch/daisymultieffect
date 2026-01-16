@@ -17,12 +17,27 @@
 
 using namespace daisyfx;
 
+// Debug log file
+static std::ofstream &getDebugLog()
+{
+    static std::ofstream log("/tmp/daisymultifx_debug.log", std::ios::app);
+    return log;
+}
+#define DBG_LOG(x)                       \
+    do                                   \
+    {                                    \
+        getDebugLog() << x << std::endl; \
+        getDebugLog().flush();           \
+    } while (0)
+
 DaisyMultiFXProcessor::DaisyMultiFXProcessor()
     : AudioProcessor(BusesProperties()
                          .withInput("Input", juce::AudioChannelSet::stereo(), true)
                          .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
       parameters_(*this, nullptr, juce::Identifier("DaisyMultiFX"), createParameterLayout())
 {
+    DBG_LOG("[VST] DaisyMultiFXProcessor constructor starting");
+
     // Register as observer of PatchState
     patchState_.addObserver(this);
 
@@ -196,9 +211,15 @@ void DaisyMultiFXProcessor::syncPatchFromParameters()
 
 void DaisyMultiFXProcessor::parameterChanged(const juce::String &parameterID, float newValue)
 {
+    std::cerr << "[VST] parameterChanged: " << parameterID.toStdString()
+              << " = " << newValue << std::endl;
+
     // Avoid circular updates
     if (isUpdatingFromPatchState_)
+    {
+        std::cerr << "[VST] parameterChanged: blocked by isUpdatingFromPatchState_" << std::endl;
         return;
+    }
 
     if (parameterID == "tempo")
     {
@@ -233,6 +254,8 @@ void DaisyMultiFXProcessor::parameterChanged(const juce::String &parameterID, fl
         {
             int paramId = suffix.substring(2).getIntValue();
             uint8_t value = static_cast<uint8_t>(newValue * 127.0f);
+            std::cerr << "[VST] parameterChanged: calling setSlotParam slot=" << slotIndex
+                      << " paramId=" << paramId << " value=" << (int)value << std::endl;
             patchState_.setSlotParam(static_cast<uint8_t>(slotIndex), static_cast<uint8_t>(paramId), value);
         }
     }
@@ -245,7 +268,7 @@ void DaisyMultiFXProcessor::parameterChanged(const juce::String &parameterID, fl
 void DaisyMultiFXProcessor::onSlotEnabledChanged(uint8_t slot, bool enabled)
 {
     // Update DSP
-    if (slot < 12 && processor_)
+    if (slot < kNumSlots && processor_)
         processor_->Board().slots[slot].enabled = enabled;
 
     // Update APVTS if needed (for UI)
@@ -280,12 +303,27 @@ void DaisyMultiFXProcessor::onSlotTypeChanged(uint8_t slot, uint8_t typeId)
 
 void DaisyMultiFXProcessor::onSlotParamChanged(uint8_t slot, uint8_t paramId, uint8_t value)
 {
+    std::cerr << "[VST] onSlotParamChanged slot=" << (int)slot << " paramId=" << (int)paramId
+              << " value=" << (int)value << std::endl;
+
     // Update DSP directly
-    if (slot < 12 && processor_)
+    if (slot < kNumSlots && processor_)
     {
         auto &dspSlot = processor_->Board().slots[slot];
         if (dspSlot.effect)
+        {
+            std::cerr << "[VST] Calling effect->SetParam(" << (int)paramId << ", " << (value / 127.0f)
+                      << ") on slot " << (int)slot << " typeId=" << (int)dspSlot.effect->GetTypeId() << std::endl;
             dspSlot.effect->SetParam(paramId, value / 127.0f);
+        }
+        else
+        {
+            std::cerr << "[VST] WARNING: dspSlot.effect is NULL for slot " << (int)slot << std::endl;
+        }
+    }
+    else
+    {
+        std::cerr << "[VST] WARNING: slot >= 12 or processor_ is null" << std::endl;
     }
 
     // Update APVTS
@@ -380,15 +418,25 @@ void DaisyMultiFXProcessor::handleIncomingMidi(const juce::MidiMessage &message)
     if (sender == MidiProtocol::Sender::VST)
         return;
 
-    std::cout << "[VST] Received cmd=0x" << std::hex << (int)cmd
-              << " from sender=0x" << (int)sender << std::dec << std::endl;
+    std::cerr << "[VST] Received cmd=0x" << std::hex << (int)cmd
+              << " from sender=0x" << (int)sender << std::dec
+              << " size=" << size << std::endl;
+    std::cerr.flush();
 
+    std::cerr << "[VST] About to call decode..." << std::endl;
+    std::cerr.flush();
     auto decoded = MidiProtocol::decode(data, size);
+    std::cerr << "[VST] After decode: valid=" << decoded.valid
+              << " command=0x" << std::hex << (int)decoded.command << std::dec << std::endl;
+    std::cerr.flush();
     if (!decoded.valid)
     {
-        std::cout << "[VST] Decoded invalid for cmd=0x" << std::hex << (int)cmd << std::dec << std::endl;
+        std::cerr << "[VST] Decoded invalid for cmd=0x" << std::hex << (int)cmd << std::dec << std::endl;
         return;
     }
+
+    std::cerr << "[VST] Decoded valid, command=0x" << std::hex << (int)decoded.command
+              << " (SET_PARAM=0x" << (int)MidiProtocol::Cmd::SET_PARAM << ")" << std::dec << std::endl;
 
     // Route commands to PatchState - it handles deduplication
     switch (decoded.command)
@@ -402,6 +450,9 @@ void DaisyMultiFXProcessor::handleIncomingMidi(const juce::MidiMessage &message)
         break;
 
     case MidiProtocol::Cmd::SET_PARAM:
+        std::cerr << "[VST] SET_PARAM: slot=" << (int)decoded.slot
+                  << " paramId=" << (int)decoded.paramId
+                  << " value=" << (int)decoded.value << std::endl;
         patchState_.setSlotParam(decoded.slot, decoded.paramId, decoded.value);
         break;
 
@@ -446,14 +497,14 @@ void DaisyMultiFXProcessor::sendPatchDump()
     double now = juce::Time::getMillisecondCounterHiRes();
     if (now - lastPatchDumpTime_ < kMinResponseIntervalMs)
     {
-        std::cout << "[VST] sendPatchDump rate-limited" << std::endl;
+        std::cerr << "[VST] sendPatchDump rate-limited" << std::endl;
         return;
     }
     lastPatchDumpTime_ = now;
 
-    std::cout << "[VST] Sending PATCH_DUMP response" << std::endl;
+    std::cerr << "[VST] Sending PATCH_DUMP response" << std::endl;
     auto sysex = MidiProtocol::encodePatchDump(MidiProtocol::Sender::VST, patchState_.getPatch());
-    std::cout << "[VST] Patch dump size=" << sysex.size() << std::endl;
+    std::cerr << "[VST] Patch dump size=" << sysex.size() << std::endl;
     auto msg = juce::MidiMessage::createSysExMessage(sysex.data() + 1, static_cast<int>(sysex.size()) - 2);
     pendingMidiOut_.addEvent(msg, 0);
 }
@@ -798,11 +849,16 @@ void DaisyMultiFXProcessor::sendEffectMeta()
 // Audio Processing
 //=============================================================================
 
-void DaisyMultiFXProcessor::prepareToPlay(double sampleRate, int)
+void DaisyMultiFXProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
     processor_->Init(static_cast<float>(sampleRate));
     processor_->ApplyPatch(patchState_.getPatch());
     isPrepared_ = true;
+
+    // Initialize CPU tracking
+    expectedBlockTimeMs_ = (static_cast<double>(samplesPerBlock) / sampleRate) * 1000.0;
+    avgProcessTimeMs_ = 0.0;
+    maxProcessTimeMs_ = 0.0;
 }
 
 void DaisyMultiFXProcessor::releaseResources()
@@ -822,6 +878,9 @@ void DaisyMultiFXProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
 
     if (!isPrepared_ || !processor_)
         return;
+
+    // Start CPU timing
+    double blockStartTime = juce::Time::getMillisecondCounterHiRes();
 
     // Get tempo from host
     if (auto *playHead = getPlayHead())
@@ -900,6 +959,49 @@ void DaisyMultiFXProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
     inputLevel_.store(maxIn > currentIn ? maxIn : currentIn * release);
     float currentOut = outputLevel_.load();
     outputLevel_.store(maxOut > currentOut ? maxOut : currentOut * release);
+
+    // Update CPU load tracking
+    double blockEndTime = juce::Time::getMillisecondCounterHiRes();
+    double processTimeMs = blockEndTime - blockStartTime;
+
+    // Exponential moving average for CPU load
+    constexpr double cpuAvgAlpha = 0.1; // Smoothing factor
+    avgProcessTimeMs_ = cpuAvgAlpha * processTimeMs + (1.0 - cpuAvgAlpha) * avgProcessTimeMs_;
+    maxProcessTimeMs_ = std::max(maxProcessTimeMs_, processTimeMs);
+
+    // Calculate CPU load as ratio of process time to available time
+    if (expectedBlockTimeMs_ > 0.0)
+    {
+        cpuLoadAvg_.store(static_cast<float>(avgProcessTimeMs_ / expectedBlockTimeMs_));
+        cpuLoadMax_.store(static_cast<float>(maxProcessTimeMs_ / expectedBlockTimeMs_));
+    }
+
+    // Send status update at ~10Hz (every 100ms)
+    sendStatusUpdateIfNeeded();
+}
+
+void DaisyMultiFXProcessor::sendStatusUpdateIfNeeded()
+{
+    double now = juce::Time::getMillisecondCounterHiRes();
+    if (now - lastStatusUpdateTime_ < kStatusUpdateIntervalMs)
+        return;
+
+    lastStatusUpdateTime_ = now;
+
+    // Build and send STATUS_UPDATE SysEx message
+    auto sysex = MidiProtocol::encodeStatusUpdate(
+        MidiProtocol::Sender::VST,
+        inputLevel_.load(),
+        outputLevel_.load(),
+        cpuLoadAvg_.load(),
+        cpuLoadMax_.load());
+
+    // Create MIDI message (strip F0/F7 for createSysExMessage)
+    auto msg = juce::MidiMessage::createSysExMessage(sysex.data() + 1, static_cast<int>(sysex.size()) - 2);
+    pendingMidiOut_.addEvent(msg, 0);
+
+    // Reset max CPU load periodically (every status update)
+    maxProcessTimeMs_ = avgProcessTimeMs_;
 }
 
 //=============================================================================

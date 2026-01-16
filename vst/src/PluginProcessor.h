@@ -80,6 +80,8 @@ public:
     daisyfx::PatchState &getPatchState() { return patchState_; }
     float getInputLevel() const { return inputLevel_.load(); }
     float getOutputLevel() const { return outputLevel_.load(); }
+    float getCpuLoadAvg() const { return cpuLoadAvg_.load(); }
+    float getCpuLoadMax() const { return cpuLoadMax_.load(); }
 
     // Access to audio processor
     CoreAudioProcessor *getAudioProcessor() { return processor_.get(); }
@@ -94,6 +96,7 @@ private:
     void handleIncomingMidi(const juce::MidiMessage &message);
     void sendPatchDump();
     void sendEffectMeta();
+    void sendStatusUpdateIfNeeded();
 
     // Core state - THE source of truth
     daisyfx::PatchState patchState_;
@@ -113,11 +116,21 @@ private:
     // Rate limiting for MIDI responses
     double lastPatchDumpTime_ = 0.0;
     double lastEffectMetaTime_ = 0.0;
+    double lastStatusUpdateTime_ = 0.0;
     static constexpr double kMinResponseIntervalMs = 500.0; // 500ms between responses
+    static constexpr double kStatusUpdateIntervalMs = 100.0; // 100ms (~10Hz) for status updates
 
     // Level meters
     std::atomic<float> inputLevel_{0.0f};
     std::atomic<float> outputLevel_{0.0f};
+
+    // CPU load tracking
+    std::atomic<float> cpuLoadAvg_{0.0f};
+    std::atomic<float> cpuLoadMax_{0.0f};
+    double lastProcessTime_ = 0.0;
+    double avgProcessTimeMs_ = 0.0;
+    double maxProcessTimeMs_ = 0.0;
+    double expectedBlockTimeMs_ = 0.0;
 
     // Flag to prevent circular updates (APVTS -> PatchState -> APVTS)
     bool isUpdatingFromPatchState_ = false;
