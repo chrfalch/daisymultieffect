@@ -29,12 +29,27 @@ CPP_SOURCES = src/main.cpp \
               $(wildcard src/patch/*.cpp) \
               src/audio/tempo_control.cpp
 C_INCLUDES += -Isrc -I../core
-CFLAGS   += -O2
-CXXFLAGS += -O2
+
+# Define DAISY_SEED_BUILD for platform-specific code paths in core/
+C_DEFS += -DDAISY_SEED_BUILD
+
+# Aggressive optimizations for real-time audio DSP
+# -O3: Maximum optimization (inlining, vectorization, loop opts)
+# -ffast-math: Unsafe FP optimizations (no NaN/Inf checks, reordering)
+# -funroll-loops: Unroll small loops for speed
+OPT = -O3 -ffast-math -funroll-loops
+CFLAGS   += $(OPT)
+CXXFLAGS += $(OPT)
+
+# Use C++17 for better constexpr and if-constexpr support
+CPP_STANDARD = -std=gnu++17
 
 # Core location, and generic Makefile for project builds
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
 include $(SYSTEM_FILES_DIR)/Makefile
+
+# Link-time optimization (whole program optimization)
+LDFLAGS += -flto
 
 .PHONY: flash program dfu-list clean_all
 # Ensure we rebuild before flashing (libDaisy's `program-dfu` target does not depend on the binary).
