@@ -1,6 +1,7 @@
 #pragma once
 #include "effects/base_effect.h"
 #include "effects/effect_metadata.h"
+#include "effects/fast_math.h"
 #include <cmath>
 #include <cstring>
 #include <string>
@@ -35,8 +36,16 @@ struct CabinetIREffect : BaseEffect
 {
     static constexpr uint8_t TypeId = Effects::CabinetIR::TypeId;
 
-    // Maximum IR length in samples (2048 @ 48kHz = 42.7ms)
+    // Maximum IR length in samples
+    // VST can handle longer IRs, firmware is limited for real-time performance
+#if defined(DAISY_SEED_BUILD)
+    // Firmware: 128 samples @ 48kHz = 2.7ms (essential cab character is in first ~2ms)
+    // Direct convolution at 128 samples = ~6M MACs/sec (very efficient on Cortex-M7)
+    static constexpr int kMaxIRLength = 128;
+#else
+    // VST: Full 2048 samples @ 48kHz = 42.7ms
     static constexpr int kMaxIRLength = 2048;
+#endif
 
     // Parameters
     uint8_t irIndex_ = 0;     // IR selection (enum)
@@ -63,6 +72,12 @@ struct CabinetIREffect : BaseEffect
     float hpfState_ = 0.0f;
     float lpfState_ = 0.0f;
 
+    // Cached filter coefficients (updated when params change)
+    float hpfCoeff_ = 0.0f;
+    float lpfCoeff_ = 0.0f;
+    float outGainLinear_ = 1.0f;
+    bool coeffsNeedUpdate_ = true;
+
     uint8_t GetTypeId() const override { return TypeId; }
     ChannelMode GetSupportedModes() const override { return ChannelMode::MonoOrStereo; }
     const EffectMeta &GetMetadata() const override { return Effects::CabinetIR::kMeta; }
@@ -79,8 +94,42 @@ struct CabinetIREffect : BaseEffect
         hpfState_ = 0.0f;
         lpfState_ = 0.0f;
 
+        // Mark coefficients for update
+        coeffsNeedUpdate_ = true;
+
         // Load default embedded IR
         LoadEmbeddedIR(0);
+    }
+
+    // Update cached filter coefficients (called only when params change)
+    void updateCoeffs()
+    {
+        // High-pass filter coefficient
+        if (lowCut_ > 0.01f)
+        {
+            float hpFreq = 20.0f + lowCut_ * 780.0f;
+            hpfCoeff_ = 1.0f - FastMath::fastExp(-2.0f * 3.14159f * hpFreq / sampleRate_);
+        }
+        else
+        {
+            hpfCoeff_ = 0.0f;
+        }
+
+        // Low-pass filter coefficient
+        if (highCut_ > 0.01f)
+        {
+            float lpFreq = 20000.0f - highCut_ * 19000.0f;
+            lpfCoeff_ = 1.0f - FastMath::fastExp(-2.0f * 3.14159f * lpFreq / sampleRate_);
+        }
+        else
+        {
+            lpfCoeff_ = 0.0f;
+        }
+
+        // Output gain
+        outGainLinear_ = FastMath::fastDbToLin((outputGain_ - 0.5f) * 40.0f);
+
+        coeffsNeedUpdate_ = false;
     }
 
     void SetParam(uint8_t id, float v) override
@@ -106,12 +155,15 @@ struct CabinetIREffect : BaseEffect
             break;
         case 2:
             outputGain_ = v;
+            coeffsNeedUpdate_ = true;
             break;
         case 3:
             lowCut_ = v;
+            coeffsNeedUpdate_ = true;
             break;
         case 4:
             highCut_ = v;
+            coeffsNeedUpdate_ = true;
             break;
         }
     }
@@ -255,6 +307,10 @@ struct CabinetIREffect : BaseEffect
 
     void ProcessStereo(float &l, float &r) override
     {
+        // Update coefficients if needed (only when params change)
+        if (coeffsNeedUpdate_)
+            updateCoeffs();
+
         // Convert to mono for convolution (cab IRs are typically mono)
         float mono = 0.5f * (l + r);
         float dry = mono;
@@ -292,30 +348,22 @@ struct CabinetIREffect : BaseEffect
             wet = mono;
         }
 
-        // Apply high-pass filter (low cut)
-        // lowCut_ 0-1 maps to 20Hz-800Hz (0 = no cut, 1 = cuts up to 800Hz)
-        if (lowCut_ > 0.01f)
+        // Apply high-pass filter (low cut) using cached coefficient
+        if (hpfCoeff_ > 0.0f)
         {
-            float hpFreq = 20.0f + lowCut_ * 780.0f;
-            float hpCoeff = 1.0f - std::exp(-2.0f * 3.14159f * hpFreq / sampleRate_);
-            hpfState_ += hpCoeff * (wet - hpfState_);
+            hpfState_ += hpfCoeff_ * (wet - hpfState_);
             wet = wet - hpfState_;
         }
 
-        // Apply low-pass filter (high cut)
-        // highCut_ 0-1 maps to 20kHz down to 1kHz (0 = no cut/bright, 1 = dark/1kHz)
-        if (highCut_ > 0.01f)
+        // Apply low-pass filter (high cut) using cached coefficient
+        if (lpfCoeff_ > 0.0f)
         {
-            // Invert: higher highCut_ = lower frequency = darker sound
-            float lpFreq = 20000.0f - highCut_ * 19000.0f; // 20kHz -> 1kHz
-            float lpCoeff = 1.0f - std::exp(-2.0f * 3.14159f * lpFreq / sampleRate_);
-            lpfState_ += lpCoeff * (wet - lpfState_);
+            lpfState_ += lpfCoeff_ * (wet - lpfState_);
             wet = lpfState_;
         }
 
-        // Apply output gain (-20dB to +20dB)
-        float outGain = dBToLinear((outputGain_ - 0.5f) * 40.0f);
-        wet *= outGain;
+        // Apply output gain using cached linear value
+        wet *= outGainLinear_;
 
         // Mix wet/dry
         float output = dry * (1.0f - mix_) + wet * mix_;
