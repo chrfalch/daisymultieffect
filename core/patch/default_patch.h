@@ -6,7 +6,7 @@
  *
  * This file defines the default "guitar signal chain" patch used
  * by both VST and firmware. It provides a starting point with:
- * - Gate -> Compressor -> Distortion -> EQ -> Chorus -> Reverb
+ * - Gate -> Compressor -> Overdrive -> EQ -> Amp Sim -> Cab Sim -> Chorus -> Delay -> Sweep Delay -> Reverb
  *
  * The remaining slots are empty and ready for configuration.
  *
@@ -44,30 +44,38 @@ namespace daisyfx
      * Guitar signal chain default configuration:
      * Slot 0: Noise Gate
      * Slot 1: Compressor
-     * Slot 2: Distortion
+     * Slot 2: Overdrive
      * Slot 3: GraphicEQ (7 bands)
-     * Slot 4: Chorus
-     * Slot 5: Reverb
-     * Slots 6-11: Empty
+     * Slot 4: Neural Amp (Amp Sim)
+     * Slot 5: Cabinet IR (Cab Sim)
+     * Slot 6: Chorus
+     * Slot 7: Delay
+     * Slot 8: Sweep Delay
+     * Slot 9: Reverb
+     * Slots 10-11: Empty
      */
     inline const DefaultSlotConfig kDefaultSlots[kNumSlots] = {
         // Slot 0: Noise Gate
         {SYSEX_EFFECT_NOISE_GATE, {64.0f / 127.0f, 20.0f / 127.0f, 50.0f / 127.0f, 40.0f / 127.0f, 0.0f / 127.0f, 0.5f, 0.5f}},
         // Slot 1: Compressor
         {SYSEX_EFFECT_COMPRESSOR, {80.0f / 127.0f, 16.0f / 127.0f, 40.0f / 127.0f, 50.0f / 127.0f, 20.0f / 127.0f, 0.5f, 0.5f}},
-        // Slot 2: Distortion
+        // Slot 2: Overdrive
         {SYSEX_EFFECT_DISTORTION, {40.0f / 127.0f, 70.0f / 127.0f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f}},
-        // Slot 3: GraphicEQ - 7 bands
+        // Slot 3: GraphicEQ - 7 bands (flat)
         {SYSEX_EFFECT_GRAPHIC_EQ, {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f}},
-        // Slot 4: Chorus
+        // Slot 4: Neural Amp (Amp Sim)
+        {SYSEX_EFFECT_NEURAL_AMP, {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f}},
+        // Slot 5: Cabinet IR (Cab Sim)
+        {SYSEX_EFFECT_CABINET_IR, {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f}},
+        // Slot 6: Chorus
         {SYSEX_EFFECT_CHORUS, {30.0f / 127.0f, 50.0f / 127.0f, 20.0f / 127.0f, 40.0f / 127.0f, 50.0f / 127.0f, 0.5f, 0.5f}},
-        // Slot 5: Reverb
+        // Slot 7: Delay
+        {SYSEX_EFFECT_DELAY, {50.0f / 127.0f, 40.0f / 127.0f, 0.0f / 127.0f, 60.0f / 127.0f, 50.0f / 127.0f, 0.5f, 0.5f}},
+        // Slot 8: Sweep Delay
+        {SYSEX_EFFECT_SWEEP_DELAY, {50.0f / 127.0f, 40.0f / 127.0f, 0.0f / 127.0f, 60.0f / 127.0f, 50.0f / 127.0f, 40.0f / 127.0f, 0.5f}},
+        // Slot 9: Reverb
         {SYSEX_EFFECT_REVERB, {40.0f / 127.0f, 50.0f / 127.0f, 60.0f / 127.0f, 25.0f / 127.0f, 50.0f / 127.0f, 0.5f, 0.5f}},
-        // Slots 6-11: Empty (Off)
-        {SYSEX_EFFECT_OFF, {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f}},
-        {SYSEX_EFFECT_OFF, {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f}},
-        {SYSEX_EFFECT_OFF, {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f}},
-        {SYSEX_EFFECT_OFF, {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f}},
+        // Slots 10-11: Empty (Off)
         {SYSEX_EFFECT_OFF, {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f}},
         {SYSEX_EFFECT_OFF, {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f}},
     };
