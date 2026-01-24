@@ -30,9 +30,23 @@ struct OverdriveEffect : BaseEffect
     float lpL_ = 0, lpR_ = 0; // Lowpass filter state for tone
     
     // Pre-emphasis high-pass filter state (80Hz @ 48kHz)
+    // Coefficient derived from: coeff = (RC)/(RC + 1/fs) where RC = 1/(2*pi*fc)
+    // For fc=80Hz, fs=48kHz: RC ≈ 0.001989, coeff ≈ 0.9895
     float hpInL_ = 0, hpInR_ = 0;
     float hpOutL_ = 0, hpOutR_ = 0;
     static constexpr float kHpCoeff = 0.9895f; // ~80Hz cutoff
+    
+    // Drive and leveling constants
+    static constexpr float kMaxDriveGain = 9.0f;      // Max boost: 1 + 9 = 10x at full drive
+    static constexpr float kLevelingStrength = 2.5f;  // Auto-leveling compensation factor
+    
+    // Asymmetric saturation constants
+    static constexpr float kAsymmetryBias = 0.05f;    // 2nd harmonic bias for warmth
+    static constexpr float kSaturationScale = 0.98f;  // Pre-compression to avoid hard limits
+    
+    // Tone control constants
+    static constexpr float kToneMinCoeff = 0.08f;     // Maximum filtering (darkest)
+    static constexpr float kToneRange = 0.35f;        // Tone control range
 
     uint8_t GetTypeId() const override { return TypeId; }
     ChannelMode GetSupportedModes() const override { return ChannelMode::MonoOrStereo; }
@@ -56,8 +70,8 @@ struct OverdriveEffect : BaseEffect
     static inline float AsymmetricSaturation(float x)
     {
         // Apply slight bias and scale to create asymmetry
-        float biased = x + 0.05f * x * x;  // Adds subtle 2nd harmonic
-        return FastTanh(biased * 0.98f);   // Slightly pre-compress to avoid hard limits
+        float biased = x + kAsymmetryBias * x * x;  // Adds subtle 2nd harmonic
+        return FastTanh(biased * kSaturationScale); // Slightly pre-compress to avoid hard limits
     }
 
     static inline float fclamp(float x, float min, float max)
@@ -83,14 +97,14 @@ struct OverdriveEffect : BaseEffect
         // Pre-gain: moderate range from 1.0 (unity) to ~10.0 (heavy drive)
         // Much more musical than the previous d^5 * 24 exponential curve
         // At drive=0: pre_gain = 1.0 (clean passthrough)
-        // At drive=1: pre_gain = ~10.0 (strong but not excessive clipping)
-        pre_gain_ = 1.0f + drive * drive * 9.0f;  // Quadratic: smoother ramp
+        // At drive=1: pre_gain = 1 + kMaxDriveGain = 10.0 (strong but not excessive)
+        pre_gain_ = 1.0f + drive * drive * kMaxDriveGain;  // Quadratic: smoother ramp
         
         // Strong auto-leveling: compensate for increased RMS from saturation
         // At low drive: near unity (clean signal passes through)
         // At high drive: aggressively reduce output to prevent volume jump
         // Factor accounts for both clipping compression and harmonic content
-        float levelingFactor = 1.0f + drive * drive * 2.5f;
+        float levelingFactor = 1.0f + drive * drive * kLevelingStrength;
         post_gain_ = 1.0f / levelingFactor;  // Ranges from 1.0 to ~0.28
     }
 
@@ -161,6 +175,6 @@ private:
         // Improved tone mapping: better frequency response control
         // Lower values = more filtering (darker/warmer)
         // Higher values = less filtering (brighter)
-        toneCoeff_ = 0.08f + 0.35f * (1.0f - tone_);
+        toneCoeff_ = kToneMinCoeff + kToneRange * (1.0f - tone_);
     }
 };
