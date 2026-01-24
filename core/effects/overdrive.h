@@ -5,11 +5,18 @@
 #include <cmath>
 
 /**
- * Overdrive Effect
- * DaisySP/Mutable Instruments Plaits overdrive core.
- * Note: We apply a gentle taper to the UI drive parameter before feeding the
- * original DaisySP SetDrive curve. This keeps maximum drive available, but
- * makes mid-drive less aggressive for typical line-level / full-scale inputs.
+ * Overdrive Effect - Revised Implementation
+ * 
+ * This overdrive uses a musical gain curve, strong auto-leveling, and asymmetric
+ * tanh-based saturation for warmth. Pre-emphasis high-pass filtering reduces
+ * low-end mud before clipping, and improved post-tone filtering shapes the output.
+ * 
+ * Key improvements:
+ * - Moderate pre-gain curve (1.0x to ~10x) instead of steep exponential
+ * - Stronger auto-leveling to prevent excessive output volume with drive
+ * - Asymmetric tanh saturation for smoother, warmer clipping character
+ * - Pre-emphasis HPF (80Hz) to reduce bass mud before saturation
+ * - Improved tone control with better frequency response
  */
 struct OverdriveEffect : BaseEffect
 {
@@ -20,26 +27,37 @@ struct OverdriveEffect : BaseEffect
     float pre_gain_ = 1.0f;   // Calculated from drive
     float post_gain_ = 1.0f;  // Auto-leveling gain
     float toneCoeff_ = 0.25f; // Pre-computed lowpass coefficient
-    float lpL_ = 0, lpR_ = 0;
+    float lpL_ = 0, lpR_ = 0; // Lowpass filter state for tone
+    
+    // Pre-emphasis high-pass filter state (80Hz @ 48kHz)
+    float hpInL_ = 0, hpInR_ = 0;
+    float hpOutL_ = 0, hpOutR_ = 0;
+    static constexpr float kHpCoeff = 0.9895f; // ~80Hz cutoff
 
     uint8_t GetTypeId() const override { return TypeId; }
     ChannelMode GetSupportedModes() const override { return ChannelMode::MonoOrStereo; }
 
-    // Soft limiting function from Mutable Instruments stmlib
-    static inline float SoftLimit(float x)
-    {
-        return x * (27.0f + x * x) / (27.0f + 9.0f * x * x);
-    }
-
-    // Soft clipping - more musical than tanh
-    static inline float SoftClip(float x)
+    // Fast tanh approximation for smooth saturation
+    // More CPU-friendly than std::tanh while maintaining smooth character
+    static inline float FastTanh(float x)
     {
         if (x < -3.0f)
             return -1.0f;
         else if (x > 3.0f)
             return 1.0f;
-        else
-            return SoftLimit(x);
+        
+        // Polynomial approximation of tanh in [-3, 3]
+        float x2 = x * x;
+        return x * (27.0f + x2) / (27.0f + 9.0f * x2);
+    }
+
+    // Asymmetric soft clipping for warmth (simulates tube-like behavior)
+    // Positive half clips softer than negative for even-harmonic content
+    static inline float AsymmetricSaturation(float x)
+    {
+        // Apply slight bias and scale to create asymmetry
+        float biased = x + 0.05f * x * x;  // Adds subtle 2nd harmonic
+        return FastTanh(biased * 0.98f);   // Slightly pre-compress to avoid hard limits
     }
 
     static inline float fclamp(float x, float min, float max)
@@ -47,31 +65,33 @@ struct OverdriveEffect : BaseEffect
         return x < min ? min : (x > max ? max : x);
     }
 
-    // Parameter taper: concave curve to slow the mid-drive ramp while keeping full scale.
+    // Parameter taper: gentle curve to make drive more musical across range
+    // Maps UI drive (0-1) to a smoother, less aggressive response
     static inline float ApplyDriveTaper(float drive)
     {
         drive = fclamp(drive, 0.0f, 1.0f);
-        return powf(drive, 1.8f);
+        // Gentle power curve - not as steep as before
+        return powf(drive, 1.5f);
     }
 
     // Compute gains for overdrive processing
+    // New approach: moderate gain range with strong auto-leveling
     void SetDrive(float drive)
     {
         drive = fclamp(drive, 0.0f, 1.0f);
-        float d = 2.0f * drive; // Full range 0-2
-        d = fclamp(d, 0.0f, 2.0f);
-
-        // Compute pre-gain: starts at 1.0 (unity) and increases with drive
-        // At d=0: pre_gain = 1.0 (clean passthrough)
-        // At d=2: pre_gain gets very high (heavy clipping)
-        float d2 = d * d;
-        float extra_gain = d2 * d2 * d * 24.0f; // Exponential curve for drive
-        pre_gain_ = 1.0f + extra_gain;
-
-        // Output leveling: compensate for clipping making signal louder
-        // At low drive: near unity (signal passes through cleanly)
-        // At high drive: reduce output since clipping compresses peaks
-        post_gain_ = 1.0f / (1.0f + 0.3f * d); // Ranges from 1.0 to 0.625
+        
+        // Pre-gain: moderate range from 1.0 (unity) to ~10.0 (heavy drive)
+        // Much more musical than the previous d^5 * 24 exponential curve
+        // At drive=0: pre_gain = 1.0 (clean passthrough)
+        // At drive=1: pre_gain = ~10.0 (strong but not excessive clipping)
+        pre_gain_ = 1.0f + drive * drive * 9.0f;  // Quadratic: smoother ramp
+        
+        // Strong auto-leveling: compensate for increased RMS from saturation
+        // At low drive: near unity (clean signal passes through)
+        // At high drive: aggressively reduce output to prevent volume jump
+        // Factor accounts for both clipping compression and harmonic content
+        float levelingFactor = 1.0f + drive * drive * 2.5f;
+        post_gain_ = 1.0f / levelingFactor;  // Ranges from 1.0 to ~0.28
     }
 
     const EffectMeta &GetMetadata() const override { return Effects::Distortion::kMeta; }
@@ -81,6 +101,8 @@ struct OverdriveEffect : BaseEffect
         SetDrive(ApplyDriveTaper(drive_));
         updateToneCoeff();
         lpL_ = lpR_ = 0;
+        hpInL_ = hpInR_ = 0;
+        hpOutL_ = hpOutR_ = 0;
     }
 
     void SetParam(uint8_t id, float v) override
@@ -108,15 +130,27 @@ struct OverdriveEffect : BaseEffect
 
     void ProcessStereo(float &l, float &r) override
     {
-        // Exact DaisySP process: pre_gain -> SoftClip -> post_gain
-        float xL = SoftClip(l * pre_gain_) * post_gain_;
-        float xR = SoftClip(r * pre_gain_) * post_gain_;
+        // Pre-emphasis high-pass filter: reduce low-end mud before saturation
+        // Simple first-order HPF at ~80Hz to tighten bass without losing body
+        // Formula: y[n] = coeff * (y[n-1] + x[n] - x[n-1])
+        float hpL = kHpCoeff * (hpOutL_ + l - hpInL_);
+        float hpR = kHpCoeff * (hpOutR_ + r - hpInR_);
+        hpInL_ = l;
+        hpInR_ = r;
+        hpOutL_ = hpL;
+        hpOutR_ = hpR;
+        
+        // Apply drive gain and asymmetric saturation
+        // Asymmetry adds warmth through even-order harmonics
+        float xL = AsymmetricSaturation(hpL * pre_gain_) * post_gain_;
+        float xR = AsymmetricSaturation(hpR * pre_gain_) * post_gain_;
 
-        // Tone: one-pole lowpass for warmth control
+        // Tone control: one-pole lowpass for warmth shaping
         // Low tone = warmer (more lowpass), high tone = brighter (more direct)
         lpL_ += toneCoeff_ * (xL - lpL_);
         lpR_ += toneCoeff_ * (xR - lpR_);
 
+        // Mix between filtered (warm) and direct (bright) based on tone
         l = tone_ * xL + (1.0f - tone_) * lpL_;
         r = tone_ * xR + (1.0f - tone_) * lpR_;
     }
@@ -124,6 +158,9 @@ struct OverdriveEffect : BaseEffect
 private:
     void updateToneCoeff()
     {
-        toneCoeff_ = 0.05f + 0.4f * (1.0f - tone_);
+        // Improved tone mapping: better frequency response control
+        // Lower values = more filtering (darker/warmer)
+        // Higher values = less filtering (brighter)
+        toneCoeff_ = 0.08f + 0.35f * (1.0f - tone_);
     }
 };
