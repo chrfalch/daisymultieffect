@@ -59,8 +59,7 @@ struct OverdriveEffect : BaseEffect
         float shaped = x + asymmetry;
         
         // Apply tanh saturation - smooth and continuous
-        // Fast tanh approximation: tanh(x) ≈ x / (1 + |x|) for moderate x
-        // Use full tanh for accuracy in audio range
+        // Using standard library tanhf for accuracy and consistency
         return tanhf(shaped * 0.9f); // Scale slightly to keep headroom
     }
 
@@ -139,12 +138,13 @@ struct OverdriveEffect : BaseEffect
         hpInL_ = hpInR_ = 0;
         
         // Compute pre-emphasis HPF coefficient for ~75 Hz
-        // RC = 1 / (2 * pi * fc), coefficient = exp(-1 / (RC * sr))
+        // One-pole HPF: y[n] = a * (y[n-1] + x[n] - x[n-1])
+        // Coefficient: a = exp(-2*pi*fc/sr)
         // For 75 Hz at 48kHz: coeff ≈ 0.9902
         if (sampleRate > 0.0f)
         {
             float fc = 75.0f; // Corner frequency in Hz
-            float rc = 1.0f / (2.0f * 3.14159265f * fc);
+            float rc = 1.0f / (2.0f * M_PI * fc);
             hpCoeff_ = expf(-1.0f / (rc * sampleRate));
         }
         else
@@ -189,7 +189,8 @@ struct OverdriveEffect : BaseEffect
     void ProcessStereo(float &l, float &r) override
     {
         // Step 1: Pre-emphasis high-pass filter (reduces mud before saturation)
-        // Simple one-pole HPF: y[n] = a * (y[n-1] + x[n] - x[n-1])
+        // One-pole HPF structure: y[n] = a * (y[n-1] + x[n] - x[n-1])
+        // This is a first-order digital high-pass filter
         float hpOutL = hpCoeff_ * (hpL_ + l - hpInL_);
         float hpOutR = hpCoeff_ * (hpR_ + r - hpInR_);
         
