@@ -15,6 +15,27 @@ struct EffectSlot: Equatable {
     var channelPolicy: UInt8 = 0
     var params: [UInt8: UInt8] = [:]
 
+    init() {}
+
+    init(from dict: [String: Any]) {
+        slotIndex = UInt8(dict["slotIndex"] as? Int ?? 0)
+        typeId = UInt8(dict["typeId"] as? Int ?? 0)
+        enabled = dict["enabled"] as? Bool ?? false
+        inputL = UInt8(dict["inputL"] as? Int ?? 0)
+        inputR = UInt8(dict["inputR"] as? Int ?? 0)
+        sumToMono = dict["sumToMono"] as? Bool ?? false
+        dry = UInt8(dict["dry"] as? Int ?? 0)
+        wet = UInt8(dict["wet"] as? Int ?? 127)
+        channelPolicy = UInt8(dict["channelPolicy"] as? Int ?? 0)
+        if let paramsDict = dict["params"] as? [String: Int] {
+            for (key, value) in paramsDict {
+                if let keyInt = UInt8(key) {
+                    params[keyInt] = UInt8(value)
+                }
+            }
+        }
+    }
+
     func toDictionary() -> [String: Any] {
         return [
             "slotIndex": Int(slotIndex),
@@ -41,6 +62,17 @@ struct Patch: Equatable {
     var slots: [EffectSlot] = []
     var inputGainDb: Float = 18.0  // Default +18dB for instrument level
     var outputGainDb: Float = 0.0  // Default 0dB (unity)
+
+    init() {}
+
+    init(from dict: [String: Any]) {
+        numSlots = UInt8(dict["numSlots"] as? Int ?? 0)
+        inputGainDb = Float(dict["inputGainDb"] as? Double ?? 18.0)
+        outputGainDb = Float(dict["outputGainDb"] as? Double ?? 0.0)
+        if let slotsArray = dict["slots"] as? [[String: Any]] {
+            slots = slotsArray.map { EffectSlot(from: $0) }
+        }
+    }
 
     func toDictionary() -> [String: Any] {
         return [

@@ -21,6 +21,7 @@ enum MidiProtocol {
 
     enum Cmd {
         static let requestPatch: UInt8 = 0x12
+        static let loadPatch: UInt8 = 0x14
         static let setParam: UInt8 = 0x20
         static let setEnabled: UInt8 = 0x21
         static let setType: UInt8 = 0x22
@@ -110,6 +111,69 @@ enum MidiProtocol {
     static func encodeSetOutputGain(gainDb: Float) -> [UInt8] {
         var msg: [UInt8] = [0xF0, manufacturerId, Sender.swift, Cmd.setOutputGain]
         msg.append(contentsOf: packQ16_16(floatToQ16_16(gainDb)))
+        msg.append(0xF7)
+        return msg
+    }
+
+    /// Encode LOAD_PATCH command - sends complete patch in single message (~332 bytes)
+    /// Same wire format as PATCH_DUMP but with command code 0x14
+    static func encodeLoadPatch(patch: Patch) -> [UInt8] {
+        var msg: [UInt8] = [0xF0, manufacturerId, Sender.swift, Cmd.loadPatch]
+
+        // numSlots
+        msg.append(UInt8(patch.numSlots) & 0x7F)
+
+        // Always encode 12 slots
+        for i in 0..<12 {
+            if i < patch.slots.count {
+                let slot = patch.slots[i]
+                msg.append(UInt8(i) & 0x7F)  // slotIndex
+                msg.append(slot.typeId & 0x7F)
+                msg.append(slot.enabled ? 1 : 0)
+                msg.append(encodeRoute(slot.inputL))
+                msg.append(encodeRoute(slot.inputR))
+                msg.append(slot.sumToMono ? 1 : 0)
+                msg.append(slot.dry & 0x7F)
+                msg.append(slot.wet & 0x7F)
+                msg.append(slot.channelPolicy & 0x7F)
+
+                // Count valid params (those with non-zero values or explicitly set)
+                let validParams = slot.params.filter { $0.value != 0 }
+                let validParamsArray = Array(validParams).sorted { $0.key < $1.key }
+                let numParams = min(validParamsArray.count, 8)
+                msg.append(UInt8(numParams) & 0x7F)
+
+                // 8 param pairs (id, value) - always send 8 pairs
+                for p in 0..<8 {
+                    if p < validParamsArray.count {
+                        let param = validParamsArray[p]
+                        msg.append(param.key & 0x7F)
+                        msg.append(param.value & 0x7F)
+                    } else {
+                        // Fill with zeros for unused param slots
+                        msg.append(0)
+                        msg.append(0)
+                    }
+                }
+            } else {
+                // Empty slot - 26 bytes of zeros
+                msg.append(UInt8(i) & 0x7F)  // slotIndex
+                msg.append(contentsOf: [UInt8](repeating: 0, count: 25))
+            }
+        }
+
+        // 2 button mappings (unassigned)
+        msg.append(127)  // button 0 slotIndex (127 = unassigned)
+        msg.append(0)  // button 0 mode
+        msg.append(127)  // button 1 slotIndex
+        msg.append(0)  // button 1 mode
+
+        // Input gain (Q16.16, 5 bytes)
+        msg.append(contentsOf: packQ16_16(floatToQ16_16(patch.inputGainDb)))
+
+        // Output gain (Q16.16, 5 bytes)
+        msg.append(contentsOf: packQ16_16(floatToQ16_16(patch.outputGainDb)))
+
         msg.append(0xF7)
         return msg
     }

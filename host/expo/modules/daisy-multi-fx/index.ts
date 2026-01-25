@@ -21,6 +21,7 @@ export {
   requestEffectMeta,
   getPatch,
   getEffectMeta,
+  loadPatch,
   // Slot control
   setSlotEnabled,
   setSlotType,

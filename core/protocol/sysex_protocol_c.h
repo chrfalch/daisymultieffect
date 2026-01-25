@@ -54,6 +54,10 @@ extern "C"
         /** Request patch dump: F0 7D 12 F7 */
         SYSEX_CMD_REQUEST_PATCH = 0x12,
 
+        /** Load full patch: F0 7D <sender> 14 <patch data...> F7
+         *  Uses same wire format as PATCH_DUMP but as a command */
+        SYSEX_CMD_LOAD_PATCH = 0x14,
+
         /** Set parameter: F0 7D 20 <slot> <paramId> <value> F7 */
         SYSEX_CMD_SET_PARAM = 0x20,
 

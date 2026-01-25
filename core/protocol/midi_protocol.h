@@ -36,6 +36,7 @@ namespace daisyfx
         namespace Cmd
         {
             constexpr uint8_t REQUEST_PATCH = 0x12;
+            constexpr uint8_t LOAD_PATCH = 0x14;
             constexpr uint8_t SET_PARAM = 0x20;
             constexpr uint8_t SET_ENABLED = 0x21;
             constexpr uint8_t SET_TYPE = 0x22;
@@ -119,6 +120,7 @@ namespace daisyfx
             uint8_t channelPolicy = 0;
             float inputGainDb = 0.0f;  // For SET_INPUT_GAIN
             float outputGainDb = 0.0f; // For SET_OUTPUT_GAIN
+            PatchWireDesc patch{};     // For LOAD_PATCH
             bool valid = false;
         };
 
@@ -227,6 +229,66 @@ namespace daisyfx
         }
 
         /**
+         * Encode LOAD_PATCH command.
+         * Format: F0 7D <sender> 14 <numSlots> [slot data...] [button data...] [inputGainDb] [outputGainDb] F7
+         * Same wire format as PATCH_DUMP but with command code 0x14.
+         */
+        inline std::vector<uint8_t> encodeLoadPatch(uint8_t sender, const PatchWireDesc &patch,
+                                                    float inputGainDb = 18.0f, float outputGainDb = 0.0f)
+        {
+            std::vector<uint8_t> sysex;
+            sysex.reserve(512);
+
+            sysex.push_back(0xF0);
+            sysex.push_back(MANUFACTURER_ID);
+            sysex.push_back(sender);
+            sysex.push_back(Cmd::LOAD_PATCH);
+            sysex.push_back(patch.numSlots & 0x7F);
+
+            // 12 slots
+            for (uint8_t i = 0; i < 12; ++i)
+            {
+                const auto &slot = patch.slots[i];
+                sysex.push_back(i & 0x7F);
+                sysex.push_back(slot.typeId & 0x7F);
+                sysex.push_back(slot.enabled & 0x7F);
+                sysex.push_back(slot.inputL & 0x7F);
+                sysex.push_back(slot.inputR & 0x7F);
+                sysex.push_back(slot.sumToMono & 0x7F);
+                sysex.push_back(slot.dry & 0x7F);
+                sysex.push_back(slot.wet & 0x7F);
+                sysex.push_back(slot.channelPolicy & 0x7F);
+                sysex.push_back(slot.numParams & 0x7F);
+
+                // 8 param pairs
+                for (uint8_t p = 0; p < 8; ++p)
+                {
+                    sysex.push_back(slot.params[p].id & 0x7F);
+                    sysex.push_back(slot.params[p].value & 0x7F);
+                }
+            }
+
+            // 2 button mappings
+            for (int b = 0; b < 2; ++b)
+            {
+                sysex.push_back(127); // unassigned
+                sysex.push_back(0);
+            }
+
+            // Global gain settings (Q16.16 encoded, 5 bytes each)
+            uint8_t inGain[5], outGain[5];
+            packQ16_16(floatToQ16_16(inputGainDb), inGain);
+            packQ16_16(floatToQ16_16(outputGainDb), outGain);
+            for (int i = 0; i < 5; ++i)
+                sysex.push_back(inGain[i]);
+            for (int i = 0; i < 5; ++i)
+                sysex.push_back(outGain[i]);
+
+            sysex.push_back(0xF7);
+            return sysex;
+        }
+
+        /**
          * Encode SET_INPUT_GAIN command.
          * Format: F0 7D <sender> 27 <gainDb_Q16.16_5bytes> F7
          * @param gainDb Input gain in dB (0 to +24 dB typical)
@@ -287,6 +349,10 @@ namespace daisyfx
         // Decoder - Parse SysEx messages
         // Note: JUCE strips F0/F7, so data starts with manufacturer ID
         //=========================================================================
+
+        // Forward declaration for use in decode()
+        inline bool decodePatchDump(const uint8_t *data, int size, PatchWireDesc &outPatch,
+                                    float *outInputGainDb = nullptr, float *outOutputGainDb = nullptr);
 
         /**
          * Decode a SysEx message (with F0/F7 already stripped by JUCE).
@@ -399,6 +465,22 @@ namespace daisyfx
                 msg.valid = true;
                 break;
 
+            case Cmd::LOAD_PATCH:
+                // 7D <sender> 14 <numSlots> [slot data...] [button data...] [gains...]
+                // Same format as PATCH_DUMP but as a command
+                if (size >= 4)
+                {
+                    // Use the existing decodePatchDump logic by adjusting the pointer
+                    // decodePatchDump expects: 7D <sender> 13 <numSlots> ...
+                    // We have: 7D <sender> 14 <numSlots> ...
+                    // Just decode in-place since the payload is the same
+                    if (decodePatchDump(data, size, msg.patch, &msg.inputGainDb, &msg.outputGainDb))
+                    {
+                        msg.valid = true;
+                    }
+                }
+                break;
+
             default:
                 break;
             }
@@ -407,23 +489,37 @@ namespace daisyfx
         }
 
         /**
-         * Decode a full patch dump.
-         * Input format (with F0/F7 stripped): 7D 13 <numSlots> [slot data...] [button data...]
+         * Decode a full patch dump or load patch command.
+         * Input format (with F0/F7 stripped): 7D <sender> <cmd> <numSlots> [slot data...] [button data...]
+         * Accepts both PATCH_DUMP (0x13) and LOAD_PATCH (0x14) commands.
          */
         inline bool decodePatchDump(const uint8_t *data, int size, PatchWireDesc &outPatch,
-                                    float *outInputGainDb = nullptr, float *outOutputGainDb = nullptr)
+                                    float *outInputGainDb, float *outOutputGainDb)
         {
             if (size < 4)
                 return false;
             if (data[0] != MANUFACTURER_ID)
                 return false;
-            if (data[1] != Resp::PATCH_DUMP)
+            // Accept both PATCH_DUMP response (0x13) and LOAD_PATCH command (0x14)
+            // Note: data[1] is sender, data[2] is command in sender-based format
+            // For legacy format: data[1] is command
+            // Check if data[2] is 0x13 or 0x14 (sender-based format)
+            // Or if data[1] is 0x13 (legacy format, though LOAD_PATCH doesn't use legacy)
+            uint8_t cmd = data[2];
+            int offset = 3;
+            if (data[1] == Resp::PATCH_DUMP)
+            {
+                // Legacy format: 7D 13 <numSlots> ...
+                cmd = data[1];
+                offset = 2;
+            }
+            else if (cmd != Resp::PATCH_DUMP && cmd != Cmd::LOAD_PATCH)
+            {
                 return false;
+            }
 
             outPatch = {};
-            outPatch.numSlots = data[2];
-
-            int offset = 3;
+            outPatch.numSlots = data[offset++];
 
             // 12 slots, each: slotIndex typeId enabled inputL inputR sumToMono dry wet policy numParams (id val)x8
             // = 10 + 16 = 26 bytes per slot
