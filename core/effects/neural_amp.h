@@ -2,10 +2,12 @@
 #pragma once
 #include "effects/base_effect.h"
 #include "effects/effect_metadata.h"
+#include "effects/fast_math.h"
 #include <cmath>
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <iostream>
 
 /**
  * Neural Amp Modeler Effect
@@ -217,7 +219,8 @@ struct NeuralAmpEffect : BaseEffect
     {
         if (max < 6)
             return 0;
-        out[0] = {0, modelIndex_}; // Enum params use direct value
+        // Enum params: scale index to 0-127 range to match SetParam expectation
+        out[0] = {0, modelIndex_}; // Enum: direct index value (0-8 for 9 models)
         out[1] = {1, (uint8_t)(inputGain_ * 127.0f + 0.5f)};
         out[2] = {2, (uint8_t)(outputGain_ * 127.0f + 0.5f)};
         out[3] = {3, (uint8_t)(bass_ * 127.0f + 0.5f)};
@@ -415,7 +418,7 @@ struct NeuralAmpEffect : BaseEffect
         float mono = 0.5f * (l + r);
 
         // Apply input gain (-20dB to +20dB range)
-        float inGain = dBToLinear((inputGain_ - 0.5f) * 40.0f);
+        float inGain = FastMath::fastDbToLin((inputGain_ - 0.5f) * 40.0f);
         mono *= inGain;
 
 #if HAS_RTNEURAL
@@ -439,19 +442,19 @@ struct NeuralAmpEffect : BaseEffect
         float output = mono;
 
         // Bass shelf
-        if (std::fabs(bass_ - 0.5f) > 0.01f)
+        if (FastMath::fabs(bass_ - 0.5f) > 0.01f)
             output = processBiquad(bassState_, bassCoeffs_, output);
 
         // Mid peak
-        if (std::fabs(mid_ - 0.5f) > 0.01f)
+        if (FastMath::fabs(mid_ - 0.5f) > 0.01f)
             output = processBiquad(midState_, midCoeffs_, output);
 
         // Treble shelf
-        if (std::fabs(treble_ - 0.5f) > 0.01f)
+        if (FastMath::fabs(treble_ - 0.5f) > 0.01f)
             output = processBiquad(trebleState_, trebleCoeffs_, output);
 
         // Apply output gain (-20dB to +20dB range)
-        float outGain = dBToLinear((outputGain_ - 0.5f) * 40.0f);
+        float outGain = FastMath::fastDbToLin((outputGain_ - 0.5f) * 40.0f);
         output *= outGain;
 
         // Soft limit to prevent clipping
