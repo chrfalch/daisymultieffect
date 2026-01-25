@@ -100,7 +100,7 @@ export function setSlotType(slot: number, typeId: number): void {
 export function setSlotParam(
   slot: number,
   paramId: number,
-  value: number
+  value: number,
 ): void {
   DaisyMultiFXModule.setSlotParam(slot, paramId, value);
 }
@@ -114,7 +114,7 @@ export function setSlotParam(
 export function setSlotRouting(
   slot: number,
   inputL: number,
-  inputR: number
+  inputR: number,
 ): void {
   DaisyMultiFXModule.setSlotRouting(slot, inputL, inputR);
 }
@@ -145,7 +145,7 @@ export function setSlotMix(slot: number, dry: number, wet: number): void {
  */
 export function setSlotChannelPolicy(
   slot: number,
-  channelPolicy: number
+  channelPolicy: number,
 ): void {
   DaisyMultiFXModule.setSlotChannelPolicy(slot, channelPolicy);
 }
@@ -169,11 +169,20 @@ export function setOutputGain(gainDb: number): void {
 }
 
 /**
+ * Load a complete patch to the device/VST in a single MIDI message.
+ * This is more efficient than sending individual commands for each slot.
+ * @param patch - The complete patch to load
+ */
+export function loadPatch(patch: Patch): void {
+  DaisyMultiFXModule.loadPatch(patch);
+}
+
+/**
  * Subscribe to patch updates.
  * Called when a new patch is received from the device.
  */
 export function addPatchUpdateListener(
-  listener: (event: PatchUpdateEvent) => void
+  listener: (event: PatchUpdateEvent) => void,
 ): EventSubscription {
   return DaisyMultiFXModule.addListener("onPatchUpdate", listener);
 }
@@ -183,7 +192,7 @@ export function addPatchUpdateListener(
  * Called when effect metadata is received from the device.
  */
 export function addEffectMetaUpdateListener(
-  listener: (event: EffectMetaUpdateEvent) => void
+  listener: (event: EffectMetaUpdateEvent) => void,
 ): EventSubscription {
   return DaisyMultiFXModule.addListener("onEffectMetaUpdate", listener);
 }
@@ -193,7 +202,7 @@ export function addEffectMetaUpdateListener(
  * Called when MIDI connection status changes.
  */
 export function addConnectionStatusListener(
-  listener: (event: ConnectionStatusEvent) => void
+  listener: (event: ConnectionStatusEvent) => void,
 ): EventSubscription {
   return DaisyMultiFXModule.addListener("onConnectionStatusChange", listener);
 }
@@ -203,7 +212,7 @@ export function addConnectionStatusListener(
  * Called at ~30Hz when connected to the device.
  */
 export function addStatusUpdateListener(
-  listener: (event: StatusUpdateEvent) => void
+  listener: (event: StatusUpdateEvent) => void,
 ): EventSubscription {
   return DaisyMultiFXModule.addListener("onStatusUpdate", listener);
 }

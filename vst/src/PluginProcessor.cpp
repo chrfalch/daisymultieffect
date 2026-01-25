@@ -488,6 +488,14 @@ void DaisyMultiFXProcessor::handleIncomingMidi(const juce::MidiMessage &message)
     case MidiProtocol::Cmd::SET_OUTPUT_GAIN:
         patchState_.setOutputGainDb(decoded.outputGainDb);
         break;
+
+    case MidiProtocol::Cmd::LOAD_PATCH:
+        // Apply the full patch atomically
+        std::cerr << "[VST] LOAD_PATCH: applying full patch with " << (int)decoded.patch.numSlots << " slots" << std::endl;
+        patchState_.loadPatch(decoded.patch);
+        patchState_.setInputGainDb(decoded.inputGainDb);
+        patchState_.setOutputGainDb(decoded.outputGainDb);
+        break;
     }
 }
 

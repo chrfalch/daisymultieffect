@@ -16,6 +16,7 @@ import {
   setSlotChannelPolicy,
   setInputGain,
   setOutputGain,
+  loadPatch,
   addPatchUpdateListener,
   addEffectMetaUpdateListener,
   addConnectionStatusListener,
@@ -81,7 +82,7 @@ export interface UseDaisyMultiFXResult {
  * @param autoInitialize - If true, automatically initializes MIDI on mount (default: true)
  */
 export function useDaisyMultiFX(
-  autoInitialize: boolean = true
+  autoInitialize: boolean = true,
 ): UseDaisyMultiFXResult {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] =
@@ -166,7 +167,7 @@ export function useDaisyMultiFX(
     (slotIndex: number): EffectSlot | undefined => {
       return patch?.slots.find((s) => s.slotIndex === slotIndex);
     },
-    [patch]
+    [patch],
   );
 
   // Helper: Get effect name by type ID
@@ -176,7 +177,7 @@ export function useDaisyMultiFX(
       const effect = effectMeta.find((e) => e.typeId === typeId);
       return effect?.name ?? `Effect ${typeId}`;
     },
-    [effectMeta]
+    [effectMeta],
   );
 
   // Helper: Get effect name by type ID
@@ -186,7 +187,7 @@ export function useDaisyMultiFX(
       const effect = effectMeta.find((e) => e.typeId === typeId);
       return effect?.shortName ?? `Effect ${typeId}`;
     },
-    [effectMeta]
+    [effectMeta],
   );
 
   // Helper: Get parameter name
@@ -197,7 +198,7 @@ export function useDaisyMultiFX(
       const name = (param?.name ?? "").trim();
       return name.length > 0 ? name : null;
     },
-    [effectMeta]
+    [effectMeta],
   );
 
   const getParamMeta = useCallback(
@@ -205,7 +206,7 @@ export function useDaisyMultiFX(
       const effect = effectMeta.find((e) => e.typeId === typeId);
       return effect?.params.find((p) => p.id === paramId);
     },
-    [effectMeta]
+    [effectMeta],
   );
 
   const setSlotType = useCallback(
@@ -221,7 +222,7 @@ export function useDaisyMultiFX(
         setSlotRoutingRaw(slot, inputL, inputR);
       }
     },
-    [patch]
+    [patch],
   );
 
   const pushPatchToVst = useCallback(() => {
@@ -236,30 +237,13 @@ export function useDaisyMultiFX(
 
     requestEffectMeta();
 
-    // Re-send the full current patch state using existing per-slot commands.
-    // The MIDI protocol doesn't currently support a single 'LOAD_PATCH' message.
-    for (const slot of patch.slots) {
-      const slotIndex = slot.slotIndex;
-
-      // Type first (may reset/init defaults on the receiver)
-      setSlotTypeRaw(slotIndex, slot.typeId);
-      setSlotEnabled(slotIndex, slot.enabled);
-
-      // Routing + mix/state
-      setSlotRoutingRaw(slotIndex, slot.inputL, slot.inputR);
-      setSlotSumToMono(slotIndex, slot.sumToMono);
-      setSlotMix(slotIndex, slot.dry, slot.wet);
-      setSlotChannelPolicy(slotIndex, slot.channelPolicy);
-
-      // Parameters
-      const entries = Object.entries(slot.params)
-        .map(([paramId, value]) => [Number(paramId), value] as const)
-        .filter(([paramId]) => Number.isFinite(paramId))
-        .sort((a, b) => a[0] - b[0]);
-      for (const [paramId, value] of entries) {
-        setSlotParam(slotIndex, paramId, value);
-      }
-    }
+    // Send the full patch in a single LOAD_PATCH message (~332 bytes)
+    console.log(
+      "[useDaisyMultiFX] pushPatchToVst: sending LOAD_PATCH with",
+      patch.numSlots,
+      "slots",
+    );
+    loadPatch(patch);
   }, [patch, isConnected]);
 
   return {

@@ -1243,6 +1243,19 @@ final class DaisyMidiController: @unchecked Sendable {
         sendSysex(MidiProtocol.encodeRequestMeta())
     }
 
+    /// Load a complete patch in a single MIDI message (~332 bytes)
+    /// This is much more efficient than sending individual slot commands
+    func loadPatch(_ patch: Patch) {
+        log("loadPatch: sending complete patch with \\(patch.numSlots) slots")
+        let sysex = MidiProtocol.encodeLoadPatch(patch: patch)
+        log("loadPatch: message size = \\(sysex.count) bytes")
+        sendSysex(sysex)
+
+        // Update local state to match
+        self.patch = patch
+        onPatchUpdate?(patch)
+    }
+
     // MARK: - Send MIDI
 
     private func sendSysex(_ data: [UInt8]) {

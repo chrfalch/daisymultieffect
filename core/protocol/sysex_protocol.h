@@ -35,6 +35,7 @@ namespace DaisyMultiFX
         namespace Command
         {
             static constexpr uint8_t REQUEST_PATCH = SYSEX_CMD_REQUEST_PATCH;
+            static constexpr uint8_t LOAD_PATCH = SYSEX_CMD_LOAD_PATCH;
             static constexpr uint8_t SET_PARAM = SYSEX_CMD_SET_PARAM;
             static constexpr uint8_t SET_ENABLED = SYSEX_CMD_SET_ENABLED;
             static constexpr uint8_t SET_TYPE = SYSEX_CMD_SET_TYPE;

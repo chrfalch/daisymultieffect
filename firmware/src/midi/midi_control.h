@@ -108,6 +108,9 @@ private:
     float current_input_gain_db_ = 18.0f;
     float current_output_gain_db_ = 0.0f;
 
+    // Flag to load a full patch atomically (set by main loop, cleared by audio thread)
+    volatile bool pending_full_patch_load_ = false;
+
     // Scratch storage used when re-applying patches.
     PatchWireDesc pending_patch_{};
 

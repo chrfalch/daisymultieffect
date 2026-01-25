@@ -681,6 +681,73 @@ void MidiControl::HandleSysexMessage(const uint8_t *bytes, size_t len)
         }
         break;
 
+    case 0x14: // load full patch: F0 7D <sender> 14 <numSlots> [slot data...] [buttons...] [gains...] F7
+    {
+        // Same wire format as PATCH_DUMP (0x13) response
+        // Minimum size: header(1) + numSlots(1) + 12 slots(312) + 2 buttons(4) + gains(10) = 328 bytes payload
+        if (payload + 1 > len)
+            break;
+
+        const uint8_t numSlots = bytes[payload] & 0x7F;
+        size_t p = payload + 1;
+
+        // Parse 12 slots (always 12 in wire format, but numSlots indicates how many are valid)
+        for (uint8_t i = 0; i < 12 && p + 26 <= len; i++)
+        {
+            SlotWireDesc &sw = pending_patch_.slots[i];
+            sw.slotIndex = bytes[p++] & 0x7F;
+            sw.typeId = bytes[p++] & 0x7F;
+            sw.enabled = bytes[p++] & 0x7F;
+            sw.inputL = bytes[p++] & 0x7F;
+            sw.inputR = bytes[p++] & 0x7F;
+            sw.sumToMono = bytes[p++] & 0x7F;
+            sw.dry = bytes[p++] & 0x7F;
+            sw.wet = bytes[p++] & 0x7F;
+            sw.channelPolicy = bytes[p++] & 0x7F;
+            sw.numParams = bytes[p++] & 0x7F;
+
+            // Decode route bytes (127 = ROUTE_INPUT = 255)
+            if (sw.inputL == 127)
+                sw.inputL = ROUTE_INPUT;
+            if (sw.inputR == 127)
+                sw.inputR = ROUTE_INPUT;
+
+            // 8 param pairs
+            for (uint8_t pi = 0; pi < 8 && p + 2 <= len; pi++)
+            {
+                sw.params[pi].id = bytes[p++] & 0x7F;
+                sw.params[pi].value = bytes[p++] & 0x7F;
+            }
+        }
+        pending_patch_.numSlots = numSlots;
+
+        // Skip 2 button mappings (4 bytes)
+        p += 4;
+
+        // Parse gain values (Q16.16, 5 bytes each)
+        if (p + 10 <= len)
+        {
+            float inputGainDb = unpackQ16_16(&bytes[p]);
+            p += 5;
+            float outputGainDb = unpackQ16_16(&bytes[p]);
+            p += 5;
+
+            daisy::ScopedIrqBlocker lock;
+            pending_input_gain_q16_ = floatToQ16_16(inputGainDb);
+            pending_input_gain_valid_ = true;
+            pending_output_gain_q16_ = floatToQ16_16(outputGainDb);
+            pending_output_gain_valid_ = true;
+            pending_full_patch_load_ = true;
+        }
+        else
+        {
+            // No gain data, just load patch
+            daisy::ScopedIrqBlocker lock;
+            pending_full_patch_load_ = true;
+        }
+    }
+    break;
+
     default:
         break;
     }
@@ -754,6 +821,17 @@ void MidiControl::ApplyPendingInAudioThread()
         float linear = std::pow(10.0f, gainDb / 20.0f);
         processor_->SetOutputGain(linear);
         current_output_gain_db_ = gainDb;
+    }
+
+    // Handle full patch load (from LOAD_PATCH command)
+    if (pending_full_patch_load_)
+    {
+        pending_full_patch_load_ = false;
+        // Apply the full pending patch atomically
+        processor_->ApplyPatch(pending_patch_);
+        // Update current patch to match
+        current_patch_ = pending_patch_;
+        return; // Skip individual pending_word processing for this cycle
     }
 
     const uint32_t w = pending_word_;

@@ -120,6 +120,11 @@ public class DaisyMultiFXModule: Module {
             self.controller.setOutputGain(gainDb: Float(gainDb))
         }
 
+        Function("loadPatch") { (patchDict: [String: Any]) in
+            let patch = Patch(from: patchDict)
+            self.controller.loadPatch(patch)
+        }
+
         Function("setLoggingEnabled") { (enabled: Bool) in
             DaisyMidiController.loggingEnabled = enabled
         }
