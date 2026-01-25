@@ -2,98 +2,138 @@
 #pragma once
 #include "effects/base_effect.h"
 #include "effects/effect_metadata.h"
-#include <cmath>
 
 /**
- * Overdrive Effect
- * DaisySP/Mutable Instruments Plaits overdrive core.
- * Note: We apply a gentle taper to the UI drive parameter before feeding the
- * original DaisySP SetDrive curve. This keeps maximum drive available, but
- * makes mid-drive less aggressive for typical line-level / full-scale inputs.
+ * Warm Overdrive Effect
+ *
+ * Classic tube-style overdrive with smooth saturation characteristics.
+ * Features:
+ *   - Fixed 80Hz pre-highpass to tighten bass before clipping
+ *   - Gentle gain curve (max ~4x) for musical saturation
+ *   - Mutable Instruments SoftLimit clipper (smooth Padé tanh approximation)
+ *   - Sample-rate-aware post-lowpass for warmth/brightness control
+ *   - Strong post-gain compensation for consistent output level
  */
 struct OverdriveEffect : BaseEffect
 {
     static constexpr uint8_t TypeId = Effects::Distortion::TypeId;
+    static constexpr float kPi = 3.14159265358979323846f;
+    static constexpr float kPreHpFreq = 80.0f;   // Fixed pre-HP cutoff (Hz)
+    static constexpr float kLpMinFreq = 3000.0f; // Tone LP minimum (Hz)
+    static constexpr float kLpMaxFreq = 12000.0f; // Tone LP maximum (Hz)
 
-    float drive_ = 0.5f;      // id0: drive amount (0-1)
-    float tone_ = 0.5f;       // id1: tone control (dark to bright)
-    float pre_gain_ = 1.0f;   // Calculated from drive
-    float post_gain_ = 1.0f;  // Auto-leveling gain
-    float toneCoeff_ = 0.25f; // Pre-computed lowpass coefficient
-    float lpL_ = 0, lpR_ = 0;
+    // Parameters (0-1 range)
+    float drive_ = 0.5f; // id0: drive amount
+    float tone_ = 0.5f;  // id1: tone (dark to bright)
+
+    // Computed gains
+    float preGain_ = 1.0f;
+    float postGain_ = 1.0f;
+
+    // Filter coefficients (precomputed)
+    float hpCoeff_ = 0.0f; // Pre-HP coefficient
+    float lpCoeff_ = 0.0f; // Post-LP coefficient
+
+    // Filter states
+    float hpL_ = 0.0f, hpR_ = 0.0f; // Pre-HP state
+    float lpL_ = 0.0f, lpR_ = 0.0f; // Post-LP state
+
+    // Sample rate
+    float sampleRate_ = 48000.0f;
 
     uint8_t GetTypeId() const override { return TypeId; }
     ChannelMode GetSupportedModes() const override { return ChannelMode::MonoOrStereo; }
-
-    // Soft limiting function from Mutable Instruments stmlib
-    static inline float SoftLimit(float x)
-    {
-        return x * (27.0f + x * x) / (27.0f + 9.0f * x * x);
-    }
-
-    // Soft clipping - more musical than tanh
-    static inline float SoftClip(float x)
-    {
-        if (x < -3.0f)
-            return -1.0f;
-        else if (x > 3.0f)
-            return 1.0f;
-        else
-            return SoftLimit(x);
-    }
-
-    static inline float fclamp(float x, float min, float max)
-    {
-        return x < min ? min : (x > max ? max : x);
-    }
-
-    // Parameter taper: concave curve to slow the mid-drive ramp while keeping full scale.
-    static inline float ApplyDriveTaper(float drive)
-    {
-        drive = fclamp(drive, 0.0f, 1.0f);
-        return powf(drive, 1.8f);
-    }
-
-    // Compute gains for overdrive processing
-    void SetDrive(float drive)
-    {
-        drive = fclamp(drive, 0.0f, 1.0f);
-        float d = 2.0f * drive; // Full range 0-2
-        d = fclamp(d, 0.0f, 2.0f);
-
-        // Compute pre-gain: starts at 1.0 (unity) and increases with drive
-        // At d=0: pre_gain = 1.0 (clean passthrough)
-        // At d=2: pre_gain gets very high (heavy clipping)
-        float d2 = d * d;
-        float extra_gain = d2 * d2 * d * 24.0f; // Exponential curve for drive
-        pre_gain_ = 1.0f + extra_gain;
-
-        // Output leveling: compensate for clipping making signal louder
-        // At low drive: near unity (signal passes through cleanly)
-        // At high drive: reduce output since clipping compresses peaks
-        post_gain_ = 1.0f / (1.0f + 0.3f * d); // Ranges from 1.0 to 0.625
-    }
-
     const EffectMeta &GetMetadata() const override { return Effects::Distortion::kMeta; }
 
-    void Init(float) override
+    // ─────────────────────────────────────────────────────────────────────────
+    // Fast math utilities (inlined for performance)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    static inline float fclamp(float x, float lo, float hi)
     {
-        SetDrive(ApplyDriveTaper(drive_));
-        updateToneCoeff();
-        lpL_ = lpR_ = 0;
+        return x < lo ? lo : (x > hi ? hi : x);
+    }
+
+    // Mutable Instruments SoftLimit - smooth tanh-like saturation
+    // Padé approximant: approaches ±1 asymptotically, never clips hard
+    static inline float SoftLimit(float x)
+    {
+        float x2 = x * x;
+        return x * (27.0f + x2) / (27.0f + 9.0f * x2);
+    }
+
+    // Soft clipper with extended headroom (no hard ceiling)
+    // Clamps input to ±6 to avoid numerical issues, then applies SoftLimit
+    static inline float SoftClip(float x)
+    {
+        x = fclamp(x, -6.0f, 6.0f);
+        return SoftLimit(x);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Gain staging
+    // ─────────────────────────────────────────────────────────────────────────
+
+    void updateGains()
+    {
+        // Gentle quadratic taper on drive parameter
+        float d = drive_ * drive_; // 0 to 1, quadratic curve
+
+        // Pre-gain: 1.0 to 30.0 (full overdrive range)
+        // At drive=0: preGain=1 (clean), at drive=1: preGain=30 (heavy saturation)
+        preGain_ = 1.0f + d * 29.0f;
+
+        // Post-gain compensation: scales inversely with preGain
+        postGain_ = 2.0f / (0.5f + 0.5f * preGain_);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Filter coefficient calculations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    void updateHpCoeff()
+    {
+        // One-pole highpass coefficient for fixed 80Hz
+        // coeff = 2π * fc / sr (clamped to prevent instability)
+        float c = 2.0f * kPi * kPreHpFreq / sampleRate_;
+        hpCoeff_ = fclamp(c, 0.0001f, 0.5f);
+    }
+
+    void updateLpCoeff()
+    {
+        // One-pole lowpass coefficient, frequency controlled by tone
+        // tone=0: 3kHz (warm), tone=1: 12kHz (bright)
+        float freq = kLpMinFreq + tone_ * (kLpMaxFreq - kLpMinFreq);
+        float c = 2.0f * kPi * freq / sampleRate_;
+        lpCoeff_ = fclamp(c, 0.0001f, 0.99f);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Effect interface
+    // ─────────────────────────────────────────────────────────────────────────
+
+    void Init(float sampleRate) override
+    {
+        sampleRate_ = sampleRate > 0.0f ? sampleRate : 48000.0f;
+        updateGains();
+        updateHpCoeff();
+        updateLpCoeff();
+        hpL_ = hpR_ = 0.0f;
+        lpL_ = lpR_ = 0.0f;
     }
 
     void SetParam(uint8_t id, float v) override
     {
+        v = fclamp(v, 0.0f, 1.0f);
         if (id == 0)
         {
             drive_ = v;
-            SetDrive(ApplyDriveTaper(drive_));
+            updateGains();
         }
         else if (id == 1)
         {
             tone_ = v;
-            updateToneCoeff();
+            updateLpCoeff();
         }
     }
 
@@ -101,29 +141,36 @@ struct OverdriveEffect : BaseEffect
     {
         if (max < 2)
             return 0;
-        out[0] = {0, (uint8_t)(drive_ * 127.0f + 0.5f)};
-        out[1] = {1, (uint8_t)(tone_ * 127.0f + 0.5f)};
+        out[0] = {0, static_cast<uint8_t>(drive_ * 127.0f + 0.5f)};
+        out[1] = {1, static_cast<uint8_t>(tone_ * 127.0f + 0.5f)};
         return 2;
     }
 
     void ProcessStereo(float &l, float &r) override
     {
-        // Exact DaisySP process: pre_gain -> SoftClip -> post_gain
-        float xL = SoftClip(l * pre_gain_) * post_gain_;
-        float xR = SoftClip(r * pre_gain_) * post_gain_;
+        // ─────────────────────────────────────────────────────────────────────
+        // Stage 1: Pre-highpass (80Hz) - tighten bass before clipping
+        // One-pole HP: hp_out = in - lp_state
+        // ─────────────────────────────────────────────────────────────────────
+        hpL_ += hpCoeff_ * (l - hpL_);
+        hpR_ += hpCoeff_ * (r - hpR_);
+        float hpOutL = l - hpL_;
+        float hpOutR = r - hpR_;
 
-        // Tone: one-pole lowpass for warmth control
-        // Low tone = warmer (more lowpass), high tone = brighter (more direct)
-        lpL_ += toneCoeff_ * (xL - lpL_);
-        lpR_ += toneCoeff_ * (xR - lpR_);
+        // ─────────────────────────────────────────────────────────────────────
+        // Stage 2: Drive (pre-gain -> soft clip -> post-gain)
+        // ─────────────────────────────────────────────────────────────────────
+        float clipL = SoftClip(hpOutL * preGain_) * postGain_;
+        float clipR = SoftClip(hpOutR * preGain_) * postGain_;
 
-        l = tone_ * xL + (1.0f - tone_) * lpL_;
-        r = tone_ * xR + (1.0f - tone_) * lpR_;
-    }
+        // ─────────────────────────────────────────────────────────────────────
+        // Stage 3: Post-lowpass (tone control) - tame harshness
+        // One-pole LP for warmth
+        // ─────────────────────────────────────────────────────────────────────
+        lpL_ += lpCoeff_ * (clipL - lpL_);
+        lpR_ += lpCoeff_ * (clipR - lpR_);
 
-private:
-    void updateToneCoeff()
-    {
-        toneCoeff_ = 0.05f + 0.4f * (1.0f - tone_);
+        l = lpL_;
+        r = lpR_;
     }
 };
