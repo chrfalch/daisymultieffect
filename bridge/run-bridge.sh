@@ -1,0 +1,1 @@
+./build/DaisyMidiBridge_artefacts/Daisy\ MIDI\ Bridge.app/Contents/MacOS/Daisy\ MIDI\ Bridge
