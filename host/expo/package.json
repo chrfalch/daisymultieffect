@@ -12,6 +12,7 @@
     "@expo/ui": "0.2.0-canary-20251230-fc48ddc",
     "@expo/vector-icons": "^15.0.2",
     "expo": "^55.0.0-canary-20251230-fc48ddc",
+    "react-native-mmkv": "^3.2.0",
     "expo-constants": "18.1.0-canary-20251230-fc48ddc",
     "expo-linking": "8.0.12-canary-20251230-fc48ddc",
     "expo-router": "7.0.0-canary-20251230-fc48ddc",

@@ -1,4 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
+import { useDebouncedEffect } from "./useDebouncedEffect";
+import {
+  loadCurrentPatch,
+  saveCurrentPatch,
+  loadEffectMeta,
+  saveEffectMeta,
+} from "../utils/patchStorage";
 import {
   initialize,
   disconnect,
@@ -88,8 +95,24 @@ export function useDaisyMultiFX(
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatus | null>(null);
   const [deviceStatus, setDeviceStatus] = useState<DeviceStatus | null>(null);
-  const [patch, setPatch] = useState<Patch | null>(null);
-  const [effectMeta, setEffectMeta] = useState<EffectMeta[]>([]);
+  const [patch, setPatch] = useState<Patch | null>(() => {
+    // Load saved patch from local storage on initial mount
+    const savedPatch = loadCurrentPatch();
+    if (savedPatch) {
+      console.log("[useDaisyMultiFX] Loaded patch from local storage");
+    }
+    return savedPatch;
+  });
+  const [effectMeta, setEffectMeta] = useState<EffectMeta[]>(() => {
+    // Load saved effect metadata from local storage on initial mount
+    const savedMeta = loadEffectMeta();
+    if (savedMeta.length > 0) {
+      console.log(
+        "[useDaisyMultiFX] Loaded effect metadata from local storage",
+      );
+    }
+    return savedMeta;
+  });
 
   // Initialize MIDI
   const initializeMidi = useCallback(async () => {
@@ -161,6 +184,32 @@ export function useDaisyMultiFX(
       deviceStatusSub.remove();
     };
   }, [autoInitialize, initializeMidi]);
+
+  // Auto-save patch to local storage with debouncing (1 second delay)
+  useDebouncedEffect(
+    () => {
+      if (patch) {
+        console.log("[useDaisyMultiFX] Saving patch to local storage");
+        saveCurrentPatch(patch);
+      }
+    },
+    [patch],
+    1000,
+  );
+
+  // Auto-save effect metadata to local storage with debouncing (1 second delay)
+  useDebouncedEffect(
+    () => {
+      if (effectMeta.length > 0) {
+        console.log(
+          "[useDaisyMultiFX] Saving effect metadata to local storage",
+        );
+        saveEffectMeta(effectMeta);
+      }
+    },
+    [effectMeta],
+    1000,
+  );
 
   // Helper: Get a slot by index
   const getSlot = useCallback(
