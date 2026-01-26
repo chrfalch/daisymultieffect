@@ -182,8 +182,9 @@ struct NeuralAmpEffect : BaseEffect
         {
         case 0:
             // Model selection (enum parameter)
+            // Map 0-1 parameter range evenly across available models
             {
-                uint8_t newIndex = static_cast<uint8_t>(v * 127.0f + 0.5f);
+                uint8_t newIndex = static_cast<uint8_t>(v * (EmbeddedModels::kNumModels - 1) + 0.5f);
                 // Clamp to valid range
                 if (newIndex >= EmbeddedModels::kNumModels)
                     newIndex = EmbeddedModels::kNumModels - 1;
@@ -241,6 +242,9 @@ struct NeuralAmpEffect : BaseEffect
     /**
      * Load embedded model by index from model registry
      *
+     * Validates model data before loading to avoid marking invalid models as loaded.
+     * Resets model state before and after applying weights for robustness.
+     *
      * @param index Index into EmbeddedModels::kModelRegistry
      * @return true if model was loaded successfully
      */
@@ -255,14 +259,39 @@ struct NeuralAmpEffect : BaseEffect
             return false;
         }
 
+        // Validate model data before loading
+        // Check for missing name (empty/invalid model data indicator)
+        if (!modelInfo->name || modelInfo->name[0] == '\0')
+        {
+            modelLoaded_ = false;
+            modelName_ = "Invalid Model";
+            return false;
+        }
+
+        // Check for all-zero weights in kernel (indicates invalid/empty model)
+        bool hasNonZeroKernel = false;
+        constexpr int hiddenSize = 12;
+        constexpr int gateSize = 4 * hiddenSize; // 48 for LSTM
+        for (int j = 0; j < gateSize && !hasNonZeroKernel; ++j)
+        {
+            if (modelInfo->kernel[j] != 0.0f)
+                hasNonZeroKernel = true;
+        }
+        if (!hasNonZeroKernel)
+        {
+            modelLoaded_ = false;
+            modelName_ = "Empty Model";
+            return false;
+        }
+
+        // Reset model state before applying new weights
+        model_.reset();
+
         // Load LSTM layer weights
         // RTNeural LSTM expects:
         //   setWVals: kernel weights [input_size][4*hidden_size]
         //   setUVals: recurrent weights [hidden_size][4*hidden_size]
         //   setBVals: biases [4*hidden_size]
-
-        constexpr int hiddenSize = 12;
-        constexpr int gateSize = 4 * hiddenSize; // 48 for LSTM
 
         // Convert flat arrays to vector<vector> for RTNeural API
         // Kernel: shape (1, 48) -> vector<vector>[1][48]
@@ -301,7 +330,7 @@ struct NeuralAmpEffect : BaseEffect
         denseLayer.setWeights(denseW);
         denseLayer.setBias(denseB);
 
-        // Reset model state and mark as loaded
+        // Reset model state after applying weights to clear any residual state
         model_.reset();
         modelLoaded_ = true;
         modelName_ = modelInfo->name;
@@ -477,6 +506,8 @@ struct NeuralAmpEffect : BaseEffect
      *   "state_dict": { ... }
      * }
      *
+     * Resets model state before and after loading for robustness.
+     *
      * @param json The parsed JSON object
      * @param name Optional model name to use (if not found in JSON)
      * @param path Optional path to store for reference
@@ -487,7 +518,12 @@ struct NeuralAmpEffect : BaseEffect
     {
         try
         {
+            // Reset model state before loading new weights
+            model_.reset();
+            
             model_.parseJson(json, true);
+            
+            // Reset model state after loading to clear residual state
             model_.reset();
             modelLoaded_ = true;
 
