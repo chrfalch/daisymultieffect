@@ -17,40 +17,44 @@ CustomGRU9Weights CustomGRU9::w_ = {};
 ITCMRAM_CODE __attribute__((noinline))
 float CustomGRU9::forward(float input)
 {
-    float r[9], z[9], n[9];
-
-    // Compute gate pre-activations
-    for (int i = 0; i < 9; ++i)
+    // Phase 1: Matrix-vector products (j-outer for contiguous weight access).
+    // Ur[j][0..8] is a contiguous row, so the inner i-loop streams through
+    // memory sequentially instead of striding by 9.
+    float dr[9] = {0}, dz[9] = {0}, dn[9] = {0};
+    for (int j = 0; j < 9; ++j)
     {
-        // Recurrent contributions: RTNeural stores U transposed as [hidden][gate]
-        // So output[i] = sum_j(U[j][i] * h[j])
-        float dot_r = 0.0f, dot_z = 0.0f, dot_n = 0.0f;
-        for (int j = 0; j < 9; ++j)
+        float hj = h_[j];
+        const float *ur_row = w_.Ur[j];
+        const float *uz_row = w_.Uz[j];
+        const float *un_row = w_.Un[j];
+        // 3x3 unroll: 9 = 3×3, process 3 outputs per iteration
+        // with 3 independent memory streams per gate
+        for (int i = 0; i < 9; i += 3)
         {
-            float hj = h_[j];
-            dot_r += w_.Ur[j][i] * hj;
-            dot_z += w_.Uz[j][i] * hj;
-            dot_n += w_.Un[j][i] * hj;
+            dr[i]     += ur_row[i]     * hj;
+            dr[i + 1] += ur_row[i + 1] * hj;
+            dr[i + 2] += ur_row[i + 2] * hj;
+            dz[i]     += uz_row[i]     * hj;
+            dz[i + 1] += uz_row[i + 1] * hj;
+            dz[i + 2] += uz_row[i + 2] * hj;
+            dn[i]     += un_row[i]     * hj;
+            dn[i + 1] += un_row[i + 1] * hj;
+            dn[i + 2] += un_row[i + 2] * hj;
         }
-
-        // Reset gate: r = sigmoid(Wr * input + dot(Ur, h) + br + br1)
-        r[i] = fast_sigmoid(w_.Wr[i] * input + dot_r + w_.br[i] + w_.br1[i]);
-
-        // Update gate: z = sigmoid(Wz * input + dot(Uz, h) + bz + bz1)
-        z[i] = fast_sigmoid(w_.Wz[i] * input + dot_z + w_.bz[i] + w_.bz1[i]);
-
-        // New gate candidate: n = tanh(Wn * input + bn0 + r * (dot(Un, h) + bn1))
-        n[i] = fast_tanh(w_.Wn[i] * input + w_.bn0[i] + r[i] * (dot_n + w_.bn1[i]));
     }
 
-    // Update hidden state: h = (1 - z) * n + z * h_prev
-    for (int i = 0; i < 9; ++i)
-        h_[i] = (1.0f - z[i]) * n[i] + z[i] * h_[i];
-
-    // Dense output: dot(denseW, h) + denseB
+    // Phase 2: Activations + hidden state update + dense output.
+    // Uses pre-combined biases (br_c = br + br1, bz_c = bz + bz1)
+    // to eliminate 18 adds per sample.
     float output = w_.denseB;
     for (int i = 0; i < 9; ++i)
+    {
+        float r = fast_sigmoid(w_.Wr[i] * input + dr[i] + w_.br_c[i]);
+        float z = fast_sigmoid(w_.Wz[i] * input + dz[i] + w_.bz_c[i]);
+        float n = fast_tanh(w_.Wn[i] * input + w_.bn0[i] + r * (dn[i] + w_.bn1[i]));
+        h_[i] = (1.0f - z) * n + z * h_[i];
         output += w_.denseW[i] * h_[i];
+    }
 
     return output;
 }

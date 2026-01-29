@@ -63,9 +63,9 @@ struct CabinetIREffect : BaseEffect
     // Maximum IR length in samples
     // VST can handle longer IRs, firmware is limited for real-time performance
 #if defined(DAISY_SEED_BUILD)
-    // Firmware: 128 samples @ 48kHz = 2.7ms (essential cab character is in first ~2ms)
-    // Direct convolution at 128 samples = ~6M MACs/sec (very efficient on Cortex-M7)
-    static constexpr int kMaxIRLength = 128;
+    // Firmware: 512 samples @ 48kHz = 10.7ms (captures essential cab character)
+    // Direct convolution at 512 samples = ~24M MACs/sec (efficient on Cortex-M7)
+    static constexpr int kMaxIRLength = 512;
 #else
     // VST: Full 2048 samples @ 48kHz = 42.7ms
     static constexpr int kMaxIRLength = 2048;

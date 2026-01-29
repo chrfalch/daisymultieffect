@@ -80,7 +80,7 @@ struct SimpleReverbEffect : BaseEffect
     float sr_ = 48000;
     float mix_ = 0.3f, decay_ = 0.7f, damp_ = 0.3f, preMs_ = 20.0f, size_ = 0.7f;
 
-    static constexpr int MAX_PRE = 4800;
+    static constexpr int MAX_PRE = 9600;
     float *preBuf_ = nullptr;
     int preSize = 1, preIdx = 0;
 
@@ -135,7 +135,7 @@ struct SimpleReverbEffect : BaseEffect
         }
         else if (id == 3)
         {
-            preMs_ = v * 80.0f;
+            preMs_ = v * 200.0f;
             UpdatePre();
         }
         else if (id == 4)
@@ -152,7 +152,7 @@ struct SimpleReverbEffect : BaseEffect
         out[0] = {0, (uint8_t)(mix_ * 127 + 0.5f)};
         out[1] = {1, (uint8_t)(((decay_ - 0.2f) / 0.75f) * 127 + 0.5f)};
         out[2] = {2, (uint8_t)((damp_ / 0.8f) * 127 + 0.5f)};
-        out[3] = {3, (uint8_t)((preMs_ / 80.0f) * 127 + 0.5f)};
+        out[3] = {3, (uint8_t)((preMs_ / 200.0f) * 127 + 0.5f)};
         out[4] = {4, (uint8_t)(size_ * 127 + 0.5f)};
         return 5;
     }
@@ -200,13 +200,13 @@ private:
         const float base[4] = {0.0297f, 0.0371f, 0.0411f, 0.0437f};
         for (int i = 0; i < 4; i++)
         {
-            float t = base[i] * (0.7f + size_ * 0.6f);
+            float t = base[i] * (0.5f + size_ * 1.5f);
             int ds = (int)(t * sr_ + 0.5f);
             combsL[i].Init(ds, decay_, damp_);
             combsR[i].Init(ds + kStereoSpread, decay_, damp_);
         }
-        int ap1 = (int)(0.005f * (0.8f + size_ * 0.4f) * sr_ + 0.5f);
-        int ap2 = (int)(0.0017f * (0.8f + size_ * 0.4f) * sr_ + 0.5f);
+        int ap1 = (int)(0.005f * (0.5f + size_ * 1.5f) * sr_ + 0.5f);
+        int ap2 = (int)(0.0017f * (0.5f + size_ * 1.5f) * sr_ + 0.5f);
         apsL[0].Init(ap1, 0.7f);
         apsL[1].Init(ap2, 0.7f);
         apsR[0].Init(ap1 + kStereoSpread, 0.7f);

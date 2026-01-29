@@ -20,7 +20,7 @@ struct TimeSyncedEffect : BaseEffect
     {
         if (id == 0)
         {
-            float minMs = 10.0f, maxMs = 2000.0f;
+            float minMs = 10.0f, maxMs = 4000.0f;
             freeTimeMs_ = std::pow(maxMs / minMs, v) * minMs;
         }
         else if (id == 1)
@@ -39,7 +39,7 @@ struct TimeSyncedEffect : BaseEffect
     {
         if (max < 3)
             return 0;
-        float minMs = 10.0f, maxMs = 2000.0f;
+        float minMs = 10.0f, maxMs = 4000.0f;
         float v = std::log(freeTimeMs_ / minMs) / std::log(maxMs / minMs);
         if (v < 0)
             v = 0;

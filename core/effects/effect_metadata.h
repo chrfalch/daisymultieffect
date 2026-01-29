@@ -305,8 +305,11 @@ namespace Effects
             {9, "Mesa V30 AT2020 2"},
             {10, "Mesa V30 SM57 Raw"},
             {11, "Mesa V30 SM58 Raw"},
+            {12, "Mars Proteus"},
+            {13, "Mars US Deluxe"},
+            {14, "Mars Vox Bright"},
         };
-        inline const EnumParamInfo kIREnum = {kIROptions, 12};
+        inline const EnumParamInfo kIREnum = {kIROptions, 15};
 
         inline const NumberParamRange kMixRange = {0.0f, 1.0f, 0.01f};
         inline const NumberParamRange kOutputRange = {0.0f, 1.0f, 0.01f};

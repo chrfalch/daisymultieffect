@@ -28,6 +28,9 @@
 #include "irs/Mesa_Oversized_V30_AT2020_2___jp_is_out_of_tune.h"
 #include "irs/IR_SM57_V30_4_Raw.h"
 #include "irs/IR_SM58_V30_3_Raw.h"
+#include "irs/Mars_Proteus.h"
+#include "irs/Mars_US_Deluxe.h"
+#include "irs/Mars_Vox_Bright.h"
 
 namespace EmbeddedIRs
 {
@@ -60,6 +63,9 @@ namespace EmbeddedIRs
         Mesa_V30_AT2020_2 = 9,
         Mesa_V30_SM57_Raw = 10,
         Mesa_V30_SM58_Raw = 11,
+        Mars_Proteus = 12,
+        Mars_US_Deluxe = 13,
+        Mars_Vox_Bright = 14,
         COUNT
     };
 
@@ -153,6 +159,27 @@ namespace EmbeddedIRs
             IR_SM58_V30_3_Raw::kSampleRate,
             IR_SM58_V30_3_Raw::kLength,
             IR_SM58_V30_3_Raw::kSamples,
+        },
+        // 12: Mars Proteus
+        {
+            Mars_Proteus::kName,
+            Mars_Proteus::kSampleRate,
+            Mars_Proteus::kLength,
+            Mars_Proteus::kSamples,
+        },
+        // 13: Mars US Deluxe
+        {
+            Mars_US_Deluxe::kName,
+            Mars_US_Deluxe::kSampleRate,
+            Mars_US_Deluxe::kLength,
+            Mars_US_Deluxe::kSamples,
+        },
+        // 14: Mars Vox Bright
+        {
+            Mars_Vox_Bright::kName,
+            Mars_Vox_Bright::kSampleRate,
+            Mars_Vox_Bright::kLength,
+            Mars_Vox_Bright::kSamples,
         },
     };
 

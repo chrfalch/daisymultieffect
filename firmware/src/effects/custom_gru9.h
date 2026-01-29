@@ -53,6 +53,10 @@ struct CustomGRU9Weights
     float bz1[9]; // Update gate bias (recurrent)
     float bn1[9]; // New gate bias (recurrent)
 
+    // Pre-combined biases (br+br1, bz+bz1) — computed once at load time
+    float br_c[9]; // Reset: br + br1
+    float bz_c[9]; // Update: bz + bz1
+
     // Dense output layer
     float denseW[9];
     float denseB;
@@ -123,6 +127,13 @@ public:
         for (int i = 0; i < 9; ++i)
             w_.denseW[i] = denseW[i];
         w_.denseB = denseB;
+
+        // Pre-combine biases that are always summed together
+        for (int i = 0; i < 9; ++i)
+        {
+            w_.br_c[i] = w_.br[i] + w_.br1[i];
+            w_.bz_c[i] = w_.bz[i] + w_.bz1[i];
+        }
 
         reset();
     }

@@ -6,7 +6,7 @@
 struct DelayEffect : TimeSyncedEffect
 {
     static constexpr uint8_t TypeId = Effects::Delay::TypeId;
-    static constexpr int MAX_SAMPLES = 48000 * 2;
+    static constexpr int MAX_SAMPLES = 48000 * 4;
 
     float *bufL_ = nullptr;
     float *bufR_ = nullptr;
