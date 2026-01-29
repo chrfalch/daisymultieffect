@@ -14,9 +14,12 @@ export const EffectContextMenuButton: React.FC<{
     return effectMeta.find((e) => e.typeId === slot.typeId)?.name ?? "Unknown";
   }, [effectMeta, slot.typeId]);
 
-  // Filter out "Off" from effectMeta since we add it explicitly
+  // Filter out "Off" from effectMeta since we add it explicitly, and sort reverse alphabetically
   const effectsToShow = React.useMemo(
-    () => effectMeta.filter((e) => e.typeId !== 0),
+    () =>
+      effectMeta
+        .filter((e) => e.typeId !== 0)
+        .sort((a, b) => b.name.localeCompare(a.name)),
     [effectMeta]
   );
 
