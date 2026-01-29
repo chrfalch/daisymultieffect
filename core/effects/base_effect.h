@@ -48,6 +48,7 @@ struct ParamInfo
     const NumberParamRange *number;   // if Number
     const EnumParamInfo *enumeration; // if Enum
     const char *unit = nullptr;       // Display unit suffix (e.g. "s", "ms", "dB", "Hz")
+    bool isDisplayParam = false;      // If true, app shows this param's current value label on the pedal
 };
 
 struct EffectMeta

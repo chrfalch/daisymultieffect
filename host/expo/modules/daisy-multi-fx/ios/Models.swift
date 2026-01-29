@@ -124,6 +124,7 @@ struct EffectParamMeta: Equatable {
     var description: String?
     var unitPrefix: String?
     var unitSuffix: String?
+    var isDisplayParam: Bool = false
 
     func toDictionary() -> [String: Any] {
         var dict: [String: Any] = [
@@ -145,6 +146,9 @@ struct EffectParamMeta: Equatable {
         }
         if let unitSuffix, !unitSuffix.isEmpty {
             dict["unitSuffix"] = unitSuffix
+        }
+        if isDisplayParam {
+            dict["isDisplayParam"] = true
         }
         return dict
     }

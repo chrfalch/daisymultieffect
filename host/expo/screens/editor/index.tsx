@@ -71,6 +71,7 @@ export const EditorScreen: React.FC = () => {
     getParamName,
     pushPatchToVst,
     getParamMeta,
+    getDisplayLabel,
   } = useDaisyMultiFX();
   const [expandedSlot, setExpandedSlot] = React.useState<number>(0);
   const [panelTab, setPanelTab] = React.useState<PanelTab>("parameters");
@@ -143,6 +144,7 @@ export const EditorScreen: React.FC = () => {
               getName={getEffectName}
               onToggleSlotEnabled={setSlotEnabled}
               onSelectSlot={selectSlot}
+              getDisplayLabel={getDisplayLabel}
             />
           </Card>
         )}

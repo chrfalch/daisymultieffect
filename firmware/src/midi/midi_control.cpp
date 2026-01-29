@@ -394,6 +394,8 @@ void MidiControl::SendEffectList()
                     flags |= 0x01;
                 if (hasEnumOptions)
                     flags |= 0x02;
+                if (par.isDisplayParam)
+                    flags |= 0x04;
                 msg[p++] = (uint8_t)(flags & 0x7F);
 
                 const char *pname = par.name ? par.name : "";

@@ -29,6 +29,9 @@ export interface EffectParam {
     value: number;
     name: string;
   }[];
+
+  /** If true, the app shows this param's current value label on the pedal face */
+  isDisplayParam?: boolean;
 }
 
 /**

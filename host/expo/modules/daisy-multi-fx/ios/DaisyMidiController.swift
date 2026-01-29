@@ -1012,6 +1012,8 @@ final class DaisyMidiController: @unchecked Sendable {
                 range = NumberRangeMeta(min: minVal, max: maxVal, step: stepVal)
             }
 
+            let isDisplayParam = (flags & 0x04) != 0
+
             // Parse enum options if flag 0x02 is set
             var enumOptions: [EnumOption]? = nil
             let hasEnumOptions = (flags & 0x02) != 0
@@ -1048,7 +1050,8 @@ final class DaisyMidiController: @unchecked Sendable {
                     enumOptions: enumOptions,
                     description: desc.isEmpty ? nil : desc,
                     unitPrefix: unitPrefix.isEmpty ? nil : unitPrefix,
-                    unitSuffix: unitSuffix.isEmpty ? nil : unitSuffix
+                    unitSuffix: unitSuffix.isEmpty ? nil : unitSuffix,
+                    isDisplayParam: isDisplayParam
                 ))
         }
 

@@ -9,6 +9,7 @@ export const PEDAL_SLOT_HEIGHT = 120;
 interface PedalSlotProps {
   name: string;
   shortName: string;
+  subtitle?: string;
   enabled: boolean;
   selected?: boolean;
   onPress: () => void;
@@ -63,6 +64,7 @@ const ChannelIndicator: React.FC<{
 export const PedalSlot: React.FC<PedalSlotProps> = ({
   name,
   shortName,
+  subtitle,
   enabled,
   selected = false,
   onToggleEnabled,
@@ -101,16 +103,29 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
           </View>
 
           <View style={styles.face}>
-            <Text
-              style={[
-                styles.name,
-                selected && styles.nameSelected,
-                !enabled && !selected && styles.nameDisabled,
-              ]}
-              numberOfLines={2}
-            >
-              {name}
-            </Text>
+            {!subtitle ? (
+              <Text
+                style={[
+                  styles.name,
+                  selected && styles.nameSelected,
+                  !enabled && !selected && styles.nameDisabled,
+                ]}
+                numberOfLines={2}
+              >
+                {name}
+              </Text>
+            ) : (
+              <Text
+                style={[
+                  styles.subtitle,
+                  selected && styles.nameSelected,
+                  !enabled && !selected && styles.nameDisabled,
+                ]}
+                numberOfLines={2}
+              >
+                {subtitle}
+              </Text>
+            )}
 
             <ChannelIndicator
               sumToMono={sumToMono}
@@ -202,6 +217,11 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 10,
     textAlign: "center",
+  },
+  subtitle: {
+    fontSize: 8,
+    textAlign: "center",
+    color: "#888",
   },
   nameSelected: {
     color: "#1976D2",

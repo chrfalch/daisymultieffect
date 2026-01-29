@@ -16,6 +16,7 @@ type EffectSlotLike = {
   inputR: number;
   sumToMono: boolean;
   channelPolicy: number;
+  params: Record<number, number>;
 };
 
 export const GraphView: React.FC<{
@@ -26,6 +27,7 @@ export const GraphView: React.FC<{
   getName: (typeId: number) => string;
   onSelectSlot: (slotIndex: number) => void;
   onToggleSlotEnabled: (slotIndex: number, enabled: boolean) => void;
+  getDisplayLabel?: (typeId: number, params: Record<number, number>) => string | undefined;
 }> = ({
   slots,
   numSlots,
@@ -34,6 +36,7 @@ export const GraphView: React.FC<{
   getName,
   onSelectSlot,
   onToggleSlotEnabled,
+  getDisplayLabel,
 }) => {
   const [containerWidth, setContainerWidth] = React.useState<number | null>(
     null
@@ -354,10 +357,16 @@ export const GraphView: React.FC<{
                   ? getName(typeId) || `Slot ${(n.slotIndex ?? 0) + 1}`
                   : `Slot ${(n.slotIndex ?? 0) + 1}`;
 
+              const subtitle =
+                typeId !== 0 && slot && getDisplayLabel
+                  ? getDisplayLabel(typeId, slot.params)
+                  : undefined;
+
               return (
                 <PedalSlot
                   name={name}
                   shortName={shortName}
+                  subtitle={subtitle}
                   enabled={enabled}
                   selected={isSelected}
                   sumToMono={sumToMono}

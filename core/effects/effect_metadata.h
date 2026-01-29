@@ -275,7 +275,7 @@ namespace Effects
         inline const NumberParamRange kEqRange = {0.0f, 1.0f, 0.01f};
 
         inline const ParamInfo kParams[] = {
-            {0, "Model", "Amp model selection", ParamValueKind::Enum, nullptr, &kModelEnum},
+            {0, "Model", "Amp model selection", ParamValueKind::Enum, nullptr, &kModelEnum, nullptr, true},
             {1, "Input", "Input gain/drive", ParamValueKind::Number, &kGainRange, nullptr},
             {2, "Output", "Output level", ParamValueKind::Number, &kGainRange, nullptr},
             {3, "Bass", "Low frequency boost/cut", ParamValueKind::Number, &kEqRange, nullptr},
@@ -319,7 +319,7 @@ namespace Effects
         inline const NumberParamRange kHighCutRange = {0.0f, 1.0f, 0.01f};
 
         inline const ParamInfo kParams[] = {
-            {0, "Cabinet", "Cabinet IR selection", ParamValueKind::Enum, nullptr, &kIREnum},
+            {0, "Cabinet", "Cabinet IR selection", ParamValueKind::Enum, nullptr, &kIREnum, nullptr, true},
             {1, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
             {2, "Output", "Output level (-20dB to +20dB)", ParamValueKind::Number, &kOutputRange, nullptr},
             {3, "Low Cut", "Cuts bass (0=off, 1=800Hz)", ParamValueKind::Number, &kLowCutRange, nullptr},

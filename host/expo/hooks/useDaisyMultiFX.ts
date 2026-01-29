@@ -74,6 +74,7 @@ export interface UseDaisyMultiFXResult {
   getParamName: (typeId: number, paramId: number) => string;
   getParamMeta: (typeId: number, paramId: number) => EffectParam | undefined;
   getEffectShortName: (typeId: number) => string;
+  getDisplayLabel: (typeId: number, params: Record<number, number>) => string | undefined;
 }
 
 /**
@@ -247,6 +248,32 @@ export function useDaisyMultiFX(
     [effectMeta],
   );
 
+  // Helper: Get display label for an effect's display param
+  const getDisplayLabel = useCallback(
+    (typeId: number, params: Record<number, number>): string | undefined => {
+      const effect = effectMeta.find((e) => e.typeId === typeId);
+      if (!effect) return undefined;
+      const displayParam = effect.params.find((p) => p.isDisplayParam);
+      if (!displayParam) return undefined;
+      const midiValue = params[displayParam.id];
+      if (midiValue === undefined) return undefined;
+      if (displayParam.kind === 1 && displayParam.enumOptions) {
+        // Enum: resolve MIDI value to option name
+        const option = displayParam.enumOptions.find((o) => o.value === midiValue);
+        return option?.name;
+      }
+      if (displayParam.kind === 0 && displayParam.range) {
+        // Number: map 0-127 to range
+        const { min, max } = displayParam.range;
+        const value = min + (midiValue / 127) * (max - min);
+        const suffix = displayParam.unitSuffix ?? "";
+        return `${value.toFixed(1)}${suffix}`;
+      }
+      return undefined;
+    },
+    [effectMeta],
+  );
+
   const setSlotType = useCallback(
     (slot: number, typeId: number) => {
       const currentSlot = patch?.slots.find((s) => s.slotIndex === slot);
@@ -321,5 +348,6 @@ export function useDaisyMultiFX(
     getParamName,
     getParamMeta,
     getEffectShortName,
+    getDisplayLabel,
   };
 }
