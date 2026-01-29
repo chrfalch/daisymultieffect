@@ -101,14 +101,14 @@ export function loadEffectMeta(): EffectMeta[] {
       }
       // Outdated schema version - return empty to trigger fresh fetch
       console.log(
-        `[patchStorage] Effect metadata schema outdated (v${versioned.version} vs v${EFFECT_META_SCHEMA_VERSION}), will refetch`
+        `[patchStorage] Effect metadata schema outdated (v${versioned.version} vs v${EFFECT_META_SCHEMA_VERSION}), will refetch`,
       );
       return [];
     }
 
     // Legacy unversioned data - return empty to trigger fresh fetch
     console.log(
-      "[patchStorage] Effect metadata cache is unversioned, will refetch"
+      "[patchStorage] Effect metadata cache is unversioned, will refetch",
     );
     return [];
   } catch (error) {

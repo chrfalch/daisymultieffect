@@ -25,7 +25,7 @@ export const ParametersPanel: React.FC<{
         range?: { min: number; max: number; step: number };
         unitPrefix?: string;
         unitSuffix?: string;
-      }
+      },
     ) => {
       const range = meta?.range;
       if (!range) return "--";
@@ -47,7 +47,7 @@ export const ParametersPanel: React.FC<{
       const suffix = meta?.unitSuffix ? ` ${meta.unitSuffix}` : "";
       return `${prefix}${valueText}${suffix}`;
     },
-    []
+    [],
   );
 
   if (Object.keys(slot.params).length === 0) {
