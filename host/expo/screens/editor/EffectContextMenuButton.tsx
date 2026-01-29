@@ -20,7 +20,7 @@ export const EffectContextMenuButton: React.FC<{
       effectMeta
         .filter((e) => e.typeId !== 0)
         .sort((a, b) => b.name.localeCompare(a.name)),
-    [effectMeta]
+    [effectMeta],
   );
 
   return (
