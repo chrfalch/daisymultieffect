@@ -10,6 +10,30 @@
 #include "embedded/ir_registry.h"
 
 /**
+ * Convolution inner loop — the hottest path in cabinet IR processing.
+ * On firmware, this is defined in cabinet_ir_itcmram.cpp with ITCMRAM placement.
+ * On VST/desktop, the inline version below is used.
+ */
+#if defined(DAISY_SEED_BUILD)
+float CabinetIR_Convolve(const float *inputBuf, int inputIdx,
+                          const float *irBuf, int irLen, int maxLen);
+#else
+inline float CabinetIR_Convolve(const float *inputBuf, int inputIdx,
+                                 const float *irBuf, int irLen, int maxLen)
+{
+    float sum = 0.0f;
+    int bufIdx = inputIdx;
+    for (int i = 0; i < irLen; ++i)
+    {
+        sum += inputBuf[bufIdx] * irBuf[i];
+        if (--bufIdx < 0)
+            bufIdx = maxLen - 1;
+    }
+    return sum;
+}
+#endif
+
+/**
  * Cabinet Impulse Response (IR) Effect
  *
  * Applies convolution with a loaded impulse response to simulate
@@ -322,21 +346,9 @@ struct CabinetIREffect : BaseEffect
             // Store input sample in circular buffer
             inputBuffer_[inputIndex_] = mono;
 
-            // Direct convolution
-            // For efficiency, we only convolve up to irLength_ samples
-            float sum = 0.0f;
-            int bufIdx = inputIndex_;
-
-            for (int i = 0; i < irLength_; ++i)
-            {
-                sum += inputBuffer_[bufIdx] * irBuffer_[i];
-
-                // Wrap circular buffer index backwards
-                if (--bufIdx < 0)
-                    bufIdx = kMaxIRLength - 1;
-            }
-
-            wet = sum;
+            // Direct convolution (ITCMRAM-placed on firmware)
+            wet = CabinetIR_Convolve(inputBuffer_, inputIndex_,
+                                     irBuffer_, irLength_, kMaxIRLength);
 
             // Advance input buffer index
             if (++inputIndex_ >= kMaxIRLength)

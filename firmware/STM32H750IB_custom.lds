@@ -1,11 +1,9 @@
 /* Custom linker script for DaisyMultiFX
- * Based on libDaisy STM32H750IB_qspi.lds with ITCMRAM text section added.
+ * Based on libDaisy STM32H750IB_qspi.lds (byte-for-byte copy) with one addition:
+ * .itcmram_text section for zero-wait-state execution of hot DSP code.
  *
- * The .itcmram_text section places performance-critical code (custom GRU-9
- * forward pass) in 64KB zero-wait-state ITCMRAM for execution without
- * QSPI flash cache miss penalties.
- *
- * Code is stored in QSPI flash and copied to ITCMRAM at boot by init_itcmram().
+ * Code placed in .itcmram_text is stored in QSPI flash and copied to
+ * ITCMRAM (64KB, 0x00000000) at boot by init_itcmram().
  */
 
 ENTRY(Reset_Handler)
@@ -98,9 +96,10 @@ SECTIONS
 		PROVIDE(__fini_array_end = .);
 	} > QSPIFLASH
 
-	/* ITCMRAM code section: zero-wait-state instruction memory.
+	/* === ITCMRAM code section (ADDED for DaisyMultiFX) ===
+	 * Zero-wait-state instruction memory for hot DSP loops.
 	 * Code stored in QSPI flash, copied to ITCMRAM at boot.
-	 * Used for GRU-9 forward pass (~1-2KB). */
+	 * Used for GRU-9 forward pass and cabinet IR convolution. */
 	.itcmram_text :
 	{
 		. = ALIGN(4);
@@ -171,6 +170,23 @@ SECTIONS
 		PROVIDE(__dtcmram_bss_end__ = _edtcmram_bss);
 	} > DTCMRAM
 
+	/*
+	.sdram_text :
+	{
+		. = ALIGN(4);
+		_ssdram_text = .;
+
+		PROVIDE(__sdram_text_start = _ssdram_text);
+		*(.sdram_text)
+		*(.sdram_text*)
+		. = ALIGN(4);
+		_esdram_text = .;
+
+		PROVIDE(__sdram_text_end = _esdram_text);
+	} > SDRAM AT >FLASH
+	_sisdram_text = LOADADDR(.sdram_text);
+	*/
+
 	.sdram_bss (NOLOAD) :
 	{
 		. = ALIGN(4);
@@ -198,6 +214,49 @@ SECTIONS
 
 		PROVIDE(__backup_sram_end = _ebackup_sram);
 	} > BACKUP_SRAM
+
+
+    /* .qspiflash_text :
+	{
+		. = ALIGN(4);
+		_sqspiflash_text = .;
+
+		PROVIDE(__qspiflash_text_start = _sqspiflash_text);
+		*(.qspiflash_text)
+		*(.qspiflash_text*)
+		. = ALIGN(4);
+		_eqspiflash_text = .;
+
+		PROVIDE(__qspiflash_text_end = _eqspiflash_text);
+	} > QSPIFLASH
+
+	.qspiflash_data :
+	{
+		. = ALIGN(4);
+		_sqspiflash_data = .;
+
+		PROVIDE(__qspiflash_data_start = _sqspiflash_data);
+		*(.qspiflash_data)
+		*(.qspiflash_data*)
+		. = ALIGN(4);
+		_eqspiflash_data = .;
+
+		PROVIDE(__qspiflash_data_end = _eqspiflash_data);
+	} > QSPIFLASH
+
+	.qspiflash_bss (NOLOAD) :
+	{
+		. = ALIGN(4);
+		_sqspiflash_bss = .;
+
+		PROVIDE(__qspiflash_bss_start = _sqspiflash_bss);
+		*(.qspiflash_bss)
+		*(.qspiflash_bss*)
+		. = ALIGN(4);
+		_eqspiflash_bss = .;
+
+		PROVIDE(__qspiflash_bss_end = _eqspiflash_bss);
+	} > QSPIFLASH */
 
 	.heap (NOLOAD) :
 	{

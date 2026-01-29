@@ -33,8 +33,8 @@ C_INCLUDES += -Isrc -I../core
 # Define DAISY_SEED_BUILD for platform-specific code paths in core/
 C_DEFS += -DDAISY_SEED_BUILD
 
-# Use standard libDaisy linker script (no ITCMRAM for now)
-# LDSCRIPT = STM32H750IB_custom.lds
+# Custom linker script: standard libDaisy + .itcmram_text section
+LDSCRIPT = STM32H750IB_custom.lds
 
 # Aggressive optimizations for real-time audio DSP on BOOT_QSPI.
 # -O3: Maximum optimization (inlining, loop opts) - important because code

@@ -20,9 +20,14 @@
 #include <cstdint>
 #include <cstddef>
 
-// ITCMRAM/DTCMRAM placement (disabled - using standard linker script)
+// ITCMRAM/DTCMRAM placement for zero-wait-state execution on Daisy Seed
+#if defined(DAISY_SEED_BUILD)
+#define ITCMRAM_CODE __attribute__((section(".itcmram_text")))
+#define DTCMRAM_DATA __attribute__((section(".dtcmram_bss")))
+#else
 #define ITCMRAM_CODE
 #define DTCMRAM_DATA
+#endif
 
 /**
  * Pre-split weight storage for GRU-9.

@@ -10,6 +10,37 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
+// Linker symbols for ITCMRAM code copy (defined in STM32H750IB_custom.lds)
+extern "C" {
+    extern uint32_t _siitcmram_text; // Load address (in QSPI flash)
+    extern uint32_t _sitcmram_text;  // Start address (in ITCMRAM)
+    extern uint32_t _eitcmram_text;  // End address (in ITCMRAM)
+}
+
+/**
+ * Copy ITCMRAM code from QSPI flash to ITCMRAM at boot.
+ * Must be called before any ITCMRAM-placed functions are used.
+ */
+static void init_itcmram()
+{
+    uint32_t *src = &_siitcmram_text;
+    uint32_t *dst = &_sitcmram_text;
+    uint32_t *end = &_eitcmram_text;
+    uint32_t size = (uint8_t *)end - (uint8_t *)dst;
+    if (size > 0)
+    {
+        std::memcpy(dst, src, size);
+    }
+
+    // Enable Flush-to-Zero and Default-NaN for faster float handling
+    // FZ bit (bit 24): denormals flush to zero (avoids ~100-cycle penalty)
+    // DN bit (bit 25): NaN operations return default NaN
+    uint32_t fpscr = __get_FPSCR();
+    fpscr |= (1 << 24) | (1 << 25);
+    __set_FPSCR(fpscr);
+}
+
 static daisy::DaisySeed g_hw;
 static MidiControl g_midi;
 
@@ -89,6 +120,9 @@ static void AudioCallback(daisy::AudioHandle::InputBuffer in,
 int main()
 {
     g_hw.Init();
+
+    // Copy ITCMRAM code from QSPI flash and enable FTZ/DN float modes
+    init_itcmram();
 
     BindProcessorBuffers(g_processor);
     g_processor.Init(g_hw.AudioSampleRate());
