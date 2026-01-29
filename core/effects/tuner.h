@@ -20,9 +20,9 @@ struct TunerEffect : BaseEffect
     static constexpr float kMaxHz = 1400.0f;
 
     // Decimation and windowing (small CPU)
-    static constexpr int kDecimation = 4;     // 48k -> 12k
-    static constexpr int kWindowSize = 1024;  // ~85ms @ 12k
-    static constexpr int kHopSize = 256;      // Update every ~21ms @ 12k
+    static constexpr int kDecimation = 4;      // 48k -> 12k
+    static constexpr int kWindowSize = 1024;   // ~85ms @ 12k
+    static constexpr int kHopSize = 256;       // Update every ~21ms @ 12k
     static constexpr float kMinSignal = 0.02f; // Minimum peak level to trust detection
 
     // Ring buffer for decimated samples
