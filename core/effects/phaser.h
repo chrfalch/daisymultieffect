@@ -99,6 +99,7 @@ struct PhaserEffect : BaseEffect
     }
 
     void ProcessStereo(float &l, float &r) override
+#if !defined(DAISY_SEED_BUILD)
     {
         float dryL = l, dryR = r;
 
@@ -161,6 +162,9 @@ struct PhaserEffect : BaseEffect
         l *= 0.7f;
         r *= 0.7f;
     }
+#else
+    ; // Firmware: defined in effects_itcmram.cpp (ITCMRAM-placed)
+#endif
 
 private:
     // Pre-compute LFO phase increment when rate or sample rate changes

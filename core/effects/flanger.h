@@ -97,6 +97,7 @@ struct FlangerEffect : BaseEffect
     }
 
     void ProcessStereo(float &l, float &r) override
+#if !defined(DAISY_SEED_BUILD)
     {
         float dryL = l, dryR = r;
 
@@ -126,6 +127,9 @@ struct FlangerEffect : BaseEffect
         l = dryL * (1.0f - mix_) + wetL * mix_;
         r = dryR * (1.0f - mix_) + wetR * mix_;
     }
+#else
+    ; // Firmware: defined in effects_itcmram.cpp (ITCMRAM-placed)
+#endif
 
 private:
     void UpdateDelay()

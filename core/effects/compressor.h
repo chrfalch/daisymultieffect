@@ -92,6 +92,7 @@ struct CompressorEffect : BaseEffect
     }
 
     void ProcessStereo(float &l, float &r) override
+#if !defined(DAISY_SEED_BUILD)
     {
         // Stereo-linked envelope detection (max of L/R preserves stereo image)
         float inputLevel = FastMath::fmax(FastMath::fabs(l), FastMath::fabs(r));
@@ -114,6 +115,9 @@ struct CompressorEffect : BaseEffect
         l *= totalGain;
         r *= totalGain;
     }
+#else
+    ; // Firmware: defined in effects_itcmram.cpp (ITCMRAM-placed)
+#endif
 
 private:
     // Recompute all coefficients (called from Init)

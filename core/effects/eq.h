@@ -140,6 +140,7 @@ struct GraphicEQEffect : BaseEffect
     }
 
     void ProcessStereo(float &l, float &r) override
+#if !defined(DAISY_SEED_BUILD)
     {
         // Update filter coefficients if dirty (deferred from SetParam)
         if (filtersDirty_)
@@ -161,6 +162,9 @@ struct GraphicEQEffect : BaseEffect
         l = outL;
         r = outR;
     }
+#else
+    ; // Firmware: defined in effects_itcmram.cpp (ITCMRAM-placed)
+#endif
 
 private:
     void UpdateFilter(int band)

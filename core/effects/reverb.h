@@ -205,6 +205,7 @@ private:
         aps[1].Init(ap2, 0.7f);
     }
     float ProcessTank(float x)
+#if !defined(DAISY_SEED_BUILD)
     {
         float s = 0;
         for (int i = 0; i < 4; i++)
@@ -218,4 +219,7 @@ private:
             s = -1;
         return s;
     }
+#else
+    ; // Firmware: defined in effects_itcmram.cpp (ITCMRAM-placed)
+#endif
 };
