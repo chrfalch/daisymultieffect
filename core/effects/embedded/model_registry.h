@@ -2,48 +2,49 @@
 /**
  * Embedded Neural Amp Model Registry (Shared)
  *
- * This file provides a registry of all embedded LSTM-12 amp models
+ * This file provides a registry of all embedded GRU-9 amp models
  * for selection via enum parameter in the Neural Amp effect.
  *
  * Shared between firmware and VST builds.
  *
- * Auto-generated model headers are included from embedded/models/
+ * Model weights converted from Mars project (GRU-9 architecture).
  */
 
 #include <cstdint>
 #include <cstddef>
 
-// Include all embedded model headers
-#include "models/tw40_california_clean_deerinkstudios.h"
-#include "models/tw40_california_crunch_deerinkstudios.h"
-#include "models/tw40_blues_solo_deerinkstudios.h"
-#include "models/tw40_british_rhythm_deerinkstudios.h"
-#include "models/tw40_british_lead_deerinkstudios.h"
-#include "models/bandmaster_clean.h"
-#include "models/bandmaster_med_gain.h"
-#include "models/bandmaster_high_gain.h"
-#include "models/MESA_MK3_HIGAIN_LIGHT_MELODISAMPO.h"
+// Include GRU-9 model weights
+#include "models/gru9_models.h"
 
 namespace EmbeddedModels
 {
 
     /**
-     * Model info structure for runtime lookup
+     * Model info structure for runtime lookup (GRU-9)
+     *
+     * GRU has 3 gates (reset, update, new) vs LSTM's 4.
+     * Weight layout:
+     *   rec_weight_ih: input-to-hidden [1 × 3*hidden] = [1 × 27]
+     *   rec_weight_hh: hidden-to-hidden [hidden × 3*hidden] = [9 × 27]
+     *   rec_bias: [2 × 3*hidden] = [2 × 27]
+     *   lin_weight: dense output [1 × hidden] = [1 × 9]
+     *   lin_bias: dense bias [1]
      */
     struct ModelInfo
     {
-        const char *name;    // Display name
-        int hiddenSize;      // Hidden layer size (should be 12 for all)
-        const float *kernel; // Input kernel weights
-        size_t kernelSize;
-        const float *recurrent; // Recurrent kernel weights
-        size_t recurrentSize;
-        const float *bias; // Biases
+        const char *name;        // Display name
+        int hiddenSize;          // Hidden layer size (9 for all)
+        const float *weightIH;   // Input-to-hidden weights
+        size_t weightIHSize;
+        const float *weightHH;   // Hidden-to-hidden weights
+        size_t weightHHSize;
+        const float *bias;       // GRU biases (2 rows)
         size_t biasSize;
-        const float *denseW; // Dense output weights
+        const float *denseW;     // Dense output weights
         size_t denseWSize;
-        const float *denseB; // Dense output bias
+        const float *denseB;     // Dense output bias
         size_t denseBSize;
+        float levelAdjust;       // Output level adjustment
     };
 
     /**
@@ -51,15 +52,14 @@ namespace EmbeddedModels
      */
     enum class Model : uint8_t
     {
-        TW40_Clean = 0,
-        TW40_Crunch = 1,
-        TW40_Blues = 2,
-        TW40_Rhythm = 3,
-        TW40_Lead = 4,
-        Bandmaster_Clean = 5,
-        Bandmaster_MedGain = 6,
-        Bandmaster_HiGain = 7,
-        Mesa_MK3_HiGain = 8,
+        Fender57 = 0,
+        Matchless = 1,
+        KlonBB = 2,
+        MesaIIC = 3,
+        HAKClean = 4,
+        Bassman = 5,
+        EVH5150 = 6,
+        Splawn = 7,
         COUNT
     };
 
@@ -70,140 +70,133 @@ namespace EmbeddedModels
      * Index matches Model enum value
      */
     inline const ModelInfo kModelRegistry[] = {
-        // 0: TW40 California Clean
+        // 0: Fender 57 G5
         {
-            tw40_california_clean_deerinkstudios::kName,
-            tw40_california_clean_deerinkstudios::kHiddenSize,
-            tw40_california_clean_deerinkstudios::kKernel,
-            tw40_california_clean_deerinkstudios::kKernelSize,
-            tw40_california_clean_deerinkstudios::kRecurrent,
-            tw40_california_clean_deerinkstudios::kRecurrentSize,
-            tw40_california_clean_deerinkstudios::kBias,
-            tw40_california_clean_deerinkstudios::kBiasSize,
-            tw40_california_clean_deerinkstudios::kDenseW,
-            tw40_california_clean_deerinkstudios::kDenseWSize,
-            tw40_california_clean_deerinkstudios::kDenseB,
-            tw40_california_clean_deerinkstudios::kDenseBSize,
+            gru9_fender57::kName,
+            gru9_fender57::kHiddenSize,
+            gru9_fender57::kWeightIH,
+            gru9_fender57::kWeightIHSize,
+            gru9_fender57::kWeightHH,
+            gru9_fender57::kWeightHHSize,
+            gru9_fender57::kBias,
+            gru9_fender57::kBiasSize,
+            gru9_fender57::kDenseW,
+            gru9_fender57::kDenseWSize,
+            gru9_fender57::kDenseB,
+            gru9_fender57::kDenseBSize,
+            gru9_fender57::kLevelAdjust,
         },
-        // 1: TW40 California Crunch
+        // 1: Matchless SC30
         {
-            tw40_california_crunch_deerinkstudios::kName,
-            tw40_california_crunch_deerinkstudios::kHiddenSize,
-            tw40_california_crunch_deerinkstudios::kKernel,
-            tw40_california_crunch_deerinkstudios::kKernelSize,
-            tw40_california_crunch_deerinkstudios::kRecurrent,
-            tw40_california_crunch_deerinkstudios::kRecurrentSize,
-            tw40_california_crunch_deerinkstudios::kBias,
-            tw40_california_crunch_deerinkstudios::kBiasSize,
-            tw40_california_crunch_deerinkstudios::kDenseW,
-            tw40_california_crunch_deerinkstudios::kDenseWSize,
-            tw40_california_crunch_deerinkstudios::kDenseB,
-            tw40_california_crunch_deerinkstudios::kDenseBSize,
+            gru9_matchless::kName,
+            gru9_matchless::kHiddenSize,
+            gru9_matchless::kWeightIH,
+            gru9_matchless::kWeightIHSize,
+            gru9_matchless::kWeightHH,
+            gru9_matchless::kWeightHHSize,
+            gru9_matchless::kBias,
+            gru9_matchless::kBiasSize,
+            gru9_matchless::kDenseW,
+            gru9_matchless::kDenseWSize,
+            gru9_matchless::kDenseB,
+            gru9_matchless::kDenseBSize,
+            gru9_matchless::kLevelAdjust,
         },
-        // 2: TW40 Blues Solo
+        // 2: Klon BB
         {
-            tw40_blues_solo_deerinkstudios::kName,
-            tw40_blues_solo_deerinkstudios::kHiddenSize,
-            tw40_blues_solo_deerinkstudios::kKernel,
-            tw40_blues_solo_deerinkstudios::kKernelSize,
-            tw40_blues_solo_deerinkstudios::kRecurrent,
-            tw40_blues_solo_deerinkstudios::kRecurrentSize,
-            tw40_blues_solo_deerinkstudios::kBias,
-            tw40_blues_solo_deerinkstudios::kBiasSize,
-            tw40_blues_solo_deerinkstudios::kDenseW,
-            tw40_blues_solo_deerinkstudios::kDenseWSize,
-            tw40_blues_solo_deerinkstudios::kDenseB,
-            tw40_blues_solo_deerinkstudios::kDenseBSize,
+            gru9_klon_bb::kName,
+            gru9_klon_bb::kHiddenSize,
+            gru9_klon_bb::kWeightIH,
+            gru9_klon_bb::kWeightIHSize,
+            gru9_klon_bb::kWeightHH,
+            gru9_klon_bb::kWeightHHSize,
+            gru9_klon_bb::kBias,
+            gru9_klon_bb::kBiasSize,
+            gru9_klon_bb::kDenseW,
+            gru9_klon_bb::kDenseWSize,
+            gru9_klon_bb::kDenseB,
+            gru9_klon_bb::kDenseBSize,
+            gru9_klon_bb::kLevelAdjust,
         },
-        // 3: TW40 British Rhythm
+        // 3: Mesa IIC
         {
-            tw40_british_rhythm_deerinkstudios::kName,
-            tw40_british_rhythm_deerinkstudios::kHiddenSize,
-            tw40_british_rhythm_deerinkstudios::kKernel,
-            tw40_british_rhythm_deerinkstudios::kKernelSize,
-            tw40_british_rhythm_deerinkstudios::kRecurrent,
-            tw40_british_rhythm_deerinkstudios::kRecurrentSize,
-            tw40_british_rhythm_deerinkstudios::kBias,
-            tw40_british_rhythm_deerinkstudios::kBiasSize,
-            tw40_british_rhythm_deerinkstudios::kDenseW,
-            tw40_british_rhythm_deerinkstudios::kDenseWSize,
-            tw40_british_rhythm_deerinkstudios::kDenseB,
-            tw40_british_rhythm_deerinkstudios::kDenseBSize,
+            gru9_mesa_iic::kName,
+            gru9_mesa_iic::kHiddenSize,
+            gru9_mesa_iic::kWeightIH,
+            gru9_mesa_iic::kWeightIHSize,
+            gru9_mesa_iic::kWeightHH,
+            gru9_mesa_iic::kWeightHHSize,
+            gru9_mesa_iic::kBias,
+            gru9_mesa_iic::kBiasSize,
+            gru9_mesa_iic::kDenseW,
+            gru9_mesa_iic::kDenseWSize,
+            gru9_mesa_iic::kDenseB,
+            gru9_mesa_iic::kDenseBSize,
+            gru9_mesa_iic::kLevelAdjust,
         },
-        // 4: TW40 British Lead
+        // 4: HAK Clean
         {
-            tw40_british_lead_deerinkstudios::kName,
-            tw40_british_lead_deerinkstudios::kHiddenSize,
-            tw40_british_lead_deerinkstudios::kKernel,
-            tw40_british_lead_deerinkstudios::kKernelSize,
-            tw40_british_lead_deerinkstudios::kRecurrent,
-            tw40_british_lead_deerinkstudios::kRecurrentSize,
-            tw40_british_lead_deerinkstudios::kBias,
-            tw40_british_lead_deerinkstudios::kBiasSize,
-            tw40_british_lead_deerinkstudios::kDenseW,
-            tw40_british_lead_deerinkstudios::kDenseWSize,
-            tw40_british_lead_deerinkstudios::kDenseB,
-            tw40_british_lead_deerinkstudios::kDenseBSize,
+            gru9_hak_clean::kName,
+            gru9_hak_clean::kHiddenSize,
+            gru9_hak_clean::kWeightIH,
+            gru9_hak_clean::kWeightIHSize,
+            gru9_hak_clean::kWeightHH,
+            gru9_hak_clean::kWeightHHSize,
+            gru9_hak_clean::kBias,
+            gru9_hak_clean::kBiasSize,
+            gru9_hak_clean::kDenseW,
+            gru9_hak_clean::kDenseWSize,
+            gru9_hak_clean::kDenseB,
+            gru9_hak_clean::kDenseBSize,
+            gru9_hak_clean::kLevelAdjust,
         },
-        // 5: Fender Bandmaster Clean
+        // 5: Bassman
         {
-            bandmaster_clean::kName,
-            bandmaster_clean::kHiddenSize,
-            bandmaster_clean::kKernel,
-            bandmaster_clean::kKernelSize,
-            bandmaster_clean::kRecurrent,
-            bandmaster_clean::kRecurrentSize,
-            bandmaster_clean::kBias,
-            bandmaster_clean::kBiasSize,
-            bandmaster_clean::kDenseW,
-            bandmaster_clean::kDenseWSize,
-            bandmaster_clean::kDenseB,
-            bandmaster_clean::kDenseBSize,
+            gru9_bassman::kName,
+            gru9_bassman::kHiddenSize,
+            gru9_bassman::kWeightIH,
+            gru9_bassman::kWeightIHSize,
+            gru9_bassman::kWeightHH,
+            gru9_bassman::kWeightHHSize,
+            gru9_bassman::kBias,
+            gru9_bassman::kBiasSize,
+            gru9_bassman::kDenseW,
+            gru9_bassman::kDenseWSize,
+            gru9_bassman::kDenseB,
+            gru9_bassman::kDenseBSize,
+            gru9_bassman::kLevelAdjust,
         },
-        // 6: Fender Bandmaster Med Gain
+        // 6: EVH 5150
         {
-            bandmaster_med_gain::kName,
-            bandmaster_med_gain::kHiddenSize,
-            bandmaster_med_gain::kKernel,
-            bandmaster_med_gain::kKernelSize,
-            bandmaster_med_gain::kRecurrent,
-            bandmaster_med_gain::kRecurrentSize,
-            bandmaster_med_gain::kBias,
-            bandmaster_med_gain::kBiasSize,
-            bandmaster_med_gain::kDenseW,
-            bandmaster_med_gain::kDenseWSize,
-            bandmaster_med_gain::kDenseB,
-            bandmaster_med_gain::kDenseBSize,
+            gru9_5150::kName,
+            gru9_5150::kHiddenSize,
+            gru9_5150::kWeightIH,
+            gru9_5150::kWeightIHSize,
+            gru9_5150::kWeightHH,
+            gru9_5150::kWeightHHSize,
+            gru9_5150::kBias,
+            gru9_5150::kBiasSize,
+            gru9_5150::kDenseW,
+            gru9_5150::kDenseWSize,
+            gru9_5150::kDenseB,
+            gru9_5150::kDenseBSize,
+            gru9_5150::kLevelAdjust,
         },
-        // 7: Fender Bandmaster High Gain
+        // 7: Splawn
         {
-            bandmaster_high_gain::kName,
-            bandmaster_high_gain::kHiddenSize,
-            bandmaster_high_gain::kKernel,
-            bandmaster_high_gain::kKernelSize,
-            bandmaster_high_gain::kRecurrent,
-            bandmaster_high_gain::kRecurrentSize,
-            bandmaster_high_gain::kBias,
-            bandmaster_high_gain::kBiasSize,
-            bandmaster_high_gain::kDenseW,
-            bandmaster_high_gain::kDenseWSize,
-            bandmaster_high_gain::kDenseB,
-            bandmaster_high_gain::kDenseBSize,
-        },
-        // 8: Mesa Mark III High Gain
-        {
-            MESA_MK3_HIGAIN_LIGHT_MELODISAMPO::kName,
-            MESA_MK3_HIGAIN_LIGHT_MELODISAMPO::kHiddenSize,
-            MESA_MK3_HIGAIN_LIGHT_MELODISAMPO::kKernel,
-            MESA_MK3_HIGAIN_LIGHT_MELODISAMPO::kKernelSize,
-            MESA_MK3_HIGAIN_LIGHT_MELODISAMPO::kRecurrent,
-            MESA_MK3_HIGAIN_LIGHT_MELODISAMPO::kRecurrentSize,
-            MESA_MK3_HIGAIN_LIGHT_MELODISAMPO::kBias,
-            MESA_MK3_HIGAIN_LIGHT_MELODISAMPO::kBiasSize,
-            MESA_MK3_HIGAIN_LIGHT_MELODISAMPO::kDenseW,
-            MESA_MK3_HIGAIN_LIGHT_MELODISAMPO::kDenseWSize,
-            MESA_MK3_HIGAIN_LIGHT_MELODISAMPO::kDenseB,
-            MESA_MK3_HIGAIN_LIGHT_MELODISAMPO::kDenseBSize,
+            gru9_splawn::kName,
+            gru9_splawn::kHiddenSize,
+            gru9_splawn::kWeightIH,
+            gru9_splawn::kWeightIHSize,
+            gru9_splawn::kWeightHH,
+            gru9_splawn::kWeightHHSize,
+            gru9_splawn::kBias,
+            gru9_splawn::kBiasSize,
+            gru9_splawn::kDenseW,
+            gru9_splawn::kDenseWSize,
+            gru9_splawn::kDenseB,
+            gru9_splawn::kDenseBSize,
+            gru9_splawn::kLevelAdjust,
         },
     };
 

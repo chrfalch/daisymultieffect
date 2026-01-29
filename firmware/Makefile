@@ -33,10 +33,15 @@ C_INCLUDES += -Isrc -I../core
 # Define DAISY_SEED_BUILD for platform-specific code paths in core/
 C_DEFS += -DDAISY_SEED_BUILD
 
-# Aggressive optimizations for real-time audio DSP
-# -O3: Maximum optimization (inlining, vectorization, loop opts)
+# Use standard libDaisy linker script (no ITCMRAM for now)
+# LDSCRIPT = STM32H750IB_custom.lds
+
+# Aggressive optimizations for real-time audio DSP on BOOT_QSPI.
+# -O3: Maximum optimization (inlining, loop opts) - important because code
+#      runs from QSPI flash; well-optimized code runs faster even with cache.
 # -ffast-math: Unsafe FP optimizations (no NaN/Inf checks, reordering)
-# -funroll-loops: Unroll small loops for speed
+# -funroll-loops: Unroll small loops for speed (critical for DSP tight loops)
+# Note: Mars uses -Os but runs BOOT_SRAM (zero-wait-state). BOOT_QSPI needs -O3.
 OPT = -O3 -ffast-math -funroll-loops
 CFLAGS   += $(OPT)
 CXXFLAGS += $(OPT)

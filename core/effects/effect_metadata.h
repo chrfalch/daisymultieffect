@@ -258,17 +258,16 @@ namespace Effects
 
         // Model selection enum options (must match EmbeddedModels::Model order)
         inline const EnumParamOption kModelOptions[] = {
-            {0, "TW40 Clean"},
-            {1, "TW40 Crunch"},
-            {2, "TW40 Blues"},
-            {3, "TW40 Rhythm"},
-            {4, "TW40 Lead"},
-            {5, "Bandmaster Clean"},
-            {6, "Bandmaster Med"},
-            {7, "Bandmaster High"},
-            {8, "Mesa MK3 HiGain"},
+            {0, "Fender 57"},
+            {1, "Matchless"},
+            {2, "Klon BB"},
+            {3, "Mesa IIC"},
+            {4, "HAK Clean"},
+            {5, "Bassman"},
+            {6, "5150"},
+            {7, "Splawn"},
         };
-        inline const EnumParamInfo kModelEnum = {kModelOptions, 9};
+        inline const EnumParamInfo kModelEnum = {kModelOptions, 8};
 
         inline const NumberParamRange kGainRange = {0.0f, 1.0f, 0.01f};
         inline const NumberParamRange kEqRange = {0.0f, 1.0f, 0.01f};

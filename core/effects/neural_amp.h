@@ -19,43 +19,46 @@
  * - Firmware: Uses STL backend (pure C++, no SIMD - Cortex-M7 lacks NEON)
  *
  * Model Types Supported:
- * - LSTM-12 (both firmware and VST - standardized for embedded models)
+ * - GRU-9 (firmware - optimized for multi-effect CPU budget)
  * - Additional sizes for VST runtime loading
  *
- * Model Format: AIDA-X / RTNeural JSON (VST) or embedded constexpr (firmware)
+ * Model Format: RTNeural JSON (VST) or embedded constexpr (firmware)
  *
  * Usage:
  * - For firmware: Models are baked into flash at compile time via model_registry.h
  * - For VST: Models can be loaded from JSON files at runtime OR from embedded data
+ *
+ * Based on Mars project approach: GRU-9 with residual connection for
+ * optimal quality-to-CPU ratio in multi-effect context.
  */
 
-// Platform-specific RTNeural configuration
+// Platform-specific neural network backend
 #if defined(DAISY_SEED_BUILD)
-// Daisy Seed: Use STL backend (Cortex-M7 has FPU but no NEON)
-#define RTNEURAL_USE_STL 1
+// Firmware: Custom GRU-9 in ITCMRAM (no RTNeural dependency)
+#include "effects/custom_gru9.h"
 #else
-// VST/Desktop: Use XSIMD for SIMD optimization
+// VST/Desktop: Use RTNeural with XSIMD backend
 #define RTNEURAL_USE_XSIMD 1
-#endif
-
-// Only include RTNeural if available (guarded for builds without it)
 #if __has_include(<RTNeural/RTNeural.h>)
 #define HAS_RTNEURAL 1
 #include <RTNeural/RTNeural.h>
 #else
 #define HAS_RTNEURAL 0
 #endif
+#endif
 
 // Include shared embedded model registry for both firmware and VST
 #include "embedded/model_registry.h"
 
+#if !defined(DAISY_SEED_BUILD) && HAS_RTNEURAL
 namespace NeuralAmpModels
 {
-    // Supported model architectures for compile-time instantiation
-    // Format: Type_HiddenSize_InputSize
+    // VST: GRU with standard math (SIMD handles the heavy lifting)
+    using GRU_9_1 = RTNeural::ModelT<float, 1, 1,
+                                     RTNeural::GRULayerT<float, 1, 9>,
+                                     RTNeural::DenseT<float, 9, 1>>;
 
-#if HAS_RTNEURAL
-    // Small models suitable for Daisy Seed firmware
+    // Additional model types for VST
     using GRU_8_1 = RTNeural::ModelT<float, 1, 1,
                                      RTNeural::GRULayerT<float, 1, 8>,
                                      RTNeural::DenseT<float, 8, 1>>;
@@ -68,7 +71,6 @@ namespace NeuralAmpModels
                                       RTNeural::GRULayerT<float, 1, 16>,
                                       RTNeural::DenseT<float, 16, 1>>;
 
-    // Medium models for VST
     using GRU_20_1 = RTNeural::ModelT<float, 1, 1,
                                       RTNeural::GRULayerT<float, 1, 20>,
                                       RTNeural::DenseT<float, 20, 1>>;
@@ -81,11 +83,6 @@ namespace NeuralAmpModels
                                       RTNeural::GRULayerT<float, 1, 40>,
                                       RTNeural::DenseT<float, 40, 1>>;
 
-    // LSTM variants (higher quality, more CPU)
-    using LSTM_8_1 = RTNeural::ModelT<float, 1, 1,
-                                      RTNeural::LSTMLayerT<float, 1, 8>,
-                                      RTNeural::DenseT<float, 8, 1>>;
-
     using LSTM_12_1 = RTNeural::ModelT<float, 1, 1,
                                        RTNeural::LSTMLayerT<float, 1, 12>,
                                        RTNeural::DenseT<float, 12, 1>>;
@@ -93,8 +90,8 @@ namespace NeuralAmpModels
     using LSTM_16_1 = RTNeural::ModelT<float, 1, 1,
                                        RTNeural::LSTMLayerT<float, 1, 16>,
                                        RTNeural::DenseT<float, 16, 1>>;
-#endif
 }
+#endif
 
 /**
  * NeuralAmpEffect - Neural network-based amp simulator
@@ -125,6 +122,7 @@ struct NeuralAmpEffect : BaseEffect
     // Internal state
     float sampleRate_ = 48000.0f;
     bool modelLoaded_ = false;
+    float levelAdjust_ = 1.0f; // Per-model output level compensation
 
     // Loaded model info
     std::string modelName_ = "No Model";
@@ -148,14 +146,10 @@ struct NeuralAmpEffect : BaseEffect
     BiquadCoeffs bassCoeffs_, midCoeffs_, trebleCoeffs_;
     bool eqNeedsUpdate_ = true;
 
-#if HAS_RTNEURAL
-// Use LSTM-12 which is compatible with AIDA-X models
-// Standardized for embedded models on both firmware and VST
 #if defined(DAISY_SEED_BUILD)
-    NeuralAmpModels::LSTM_12_1 model_; // For firmware
-#else
-    NeuralAmpModels::LSTM_12_1 model_; // For VST - matches AIDA-X default
-#endif
+    CustomGRU9 model_;
+#elif HAS_RTNEURAL
+    NeuralAmpModels::GRU_9_1 model_;
 #endif
 
     uint8_t GetTypeId() const override { return TypeId; }
@@ -168,9 +162,8 @@ struct NeuralAmpEffect : BaseEffect
         bassState_ = midState_ = trebleState_ = {};
         eqNeedsUpdate_ = true;
 
-#if HAS_RTNEURAL
+#if defined(DAISY_SEED_BUILD) || HAS_RTNEURAL
         model_.reset();
-
         // Load default embedded model
         LoadEmbeddedModel(0);
 #endif
@@ -220,7 +213,7 @@ struct NeuralAmpEffect : BaseEffect
         if (max < 6)
             return 0;
         // Enum params: scale index to 0-127 range to match SetParam expectation
-        out[0] = {0, modelIndex_}; // Enum: direct index value (0-8 for 9 models)
+        out[0] = {0, modelIndex_}; // Enum: direct index value (0-7 for 8 models)
         out[1] = {1, (uint8_t)(inputGain_ * 127.0f + 0.5f)};
         out[2] = {2, (uint8_t)(outputGain_ * 127.0f + 0.5f)};
         out[3] = {3, (uint8_t)(bass_ * 127.0f + 0.5f)};
@@ -241,12 +234,16 @@ struct NeuralAmpEffect : BaseEffect
     /**
      * Load embedded model by index from model registry
      *
+     * GRU-9 weight loading:
+     *   setWVals: input-to-hidden weights [1 × 3*hidden]
+     *   setUVals: hidden-to-hidden weights [hidden × 3*hidden]
+     *   setBVals: biases [2 × 3*hidden]
+     *
      * @param index Index into EmbeddedModels::kModelRegistry
      * @return true if model was loaded successfully
      */
     bool LoadEmbeddedModel(int index)
     {
-#if HAS_RTNEURAL
         const auto *modelInfo = EmbeddedModels::GetModel(static_cast<size_t>(index));
         if (!modelInfo)
         {
@@ -255,63 +252,57 @@ struct NeuralAmpEffect : BaseEffect
             return false;
         }
 
-        // Load LSTM layer weights
-        // RTNeural LSTM expects:
-        //   setWVals: kernel weights [input_size][4*hidden_size]
-        //   setUVals: recurrent weights [hidden_size][4*hidden_size]
-        //   setBVals: biases [4*hidden_size]
+#if defined(DAISY_SEED_BUILD)
+        // Firmware: load into custom GRU-9 (no RTNeural)
+        model_.loadWeights(modelInfo->weightIH, modelInfo->weightHH,
+                           modelInfo->bias, modelInfo->denseW,
+                           modelInfo->denseB[0]);
+#elif HAS_RTNEURAL
+        constexpr int hiddenSize = 9;
+        constexpr int gateSize = 3 * hiddenSize; // 27 for GRU (3 gates)
 
-        constexpr int hiddenSize = 12;
-        constexpr int gateSize = 4 * hiddenSize; // 48 for LSTM
-
-        // Convert flat arrays to vector<vector> for RTNeural API
-        // Kernel: shape (1, 48) -> vector<vector>[1][48]
+        // Load GRU layer weights
         std::vector<std::vector<float>> wVals(1, std::vector<float>(gateSize));
         for (int j = 0; j < gateSize; ++j)
-            wVals[0][j] = modelInfo->kernel[j];
+            wVals[0][j] = modelInfo->weightIH[j];
 
-        // Recurrent: shape (12, 48) -> vector<vector>[12][48]
         std::vector<std::vector<float>> uVals(hiddenSize, std::vector<float>(gateSize));
         for (int i = 0; i < hiddenSize; ++i)
             for (int j = 0; j < gateSize; ++j)
-                uVals[i][j] = modelInfo->recurrent[i * gateSize + j];
+                uVals[i][j] = modelInfo->weightHH[i * gateSize + j];
 
-        // Biases: shape (48,) -> vector[48]
-        std::vector<float> bVals(gateSize);
-        for (int j = 0; j < gateSize; ++j)
-            bVals[j] = modelInfo->bias[j];
-
-        // Set LSTM weights (layer 0)
-        auto &lstmLayer = model_.template get<0>();
-        lstmLayer.setWVals(wVals);
-        lstmLayer.setUVals(uVals);
-        lstmLayer.setBVals(bVals);
+        std::vector<std::vector<float>> bVals(2, std::vector<float>(gateSize));
+        for (int i = 0; i < 2; ++i)
+            for (int j = 0; j < gateSize; ++j)
+                bVals[i][j] = modelInfo->bias[i * gateSize + j];
 
         // Load Dense layer weights
-        // Dense: shape (12, 1) -> vector<vector>[1][12]
         std::vector<std::vector<float>> denseW(1, std::vector<float>(hiddenSize));
         for (int j = 0; j < hiddenSize; ++j)
             denseW[0][j] = modelInfo->denseW[j];
-
-        // Dense bias: shape (1,)
         float denseB[1] = {modelInfo->denseB[0]};
 
-        // Set Dense weights (layer 1)
+        auto &gruLayer = model_.template get<0>();
+        gruLayer.setWVals(wVals);
+        gruLayer.setUVals(uVals);
+        gruLayer.setBVals(bVals);
+
         auto &denseLayer = model_.template get<1>();
         denseLayer.setWeights(denseW);
         denseLayer.setBias(denseB);
 
-        // Reset model state and mark as loaded
         model_.reset();
-        modelLoaded_ = true;
-        modelName_ = modelInfo->name;
-        modelIndex_ = static_cast<uint8_t>(index);
-
-        return true;
 #else
         (void)index;
         return false;
 #endif
+
+        modelLoaded_ = true;
+        modelName_ = modelInfo->name;
+        modelIndex_ = static_cast<uint8_t>(index);
+        levelAdjust_ = modelInfo->levelAdjust;
+
+        return true;
     }
 
     // Simple utility functions
@@ -421,20 +412,33 @@ struct NeuralAmpEffect : BaseEffect
         float inGain = FastMath::fastDbToLin((inputGain_ - 0.5f) * 40.0f);
         mono *= inGain;
 
-#if HAS_RTNEURAL
+#if defined(DAISY_SEED_BUILD)
         if (modelLoaded_)
         {
-            // Process through neural network (sample-by-sample)
-            float input[1] = {mono};
-            mono = model_.forward(input);
+            // Custom GRU-9 forward pass (ITCMRAM, zero-wait-state)
+            // Residual connection: output = model(input) + input (Mars approach)
+            mono = model_.forward(mono) + mono;
+            mono *= levelAdjust_;
         }
         else
         {
-            // Fallback: simple soft clipping when no model loaded
+            mono = std::tanh(mono * 2.0f) * 0.7f;
+        }
+#elif HAS_RTNEURAL
+        if (modelLoaded_)
+        {
+            // RTNeural forward pass (VST/Desktop)
+            // Residual connection: output = model(input) + input
+            float input[1] = {mono};
+            mono = model_.forward(input) + input[0];
+            mono *= levelAdjust_;
+        }
+        else
+        {
             mono = std::tanh(mono * 2.0f) * 0.7f;
         }
 #else
-        // No RTNeural: simple soft clipping as placeholder
+        // No neural backend: simple soft clipping as placeholder
         mono = std::tanh(mono * 2.0f) * 0.7f;
 #endif
 
@@ -464,23 +468,9 @@ struct NeuralAmpEffect : BaseEffect
         l = r = output;
     }
 
-#if HAS_RTNEURAL
+#if !defined(DAISY_SEED_BUILD) && HAS_RTNEURAL
     /**
      * Load model weights from JSON (VST runtime loading)
-     *
-     * JSON format is AIDA-X compatible:
-     * {
-     *   "model_data": {
-     *     "model_name": "...",
-     *     ...
-     *   },
-     *   "state_dict": { ... }
-     * }
-     *
-     * @param json The parsed JSON object
-     * @param name Optional model name to use (if not found in JSON)
-     * @param path Optional path to store for reference
-     * @return true if model was loaded successfully
      */
     template <typename JsonType>
     bool LoadModelFromJson(const JsonType &json, const std::string &name = "", const std::string &path = "")
@@ -490,29 +480,22 @@ struct NeuralAmpEffect : BaseEffect
             model_.parseJson(json, true);
             model_.reset();
             modelLoaded_ = true;
+            levelAdjust_ = 1.0f;
 
-            // Try to extract model name from JSON metadata
             if (!name.empty())
             {
                 modelName_ = name;
             }
             else
             {
-                // Try to find name in AIDA-X format
                 try
                 {
                     if (json.contains("model_data") && json["model_data"].contains("model_name"))
-                    {
                         modelName_ = json["model_data"]["model_name"].template get<std::string>();
-                    }
                     else if (json.contains("name"))
-                    {
                         modelName_ = json["name"].template get<std::string>();
-                    }
                     else
-                    {
                         modelName_ = "Custom Model";
-                    }
                 }
                 catch (...)
                 {
@@ -530,21 +513,19 @@ struct NeuralAmpEffect : BaseEffect
             return false;
         }
     }
+#endif
 
-    /**
-     * Clear the loaded model
-     */
     void ClearModel()
     {
         model_.reset();
         modelLoaded_ = false;
         modelName_ = "No Model";
         modelPath_.clear();
+        levelAdjust_ = 1.0f;
     }
 
     void ResetModelState()
     {
         model_.reset();
     }
-#endif
 };

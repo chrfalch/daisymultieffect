@@ -10,7 +10,6 @@
 
 #include <algorithm>
 #include <cmath>
-
 static daisy::DaisySeed g_hw;
 static MidiControl g_midi;
 
