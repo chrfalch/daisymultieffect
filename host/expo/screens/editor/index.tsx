@@ -7,7 +7,7 @@ import { Card } from "../../components/Card";
 import { CardTitle } from "../../components/CardTitle";
 import { GraphView } from "../../components/GraphView";
 import { ConnectionStatus } from "../../components/ConnectionStatus";
-import { StatusMeter } from "../../components/StatusMeter";
+import { DeviceStatusMeter } from "../../components/DeviceStatusMeter";
 import { GainControl } from "../../components/GainControl";
 import { Button } from "../../components/Button";
 import { HStack, VStack } from "../../components/Stack";
@@ -54,7 +54,6 @@ export const EditorScreen: React.FC = () => {
   const {
     isConnected,
     connectionStatus,
-    deviceStatus,
     patch,
     effectMeta,
     refreshPatch,
@@ -116,7 +115,7 @@ export const EditorScreen: React.FC = () => {
           <Card flex={1}>
             <VStack>
               <CardTitle>Device Status</CardTitle>
-              <StatusMeter deviceStatus={deviceStatus} />
+              <DeviceStatusMeter />
             </VStack>
           </Card>
         </HStack>
