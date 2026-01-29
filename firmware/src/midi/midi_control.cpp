@@ -417,7 +417,15 @@ void MidiControl::SendEffectList()
 
                 const char *unitSuffix = "";
                 size_t unitSufLen = 0;
-                InferUnitSuffix(typeId, pname, pdesc, &unitSuffix, &unitSufLen);
+                if (par.unit && par.unit[0] != '\0')
+                {
+                    unitSuffix = par.unit;
+                    unitSufLen = std::strlen(par.unit);
+                }
+                else
+                {
+                    InferUnitSuffix(typeId, pname, pdesc, &unitSuffix, &unitSufLen);
+                }
                 if (unitSufLen > 16)
                     unitSufLen = 16;
                 msg[p++] = (uint8_t)(unitSufLen & 0x7F);
