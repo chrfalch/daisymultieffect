@@ -2,7 +2,7 @@
 #pragma once
 #include "effects/base_effect.h"
 #include "effects/effect_metadata.h"
-#include <cmath>
+#include "effects/fast_math.h"
 
 struct StereoMixerEffect : BaseEffect
 {
@@ -41,13 +41,14 @@ struct StereoMixerEffect : BaseEffect
 
     // interpret L=A input, R=B input (fed via routing)
     void ProcessStereo(float &l, float &r) override
+#if !defined(DAISY_SEED_BUILD)
     {
         float a = l * mixA_;
         float b = r * mixB_;
         float outL = (1.0f - cross_) * a + cross_ * b;
         float outR = (1.0f - cross_) * b + cross_ * a;
 
-        float maxAbs = std::fmax(std::fabs(outL), std::fabs(outR));
+        float maxAbs = FastMath::fmax(FastMath::fabs(outL), FastMath::fabs(outR));
         if (maxAbs > 1.0f)
         {
             float g = 1.0f / maxAbs;
@@ -58,4 +59,7 @@ struct StereoMixerEffect : BaseEffect
         l = outL;
         r = outR;
     }
+#else
+    ; // Firmware: defined in effects_itcmram.cpp (ITCMRAM-placed)
+#endif
 };

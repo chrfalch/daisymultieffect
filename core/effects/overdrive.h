@@ -147,30 +147,23 @@ struct OverdriveEffect : BaseEffect
     }
 
     void ProcessStereo(float &l, float &r) override
+#if !defined(DAISY_SEED_BUILD)
     {
-        // ─────────────────────────────────────────────────────────────────────
-        // Stage 1: Pre-highpass (80Hz) - tighten bass before clipping
-        // One-pole HP: hp_out = in - lp_state
-        // ─────────────────────────────────────────────────────────────────────
         hpL_ += hpCoeff_ * (l - hpL_);
         hpR_ += hpCoeff_ * (r - hpR_);
         float hpOutL = l - hpL_;
         float hpOutR = r - hpR_;
 
-        // ─────────────────────────────────────────────────────────────────────
-        // Stage 2: Drive (pre-gain -> soft clip -> post-gain)
-        // ─────────────────────────────────────────────────────────────────────
         float clipL = SoftClip(hpOutL * preGain_) * postGain_;
         float clipR = SoftClip(hpOutR * preGain_) * postGain_;
 
-        // ─────────────────────────────────────────────────────────────────────
-        // Stage 3: Post-lowpass (tone control) - tame harshness
-        // One-pole LP for warmth
-        // ─────────────────────────────────────────────────────────────────────
         lpL_ += lpCoeff_ * (clipL - lpL_);
         lpR_ += lpCoeff_ * (clipR - lpR_);
 
         l = lpL_;
         r = lpR_;
     }
+#else
+    ; // Firmware: defined in effects_itcmram.cpp (ITCMRAM-placed)
+#endif
 };

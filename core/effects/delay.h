@@ -63,6 +63,7 @@ struct DelayEffect : TimeSyncedEffect
     }
 
     void ProcessStereo(float &l, float &r) override
+#if !defined(DAISY_SEED_BUILD)
     {
         if (!bufL_ || !bufR_)
             return;
@@ -82,4 +83,7 @@ struct DelayEffect : TimeSyncedEffect
         l = inL * dry + dl * wet;
         r = inR * dry + dr * wet;
     }
+#else
+    ; // Firmware: defined in effects_itcmram.cpp (ITCMRAM-placed)
+#endif
 };

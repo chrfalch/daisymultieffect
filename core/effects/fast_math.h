@@ -53,12 +53,16 @@ namespace FastMath
     constexpr float kSineTableScale = static_cast<float>(kSineTableSize);
 
     // Pre-computed sine table for one full period [0, 2π)
-    // Generated at compile time, stored inline for header-only usage
+    // 256 entries + 1 extra for interpolation wrap
+#if defined(DAISY_SEED_BUILD)
+    // Firmware: table in DTCMRAM for zero-wait-state access (defined in fast_math_dtcmram.cpp)
+    extern const float kSineTableData[kSineTableSize + 1];
+    inline const float *GetSineTable() { return kSineTableData; }
+#else
+    // VST/Desktop: inline static table
     inline const float *GetSineTable()
     {
-        // Static table initialized once
         static const float table[kSineTableSize + 1] = {
-            // 256 entries covering [0, 2π), plus one extra for interpolation wrap
             0.000000000f, 0.024541229f, 0.049067674f, 0.073564564f, 0.098017140f,
             0.122410675f, 0.146730474f, 0.170961889f, 0.195090322f, 0.219101240f,
             0.242980180f, 0.266712757f, 0.290284677f, 0.313681740f, 0.336889853f,
@@ -110,10 +114,11 @@ namespace FastMath
             -0.382683432f, -0.359895037f, -0.336889853f, -0.313681740f, -0.290284677f,
             -0.266712757f, -0.242980180f, -0.219101240f, -0.195090322f, -0.170961889f,
             -0.146730474f, -0.122410675f, -0.098017140f, -0.073564564f, -0.049067674f,
-            -0.024541229f, 0.000000000f // Extra entry for interpolation
+            -0.024541229f, 0.000000000f
         };
         return table;
     }
+#endif
 
     // ============================================================================
     // Fast Trigonometric Functions

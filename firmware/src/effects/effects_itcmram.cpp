@@ -22,6 +22,11 @@
 #include "effects/compressor.h"
 #include "effects/chorus.h"
 #include "effects/flanger.h"
+#include "effects/overdrive.h"
+#include "effects/noise_gate.h"
+#include "effects/delay.h"
+#include "effects/stereo_sweep_delay.h"
+#include "effects/stereo_mixer.h"
 
 // ---------------------------------------------------------------------------
 // Reverb: ProcessTank — stereo 4+4 comb filters + 2+2 allpass filters
@@ -231,3 +236,138 @@ void FlangerEffect::ProcessStereo(float &l, float &r)
     r = dryR * (1.0f - mix_) + wetR * mix_;
 }
 
+// ---------------------------------------------------------------------------
+// Overdrive: ProcessStereo — pre-HP, soft clip, post-LP tone control
+// ---------------------------------------------------------------------------
+ITCMRAM_CODE __attribute__((noinline))
+void OverdriveEffect::ProcessStereo(float &l, float &r)
+{
+    hpL_ += hpCoeff_ * (l - hpL_);
+    hpR_ += hpCoeff_ * (r - hpR_);
+    float hpOutL = l - hpL_;
+    float hpOutR = r - hpR_;
+
+    float clipL = SoftClip(hpOutL * preGain_) * postGain_;
+    float clipR = SoftClip(hpOutR * preGain_) * postGain_;
+
+    lpL_ += lpCoeff_ * (clipL - lpL_);
+    lpR_ += lpCoeff_ * (clipR - lpR_);
+
+    l = lpL_;
+    r = lpR_;
+}
+
+// ---------------------------------------------------------------------------
+// NoiseGate: ProcessStereo — envelope follower with hold + range
+// ---------------------------------------------------------------------------
+ITCMRAM_CODE __attribute__((noinline))
+void NoiseGateEffect::ProcessStereo(float &l, float &r)
+{
+    float inputLevel = FastMath::fmax(FastMath::fabs(l), FastMath::fabs(r));
+
+    if (inputLevel > threshLin_)
+    {
+        holdCounter_ = hold_ * sampleRate_;
+        gateGain_ = attackCoef_ * gateGain_ + (1.0f - attackCoef_) * 1.0f;
+    }
+    else if (holdCounter_ > 0.0f)
+    {
+        holdCounter_ -= 1.0f;
+    }
+    else
+    {
+        gateGain_ = releaseCoef_ * gateGain_;
+    }
+
+    float effectiveGain = range_ + (1.0f - range_) * gateGain_;
+    l *= effectiveGain;
+    r *= effectiveGain;
+}
+
+// ---------------------------------------------------------------------------
+// Delay: ProcessStereo — simple stereo delay with feedback
+// ---------------------------------------------------------------------------
+ITCMRAM_CODE __attribute__((noinline))
+void DelayEffect::ProcessStereo(float &l, float &r)
+{
+    if (!bufL_ || !bufR_)
+        return;
+    int d = GetPeriodSamples();
+    if (d >= MAX_SAMPLES)
+        d = MAX_SAMPLES - 1;
+    int rp = wp - d;
+    if (rp < 0)
+        rp += MAX_SAMPLES;
+    float dl = bufL_[rp], dr = bufR_[rp];
+    float inL = l, inR = r;
+    bufL_[wp] = inL + dl * feedback_;
+    bufR_[wp] = inR + dr * feedback_;
+    if (++wp >= MAX_SAMPLES)
+        wp = 0;
+    float dry = 1.0f - mix_, wet = mix_;
+    l = inL * dry + dl * wet;
+    r = inR * dry + dr * wet;
+}
+
+// ---------------------------------------------------------------------------
+// StereoSweepDelay: ProcessStereo — delay with panning LFO
+// ---------------------------------------------------------------------------
+ITCMRAM_CODE __attribute__((noinline))
+void StereoSweepDelayEffect::ProcessStereo(float &l, float &r)
+{
+    if (!bufL_ || !bufR_)
+        return;
+    float inL = l, inR = r;
+
+    int d = GetPeriodSamples();
+    if (d >= MAX_SAMPLES)
+        d = MAX_SAMPLES - 1;
+    int rp = wp - d;
+    if (rp < 0)
+        rp += MAX_SAMPLES;
+
+    float dl = bufL_[rp], dr = bufR_[rp];
+
+    // pan LFO using pre-computed increment and fast sine
+    phase_ += panInc_;
+    if (phase_ >= 1.0f)
+        phase_ -= 1.0f;
+    float pan = 0.5f * (1.0f + FastMath::fastSin(phase_)); // 0..1
+    float baseL = 1.0f - pan, baseR = pan;
+    float panL = (1.0f - panDepth_) * 0.5f + panDepth_ * baseL;
+    float panR = (1.0f - panDepth_) * 0.5f + panDepth_ * baseR;
+
+    float inMono = 0.5f * (inL + inR);
+    bufL_[wp] = inMono + dl * feedback_;
+    bufR_[wp] = inMono + dr * feedback_;
+    if (++wp >= MAX_SAMPLES)
+        wp = 0;
+
+    float wetL = dl * panL, wetR = dr * panR;
+    float dry = 1.0f - mix_, wet = mix_;
+    l = inL * dry + wetL * wet;
+    r = inR * dry + wetR * wet;
+}
+
+// ---------------------------------------------------------------------------
+// StereoMixer: ProcessStereo — A/B mix with crossfade and limiter
+// ---------------------------------------------------------------------------
+ITCMRAM_CODE __attribute__((noinline))
+void StereoMixerEffect::ProcessStereo(float &l, float &r)
+{
+    float a = l * mixA_;
+    float b = r * mixB_;
+    float outL = (1.0f - cross_) * a + cross_ * b;
+    float outR = (1.0f - cross_) * b + cross_ * a;
+
+    float maxAbs = FastMath::fmax(FastMath::fabs(outL), FastMath::fabs(outR));
+    if (maxAbs > 1.0f)
+    {
+        float g = 1.0f / maxAbs;
+        outL *= g;
+        outR *= g;
+    }
+
+    l = outL;
+    r = outR;
+}

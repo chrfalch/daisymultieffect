@@ -84,6 +84,7 @@ struct StereoSweepDelayEffect : TimeSyncedEffect
     }
 
     void ProcessStereo(float &l, float &r) override
+#if !defined(DAISY_SEED_BUILD)
     {
         if (!bufL_ || !bufR_)
             return;
@@ -118,6 +119,9 @@ struct StereoSweepDelayEffect : TimeSyncedEffect
         l = inL * dry + wetL * wet;
         r = inR * dry + wetR * wet;
     }
+#else
+    ; // Firmware: defined in effects_itcmram.cpp (ITCMRAM-placed)
+#endif
 
 private:
     // Pre-compute pan LFO phase increment when rate or sample rate changes

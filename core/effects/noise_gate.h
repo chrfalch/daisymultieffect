@@ -89,39 +89,31 @@ struct NoiseGateEffect : BaseEffect
     }
 
     void ProcessStereo(float &l, float &r) override
+#if !defined(DAISY_SEED_BUILD)
     {
-        // Get input level (max of L and R) using pre-computed threshold
         float inputLevel = FastMath::fmax(FastMath::fabs(l), FastMath::fabs(r));
 
-        // Gate logic using pre-computed coefficients
         if (inputLevel > threshLin_)
         {
-            // Signal above threshold - open gate
             holdCounter_ = hold_ * sampleRate_;
-
-            // Attack - smoothly open using pre-computed coefficient
             gateGain_ = attackCoef_ * gateGain_ + (1.0f - attackCoef_) * 1.0f;
         }
         else if (holdCounter_ > 0.0f)
         {
-            // In hold phase - keep gate open
             holdCounter_ -= 1.0f;
-            // Keep gateGain_ at current level (near 1.0)
         }
         else
         {
-            // Release - smoothly close using pre-computed coefficient
             gateGain_ = releaseCoef_ * gateGain_;
         }
 
-        // Apply gate with range floor
-        // range_ = 0 means full cut (multiply by gateGain_)
-        // range_ = 1 means no cut (multiply by 1.0)
         float effectiveGain = range_ + (1.0f - range_) * gateGain_;
-
         l *= effectiveGain;
         r *= effectiveGain;
     }
+#else
+    ; // Firmware: defined in effects_itcmram.cpp (ITCMRAM-placed)
+#endif
 
 private:
     // Recompute all coefficients (called from Init)

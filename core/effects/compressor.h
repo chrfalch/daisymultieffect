@@ -24,6 +24,7 @@ struct CompressorEffect : BaseEffect
     float threshDb_ = -20.0f;  // Threshold in dB
     float threshLin_ = 0.1f;   // Threshold as linear amplitude
     float ratio_ = 4.0f;       // Compression ratio
+    float slopeRatio_ = 0.75f;  // Pre-computed (1 - 1/ratio), avoids per-sample VDIV
     float attackCoef_ = 0.0f;  // Attack envelope coefficient
     float releaseCoef_ = 0.0f; // Release envelope coefficient
     float makeupLin_ = 1.0f;   // Makeup gain as linear amplitude
@@ -57,6 +58,7 @@ struct CompressorEffect : BaseEffect
         case 1: // Ratio: 0..1 maps to 1:1 to 20:1
             ratioNorm_ = v;
             ratio_ = 1.0f + v * 19.0f;
+            slopeRatio_ = 1.0f - 1.0f / ratio_;
             break;
         case 2: // Attack: 0..1 maps to 0.1ms to 100ms
             attackNorm_ = v;
@@ -126,6 +128,7 @@ private:
         threshDb_ = -40.0f + thresholdNorm_ * 40.0f;
         threshLin_ = FastMath::fastDbToLin(threshDb_);
         ratio_ = 1.0f + ratioNorm_ * 19.0f;
+        slopeRatio_ = 1.0f - 1.0f / ratio_;
 
         float attackTime = 0.0001f + attackNorm_ * 0.0999f;
         attackCoef_ = FastMath::calcEnvelopeCoeff(attackTime, sampleRate_);
@@ -156,15 +159,15 @@ private:
             // Soft knee region: quadratic interpolation
             // Smoothly ramps from 0 gain reduction to full ratio
             float x = envDb - threshDb_ + kHalfKneeDb; // 0 to kKneeWidthDb
-            float slope = (1.0f - 1.0f / ratio_);
-            // Quadratic: gainReduction = slope * x^2 / (2 * kneeWidth)
-            gainReductionDb = slope * x * x / (2.0f * kKneeWidthDb);
+            // Quadratic: gainReduction = slopeRatio * x^2 / (2 * kneeWidth)
+            // slopeRatio_ = (1 - 1/ratio) pre-computed to avoid per-sample VDIV
+            gainReductionDb = slopeRatio_ * x * x * (1.0f / (2.0f * kKneeWidthDb));
         }
         else
         {
             // Above knee region: full compression
             float overDb = envDb - threshDb_;
-            gainReductionDb = overDb * (1.0f - 1.0f / ratio_);
+            gainReductionDb = overDb * slopeRatio_;
         }
 
         return FastMath::fastDbToLin(-gainReductionDb);

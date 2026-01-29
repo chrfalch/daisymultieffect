@@ -313,7 +313,7 @@ struct NeuralAmpEffect : BaseEffect
 
     static inline float dBToLinear(float dB)
     {
-        return std::pow(10.0f, dB / 20.0f);
+        return FastMath::fastDbToLin(dB);
     }
 
     // Calculate low shelf biquad coefficients
@@ -321,11 +321,11 @@ struct NeuralAmpEffect : BaseEffect
     void calcLowShelf(BiquadCoeffs &c, float freq, float gainDb, float Q = 0.707f)
     {
         float A = dBToLinear(gainDb / 2.0f); // sqrt of linear gain
-        float w0 = 2.0f * 3.14159265f * freq / sampleRate_;
-        float cosw0 = std::cos(w0);
-        float sinw0 = std::sin(w0);
+        float w0 = FastMath::kTwoPi * freq / sampleRate_;
+        float cosw0 = FastMath::fastCosRad(w0);
+        float sinw0 = FastMath::fastSinRad(w0);
         float alpha = sinw0 / (2.0f * Q);
-        float sqrtA = std::sqrt(A);
+        float sqrtA = __builtin_sqrtf(A);
 
         float a0 = (A + 1) + (A - 1) * cosw0 + 2 * sqrtA * alpha;
         c.b0 = (A * ((A + 1) - (A - 1) * cosw0 + 2 * sqrtA * alpha)) / a0;
@@ -339,11 +339,11 @@ struct NeuralAmpEffect : BaseEffect
     void calcHighShelf(BiquadCoeffs &c, float freq, float gainDb, float Q = 0.707f)
     {
         float A = dBToLinear(gainDb / 2.0f);
-        float w0 = 2.0f * 3.14159265f * freq / sampleRate_;
-        float cosw0 = std::cos(w0);
-        float sinw0 = std::sin(w0);
+        float w0 = FastMath::kTwoPi * freq / sampleRate_;
+        float cosw0 = FastMath::fastCosRad(w0);
+        float sinw0 = FastMath::fastSinRad(w0);
         float alpha = sinw0 / (2.0f * Q);
-        float sqrtA = std::sqrt(A);
+        float sqrtA = __builtin_sqrtf(A);
 
         float a0 = (A + 1) - (A - 1) * cosw0 + 2 * sqrtA * alpha;
         c.b0 = (A * ((A + 1) + (A - 1) * cosw0 + 2 * sqrtA * alpha)) / a0;
@@ -357,9 +357,9 @@ struct NeuralAmpEffect : BaseEffect
     void calcPeakingEQ(BiquadCoeffs &c, float freq, float gainDb, float Q = 1.0f)
     {
         float A = dBToLinear(gainDb / 2.0f);
-        float w0 = 2.0f * 3.14159265f * freq / sampleRate_;
-        float cosw0 = std::cos(w0);
-        float sinw0 = std::sin(w0);
+        float w0 = FastMath::kTwoPi * freq / sampleRate_;
+        float cosw0 = FastMath::fastCosRad(w0);
+        float sinw0 = FastMath::fastSinRad(w0);
         float alpha = sinw0 / (2.0f * Q);
 
         float a0 = 1 + alpha / A;

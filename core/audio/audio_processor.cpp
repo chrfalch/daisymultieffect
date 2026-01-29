@@ -167,7 +167,7 @@ void AudioProcessor::ProcessFrame(float inL, float inR, float &outL, float &outR
     inR *= inputGain_;
 
     // Track post-gain input peak level
-    float inPeak = std::max(std::abs(inL), std::abs(inR));
+    float inPeak = FastMath::fmax(FastMath::fabs(inL), FastMath::fabs(inR));
     if (inPeak > inputPeakLevel_)
         inputPeakLevel_ = inPeak;
 
@@ -274,7 +274,7 @@ void AudioProcessor::ProcessFrame(float inL, float inR, float &outL, float &outR
     outR = curR * outputGain_;
 
     // Track post-processing output peak level
-    float outPeak = std::max(std::abs(outL), std::abs(outR));
+    float outPeak = FastMath::fmax(FastMath::fabs(outL), FastMath::fabs(outR));
     if (outPeak > outputPeakLevel_)
         outputPeakLevel_ = outPeak;
 }
