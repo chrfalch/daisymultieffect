@@ -18,19 +18,37 @@ extern "C" {
     extern uint32_t _eitcmram_text;  // End address (in ITCMRAM)
 }
 
+// Linker symbols for DTCMRAM initialized data copy (LUT tables, etc.)
+extern "C" {
+    extern uint32_t _sidtcmram_data; // Load address (in QSPI flash)
+    extern uint32_t _sdtcmram_data;  // Start address (in DTCMRAM)
+    extern uint32_t _edtcmram_data;  // End address (in DTCMRAM)
+}
+
 /**
- * Copy ITCMRAM code from QSPI flash to ITCMRAM at boot.
- * Must be called before any ITCMRAM-placed functions are used.
+ * Copy ITCMRAM code and DTCMRAM data from QSPI flash at boot.
+ * Must be called before any ITCMRAM-placed functions or DTCMRAM data are used.
  */
-static void init_itcmram()
+static void init_tcmram()
 {
-    uint32_t *src = &_siitcmram_text;
-    uint32_t *dst = &_sitcmram_text;
-    uint32_t *end = &_eitcmram_text;
-    uint32_t size = (uint8_t *)end - (uint8_t *)dst;
-    if (size > 0)
+    // Copy code to ITCMRAM
     {
-        std::memcpy(dst, src, size);
+        uint32_t *src = &_siitcmram_text;
+        uint32_t *dst = &_sitcmram_text;
+        uint32_t *end = &_eitcmram_text;
+        uint32_t size = (uint8_t *)end - (uint8_t *)dst;
+        if (size > 0)
+            std::memcpy(dst, src, size);
+    }
+
+    // Copy initialized data to DTCMRAM (LUT tables for tanh/sigmoid)
+    {
+        uint32_t *src = &_sidtcmram_data;
+        uint32_t *dst = &_sdtcmram_data;
+        uint32_t *end = &_edtcmram_data;
+        uint32_t size = (uint8_t *)end - (uint8_t *)dst;
+        if (size > 0)
+            std::memcpy(dst, src, size);
     }
 
     // Enable Flush-to-Zero and Default-NaN for faster float handling
@@ -122,7 +140,7 @@ int main()
     g_hw.Init();
 
     // Copy ITCMRAM code from QSPI flash and enable FTZ/DN float modes
-    init_itcmram();
+    init_tcmram();
 
     BindProcessorBuffers(g_processor);
     g_processor.Init(g_hw.AudioSampleRate());

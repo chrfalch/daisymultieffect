@@ -399,12 +399,21 @@ struct NeuralAmpEffect : BaseEffect
         eqNeedsUpdate_ = false;
     }
 
+    // ITCMRAM-placed per-sample helper (firmware only, defined in neural_amp_itcmram.cpp)
+#if defined(DAISY_SEED_BUILD)
+    void ProcessSampleITCMRAM(float &l, float &r);
+#endif
+
     void ProcessStereo(float &l, float &r) override
     {
         // Update EQ if parameters changed
         if (eqNeedsUpdate_)
             updateEQCoeffs();
 
+#if defined(DAISY_SEED_BUILD)
+        // Firmware: entire per-sample chain runs from ITCMRAM
+        ProcessSampleITCMRAM(l, r);
+#elif HAS_RTNEURAL
         // Convert to mono for neural network (amp models are typically mono)
         float mono = 0.5f * (l + r);
 
@@ -412,19 +421,6 @@ struct NeuralAmpEffect : BaseEffect
         float inGain = FastMath::fastDbToLin((inputGain_ - 0.5f) * 40.0f);
         mono *= inGain;
 
-#if defined(DAISY_SEED_BUILD)
-        if (modelLoaded_)
-        {
-            // Custom GRU-9 forward pass (ITCMRAM, zero-wait-state)
-            // Residual connection: output = model(input) + input (Mars approach)
-            mono = model_.forward(mono) + mono;
-            mono *= levelAdjust_;
-        }
-        else
-        {
-            mono = std::tanh(mono * 2.0f) * 0.7f;
-        }
-#elif HAS_RTNEURAL
         if (modelLoaded_)
         {
             // RTNeural forward pass (VST/Desktop)
@@ -437,10 +433,6 @@ struct NeuralAmpEffect : BaseEffect
         {
             mono = std::tanh(mono * 2.0f) * 0.7f;
         }
-#else
-        // No neural backend: simple soft clipping as placeholder
-        mono = std::tanh(mono * 2.0f) * 0.7f;
-#endif
 
         // Apply 3-band EQ (only process if not at neutral)
         float output = mono;
@@ -466,6 +458,17 @@ struct NeuralAmpEffect : BaseEffect
 
         // Output to stereo
         l = r = output;
+#else
+        // No neural backend: simple soft clipping as placeholder
+        float mono = 0.5f * (l + r);
+        float inGain = FastMath::fastDbToLin((inputGain_ - 0.5f) * 40.0f);
+        mono *= inGain;
+        mono = std::tanh(mono * 2.0f) * 0.7f;
+        float outGain = FastMath::fastDbToLin((outputGain_ - 0.5f) * 40.0f);
+        mono *= outGain;
+        mono = fclamp(mono, -1.5f, 1.5f);
+        l = r = mono;
+#endif
     }
 
 #if !defined(DAISY_SEED_BUILD) && HAS_RTNEURAL

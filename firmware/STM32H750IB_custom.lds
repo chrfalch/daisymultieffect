@@ -156,6 +156,19 @@ SECTIONS
 		PROVIDE(__bss_end__ = _ebss);
 	} > SRAM
 
+	/* DTCMRAM initialized data section (e.g. lookup tables).
+	 * Stored in QSPI flash, copied to DTCMRAM at boot by init_dtcmram(). */
+	.dtcmram_data :
+	{
+		. = ALIGN(4);
+		_sdtcmram_data = .;
+		*(.dtcmram_data)
+		*(.dtcmram_data*)
+		. = ALIGN(4);
+		_edtcmram_data = .;
+	} > DTCMRAM AT > QSPIFLASH
+	_sidtcmram_data = LOADADDR(.dtcmram_data);
+
 	.dtcmram_bss (NOLOAD) :
 	{
 		. = ALIGN(4);

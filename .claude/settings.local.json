@@ -14,7 +14,10 @@
       "WebFetch(domain:forum.electro-smith.com)",
       "Bash(for f in /Users/chrfalch/repos/chrfalch/daisyseed-multi-effect/core/effects/embedded/irs/*.h)",
       "Bash(do)",
-      "Bash(basename:*)"
+      "Bash(basename:*)",
+      "Bash(arm-none-eabi-size:*)",
+      "Bash(arm-none-eabi-nm:*)",
+      "Bash(python3:*)"
     ]
   }
 }

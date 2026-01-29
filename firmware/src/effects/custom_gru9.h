@@ -8,6 +8,10 @@
  * The forward pass and fast math functions are placed in ITCMRAM (64KB, zero-wait-state)
  * to avoid QSPI flash cache miss penalties (~10-20 cycles per miss).
  *
+ * Activation functions use 512-entry lookup tables with linear interpolation,
+ * stored in DTCMRAM for zero-wait-state data access. This avoids the expensive
+ * VDIV.F32 instruction (14+ cycles) in the Padé approximant.
+ *
  * Weight layout follows RTNeural GRU convention:
  *   Gate order: reset (r), update (z), new (n)
  *   weightIH[27]: input-to-hidden [1 x 3*9], gate-interleaved
@@ -24,9 +28,11 @@
 #if defined(DAISY_SEED_BUILD)
 #define ITCMRAM_CODE __attribute__((section(".itcmram_text")))
 #define DTCMRAM_DATA __attribute__((section(".dtcmram_bss")))
+#define DTCMRAM_CONST __attribute__((section(".dtcmram_data")))
 #else
 #define ITCMRAM_CODE
 #define DTCMRAM_DATA
+#define DTCMRAM_CONST
 #endif
 
 /**
@@ -150,29 +156,61 @@ private:
     // Hidden state — placed in DTCMRAM for zero-wait-state data access
     DTCMRAM_DATA static float h_[9];
 
-    // Weights — kept in regular SRAM (read once per sample, cached well)
-    static CustomGRU9Weights w_;
+    // Weights — placed in DTCMRAM for zero-wait-state data access
+    DTCMRAM_DATA static CustomGRU9Weights w_;
+
+    // =========================================================================
+    // Lookup-table-based activation functions
+    // =========================================================================
+
+    // 512-entry tanh table covering [-5, 5] with linear interpolation.
+    // Stored in DTCMRAM for zero-wait-state reads (~10 cycles vs ~30 for Padé).
+    // Table has 513 entries (512 intervals + 1 endpoint for interpolation).
+    static const float kTanhTable[513];
+    static const float kSigmoidTable[513];
+
+    // Tanh table parameters
+    static constexpr float kTanhMin = -5.0f;
+    static constexpr float kTanhMax = 5.0f;
+    static constexpr float kTanhRange = kTanhMax - kTanhMin; // 10.0
+    static constexpr float kTanhScale = 512.0f / kTanhRange; // 51.2
+    static constexpr int kTanhTableSize = 512;
+
+    // Sigmoid table parameters
+    static constexpr float kSigmoidMin = -10.0f;
+    static constexpr float kSigmoidMax = 10.0f;
+    static constexpr float kSigmoidRange = kSigmoidMax - kSigmoidMin; // 20.0
+    static constexpr float kSigmoidScale = 512.0f / kSigmoidRange;    // 25.6
+    static constexpr int kSigmoidTableSize = 512;
 
     /**
-     * Fast tanh using Padé approximant.
-     * Accurate to ~1e-5 for |x| < 4.95, clamps to ±1 beyond.
-     * ~5-8 cycles vs ~60 for std::tanh on Cortex-M7.
+     * Fast tanh via 512-entry lookup table with linear interpolation.
+     * Accuracy: ~1e-4 (sufficient for neural amp modeling).
+     * Cost: ~10 cycles (2 loads + 1 fmaf + offset/scale arithmetic).
      */
     static inline float fast_tanh(float x)
     {
-        if (x > 4.95f) return 1.0f;
-        if (x < -4.95f) return -1.0f;
-        float x2 = x * x;
-        return x * (135135.0f + x2 * (17325.0f + x2 * (378.0f + x2))) /
-               (135135.0f + x2 * (62370.0f + x2 * (3150.0f + 28.0f * x2)));
+        if (x <= kTanhMin) return -1.0f;
+        if (x >= kTanhMax) return 1.0f;
+        float indexF = (x - kTanhMin) * kTanhScale;
+        int idx = static_cast<int>(indexF);
+        float frac = indexF - static_cast<float>(idx);
+        return kTanhTable[idx] + frac * (kTanhTable[idx + 1] - kTanhTable[idx]);
     }
 
     /**
-     * Fast sigmoid via tanh: sigmoid(x) = 0.5 + 0.5 * tanh(x * 0.5)
+     * Fast sigmoid via 512-entry lookup table with linear interpolation.
+     * Direct lookup avoids the 0.5 + 0.5*tanh(x/2) indirection (saves ~54 cycles/sample).
+     * Accuracy: ~1e-4 (sufficient for neural amp modeling).
      */
     static inline float fast_sigmoid(float x)
     {
-        return 0.5f + 0.5f * fast_tanh(x * 0.5f);
+        if (x <= kSigmoidMin) return 0.0f;
+        if (x >= kSigmoidMax) return 1.0f;
+        float indexF = (x - kSigmoidMin) * kSigmoidScale;
+        int idx = static_cast<int>(indexF);
+        float frac = indexF - static_cast<float>(idx);
+        return kSigmoidTable[idx] + frac * (kSigmoidTable[idx + 1] - kSigmoidTable[idx]);
     }
 };
 
