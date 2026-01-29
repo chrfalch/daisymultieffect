@@ -84,8 +84,8 @@ struct SimpleReverbEffect : BaseEffect
     float *preBuf_ = nullptr;
     int preSize = 1, preIdx = 0;
 
-    Comb combs[4];
-    Allpass aps[2];
+    Comb combsL[4], combsR[4];
+    Allpass apsL[2], apsR[2];
 
     uint8_t GetTypeId() const override { return TypeId; }
     ChannelMode GetSupportedModes() const override { return ChannelMode::MonoOrStereo; }
@@ -94,15 +94,22 @@ struct SimpleReverbEffect : BaseEffect
 
     // Bind all buffers before Init.
     // preBuf: MAX_PRE floats
-    // combBufs: 4 x Comb::MAX_DELAY floats each
-    // apBufs: 2 x Allpass::MAX_DELAY floats each
-    void BindBuffers(float *preBuf, float *combBufs[4], float *apBufs[2])
+    // combBufsL/R: 4 x Comb::MAX_DELAY floats each (L and R channels)
+    // apBufsL/R: 2 x Allpass::MAX_DELAY floats each (L and R channels)
+    void BindBuffers(float *preBuf, float *combBufsL[4], float *combBufsR[4],
+                     float *apBufsL[2], float *apBufsR[2])
     {
         preBuf_ = preBuf;
         for (int i = 0; i < 4; i++)
-            combs[i].Bind(combBufs[i]);
+        {
+            combsL[i].Bind(combBufsL[i]);
+            combsR[i].Bind(combBufsR[i]);
+        }
         for (int i = 0; i < 2; i++)
-            aps[i].Bind(apBufs[i]);
+        {
+            apsL[i].Bind(apBufsL[i]);
+            apsR[i].Bind(apBufsR[i]);
+        }
     }
 
     void Init(float sr) override
@@ -152,17 +159,14 @@ struct SimpleReverbEffect : BaseEffect
 
     void ProcessStereo(float &l, float &r) override
     {
-        float inMono = 0.5f * (l + r);
-        float x = ProcessPre(inMono);
-        float y = ProcessTank(x);
-
-        float width = 0.3f;
-        float yL = y * (1.0f + width * 0.3f);
-        float yR = y * (1.0f - width * 0.3f);
+        float mono = 0.5f * (l + r);
+        float pre = ProcessPre(mono);
+        float wetL, wetR;
+        ProcessTank(pre, pre, wetL, wetR);
 
         float dry = 1.0f - mix_, wet = mix_;
-        l = l * dry + yL * wet;
-        r = r * dry + yR * wet;
+        l = l * dry + wetL * wet;
+        r = r * dry + wetR * wet;
     }
 
 private:
@@ -192,32 +196,43 @@ private:
     }
     void UpdateTank()
     {
+        static constexpr int kStereoSpread = 23; // classic Freeverb stereo offset
         const float base[4] = {0.0297f, 0.0371f, 0.0411f, 0.0437f};
         for (int i = 0; i < 4; i++)
         {
             float t = base[i] * (0.7f + size_ * 0.6f);
             int ds = (int)(t * sr_ + 0.5f);
-            combs[i].Init(ds, decay_, damp_);
+            combsL[i].Init(ds, decay_, damp_);
+            combsR[i].Init(ds + kStereoSpread, decay_, damp_);
         }
         int ap1 = (int)(0.005f * (0.8f + size_ * 0.4f) * sr_ + 0.5f);
         int ap2 = (int)(0.0017f * (0.8f + size_ * 0.4f) * sr_ + 0.5f);
-        aps[0].Init(ap1, 0.7f);
-        aps[1].Init(ap2, 0.7f);
+        apsL[0].Init(ap1, 0.7f);
+        apsL[1].Init(ap2, 0.7f);
+        apsR[0].Init(ap1 + kStereoSpread, 0.7f);
+        apsR[1].Init(ap2 + kStereoSpread, 0.7f);
     }
-    float ProcessTank(float x)
+    void ProcessTank(float inL, float inR, float &outL, float &outR)
 #if !defined(DAISY_SEED_BUILD)
     {
-        float s = 0;
+        float sL = 0, sR = 0;
         for (int i = 0; i < 4; i++)
-            s += combs[i].Process(x);
-        s *= 0.25f;
-        s = aps[0].Process(s);
-        s = aps[1].Process(s);
-        if (s > 1)
-            s = 1;
-        if (s < -1)
-            s = -1;
-        return s;
+        {
+            sL += combsL[i].Process(inL);
+            sR += combsR[i].Process(inR);
+        }
+        sL *= 0.25f;
+        sR *= 0.25f;
+        sL = apsL[0].Process(sL);
+        sL = apsL[1].Process(sL);
+        sR = apsR[0].Process(sR);
+        sR = apsR[1].Process(sR);
+        if (sL > 1) sL = 1;
+        if (sL < -1) sL = -1;
+        if (sR > 1) sR = 1;
+        if (sR < -1) sR = -1;
+        outL = sL;
+        outR = sR;
     }
 #else
     ; // Firmware: defined in effects_itcmram.cpp (ITCMRAM-placed)

@@ -24,22 +24,29 @@
 #include "effects/flanger.h"
 
 // ---------------------------------------------------------------------------
-// Reverb: ProcessTank — 4 comb filters + 2 allpass filters per sample
+// Reverb: ProcessTank — stereo 4+4 comb filters + 2+2 allpass filters
 // ---------------------------------------------------------------------------
 ITCMRAM_CODE __attribute__((noinline))
-float SimpleReverbEffect::ProcessTank(float x)
+void SimpleReverbEffect::ProcessTank(float inL, float inR, float &outL, float &outR)
 {
-    float s = 0;
+    float sL = 0, sR = 0;
     for (int i = 0; i < 4; i++)
-        s += combs[i].Process(x);
-    s *= 0.25f;
-    s = aps[0].Process(s);
-    s = aps[1].Process(s);
-    if (s > 1)
-        s = 1;
-    if (s < -1)
-        s = -1;
-    return s;
+    {
+        sL += combsL[i].Process(inL);
+        sR += combsR[i].Process(inR);
+    }
+    sL *= 0.25f;
+    sR *= 0.25f;
+    sL = apsL[0].Process(sL);
+    sL = apsL[1].Process(sL);
+    sR = apsR[0].Process(sR);
+    sR = apsR[1].Process(sR);
+    if (sL > 1) sL = 1;
+    if (sL < -1) sL = -1;
+    if (sR > 1) sR = 1;
+    if (sR < -1) sR = -1;
+    outL = sL;
+    outR = sR;
 }
 
 // ---------------------------------------------------------------------------

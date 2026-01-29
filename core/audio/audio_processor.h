@@ -91,10 +91,12 @@ public:
             fx_sweeps_[index].BindBuffers(bufL, bufR);
     }
 
-    void BindReverbBuffers(int index, float *preBuf, float *combBufs[4], float *apBufs[2])
+    void BindReverbBuffers(int index, float *preBuf,
+                           float *combBufsL[4], float *combBufsR[4],
+                           float *apBufsL[2], float *apBufsR[2])
     {
         if (index >= 0 && index < kMaxReverbs)
-            fx_reverbs_[index].BindBuffers(preBuf, combBufs, apBufs);
+            fx_reverbs_[index].BindBuffers(preBuf, combBufsL, combBufsR, apBufsL, apBufsR);
     }
 
     // Get pool sizes for buffer allocation
