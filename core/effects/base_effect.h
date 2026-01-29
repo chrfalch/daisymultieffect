@@ -47,6 +47,7 @@ struct ParamInfo
     ParamValueKind kind;
     const NumberParamRange *number;   // if Number
     const EnumParamInfo *enumeration; // if Enum
+    const char *unit = nullptr;       // Display unit suffix (e.g. "s", "ms", "dB", "Hz")
 };
 
 struct EffectMeta

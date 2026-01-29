@@ -38,10 +38,11 @@ namespace Effects
     namespace Delay
     {
         constexpr uint8_t TypeId = 1;
+        inline const NumberParamRange kTimeRange = {0.01f, 4.0f, 0.001f};
         inline const NumberParamRange kFbRange = {0.0f, 0.95f, 0.01f};
         inline const NumberParamRange kMixRange = {0.0f, 1.0f, 0.01f};
         inline const ParamInfo kParams[] = {
-            {0, "Free Time", "Delay time ms if not synced", ParamValueKind::Number, nullptr, nullptr},
+            {0, "Time", "Delay time (free-running)", ParamValueKind::Number, &kTimeRange, nullptr, "s"},
             {1, "Division", "Beat division index", ParamValueKind::Number, nullptr, nullptr},
             {2, "Synced", "0/1 tempo synced", ParamValueKind::Number, nullptr, nullptr},
             {3, "Feedback", "Delay feedback", ParamValueKind::Number, &kFbRange, nullptr},
@@ -71,18 +72,19 @@ namespace Effects
     namespace SweepDelay
     {
         constexpr uint8_t TypeId = 12;
+        inline const NumberParamRange kTimeRange = {0.01f, 4.0f, 0.001f};
         inline const NumberParamRange kFbRange = {0.0f, 0.95f, 0.01f};
         inline const NumberParamRange kMixRange = {0.0f, 1.0f, 0.01f};
         inline const NumberParamRange kPanDepthRange = {0.0f, 1.0f, 0.01f};
         inline const NumberParamRange kPanRateRange = {0.05f, 5.0f, 0.01f};
         inline const ParamInfo kParams[] = {
-            {0, "Free Time", "Delay time if not synced", ParamValueKind::Number, nullptr, nullptr},
+            {0, "Time", "Delay time (free-running)", ParamValueKind::Number, &kTimeRange, nullptr, "s"},
             {1, "Division", "Beat division index", ParamValueKind::Number, nullptr, nullptr},
             {2, "Synced", "0/1 tempo synced", ParamValueKind::Number, nullptr, nullptr},
             {3, "Feedback", "Feedback", ParamValueKind::Number, &kFbRange, nullptr},
             {4, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
             {5, "Pan Depth", "Pan sweep depth", ParamValueKind::Number, &kPanDepthRange, nullptr},
-            {6, "Pan Rate", "Pan rate (Hz)", ParamValueKind::Number, &kPanRateRange, nullptr},
+            {6, "Pan Rate", "Pan rate (Hz)", ParamValueKind::Number, &kPanRateRange, nullptr, "Hz"},
         };
         inline const ::EffectMeta kMeta = {"Sweep Delay", "SWP", "Stereo delay with pan sweep.", kParams, 7};
     }
@@ -112,13 +114,13 @@ namespace Effects
         inline const NumberParamRange kMixRange = {0.0f, 1.0f, 0.01f};
         inline const NumberParamRange kDecayRange = {0.2f, 0.95f, 0.01f};
         inline const NumberParamRange kDampRange = {0.0f, 0.8f, 0.01f};
-        inline const NumberParamRange kPreRange = {0.0f, 80.0f, 1.0f};
+        inline const NumberParamRange kPreRange = {0.0f, 200.0f, 1.0f};
         inline const NumberParamRange kSizeRange = {0.0f, 1.0f, 0.01f};
         inline const ParamInfo kParams[] = {
             {0, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
             {1, "Decay", "Reverb decay", ParamValueKind::Number, &kDecayRange, nullptr},
             {2, "Damping", "High damping", ParamValueKind::Number, &kDampRange, nullptr},
-            {3, "PreDelay", "Pre-delay (ms)", ParamValueKind::Number, &kPreRange, nullptr},
+            {3, "PreDelay", "Pre-delay", ParamValueKind::Number, &kPreRange, nullptr, "ms"},
             {4, "Size", "Room size", ParamValueKind::Number, &kSizeRange, nullptr},
         };
         inline const ::EffectMeta kMeta = {"Reverb", "REV", "Simple Schroeder reverb.", kParams, 5};
@@ -136,11 +138,11 @@ namespace Effects
         inline const NumberParamRange kReleaseRange = {10.0f, 1000.0f, 1.0f};
         inline const NumberParamRange kMakeupRange = {0.0f, 24.0f, 0.1f};
         inline const ParamInfo kParams[] = {
-            {0, "Threshold", "Threshold (dB)", ParamValueKind::Number, &kThreshRange, nullptr},
-            {1, "Ratio", "Compression ratio", ParamValueKind::Number, &kRatioRange, nullptr},
-            {2, "Attack", "Attack time (ms)", ParamValueKind::Number, &kAttackRange, nullptr},
-            {3, "Release", "Release time (ms)", ParamValueKind::Number, &kReleaseRange, nullptr},
-            {4, "Makeup", "Makeup gain (dB)", ParamValueKind::Number, &kMakeupRange, nullptr},
+            {0, "Threshold", "Threshold", ParamValueKind::Number, &kThreshRange, nullptr, "dB"},
+            {1, "Ratio", "Compression ratio", ParamValueKind::Number, &kRatioRange, nullptr, ":1"},
+            {2, "Attack", "Attack time", ParamValueKind::Number, &kAttackRange, nullptr, "ms"},
+            {3, "Release", "Release time", ParamValueKind::Number, &kReleaseRange, nullptr, "ms"},
+            {4, "Makeup", "Makeup gain", ParamValueKind::Number, &kMakeupRange, nullptr, "dB"},
         };
         inline const ::EffectMeta kMeta = {"Compressor", "CMP", "Dynamics compressor.", kParams, 5};
     }
