@@ -259,6 +259,10 @@ void AudioProcessor::ProcessFrame(float inL, float inR, float &outL, float &outR
             yR = srcR * (1.0f - s.wet) + wetR * s.wet;
         }
 
+        // Remove DC offset accumulated by this effect
+        yL = s.dcL.Process(yL);
+        yR = s.dcR.Process(yR);
+
         board_.outL[i] = yL;
         board_.outR[i] = yR;
         curL = yL;
