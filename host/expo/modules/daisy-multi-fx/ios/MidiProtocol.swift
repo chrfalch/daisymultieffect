@@ -137,16 +137,15 @@ enum MidiProtocol {
                 msg.append(slot.wet & 0x7F)
                 msg.append(slot.channelPolicy & 0x7F)
 
-                // Count valid params (those with non-zero values or explicitly set)
-                let validParams = slot.params.filter { $0.value != 0 }
-                let validParamsArray = Array(validParams).sorted { $0.key < $1.key }
-                let numParams = min(validParamsArray.count, 8)
+                // Send all params that are set (value 0 is valid, e.g., for enum selections)
+                let paramsArray = Array(slot.params).sorted { $0.key < $1.key }
+                let numParams = min(paramsArray.count, 8)
                 msg.append(UInt8(numParams) & 0x7F)
 
                 // 8 param pairs (id, value) - always send 8 pairs
                 for p in 0..<8 {
-                    if p < validParamsArray.count {
-                        let param = validParamsArray[p]
+                    if p < paramsArray.count {
+                        let param = paramsArray[p]
                         msg.append(param.key & 0x7F)
                         msg.append(param.value & 0x7F)
                     } else {

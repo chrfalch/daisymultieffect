@@ -28,7 +28,7 @@ export const ParametersPanel: React.FC<{
       }
     ) => {
       const range = meta?.range;
-      if (!range) return String(raw);
+      if (!range) return "--";
 
       const v01 = raw / 127;
       const unclamped = range.min + v01 * (range.max - range.min);

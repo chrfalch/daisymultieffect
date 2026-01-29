@@ -39,14 +39,14 @@ namespace Effects
     {
         constexpr uint8_t TypeId = 1;
         inline const NumberParamRange kTimeRange = {0.01f, 4.0f, 0.001f};
-        inline const NumberParamRange kFbRange = {0.0f, 0.95f, 0.01f};
-        inline const NumberParamRange kMixRange = {0.0f, 1.0f, 0.01f};
+        inline const NumberParamRange kFbRange = {0.0f, 95.0f, 1.0f};
+        inline const NumberParamRange kMixRange = {0.0f, 100.0f, 1.0f};
         inline const ParamInfo kParams[] = {
             {0, "Time", "Delay time (free-running)", ParamValueKind::Number, &kTimeRange, nullptr, "s"},
             {1, "Division", "Beat division index", ParamValueKind::Number, nullptr, nullptr},
             {2, "Synced", "0/1 tempo synced", ParamValueKind::Number, nullptr, nullptr},
-            {3, "Feedback", "Delay feedback", ParamValueKind::Number, &kFbRange, nullptr},
-            {4, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
+            {3, "Feedback", "Delay feedback", ParamValueKind::Number, &kFbRange, nullptr, "%"},
+            {4, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr, "%"},
         };
         inline const ::EffectMeta kMeta = {"Delay", "DLY", "Tempo-synced delay.", kParams, 5};
     }
@@ -57,11 +57,11 @@ namespace Effects
     namespace Distortion
     {
         constexpr uint8_t TypeId = 10;
-        inline const NumberParamRange kDriveRange = {0.0f, 1.0f, 0.01f};
-        inline const NumberParamRange kToneRange = {0.0f, 1.0f, 0.01f};
+        inline const NumberParamRange kDriveRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kToneRange = {0.0f, 100.0f, 1.0f};
         inline const ParamInfo kParams[] = {
-            {0, "Drive", "Overdrive amount", ParamValueKind::Number, &kDriveRange, nullptr},
-            {1, "Tone", "Dark to bright", ParamValueKind::Number, &kToneRange, nullptr},
+            {0, "Drive", "Overdrive amount", ParamValueKind::Number, &kDriveRange, nullptr, "%"},
+            {1, "Tone", "Dark to bright", ParamValueKind::Number, &kToneRange, nullptr, "%"},
         };
         inline const ::EffectMeta kMeta = {"Overdrive", "OVD", "Musical overdrive with auto-leveling.", kParams, 2};
     }
@@ -73,17 +73,17 @@ namespace Effects
     {
         constexpr uint8_t TypeId = 12;
         inline const NumberParamRange kTimeRange = {0.01f, 4.0f, 0.001f};
-        inline const NumberParamRange kFbRange = {0.0f, 0.95f, 0.01f};
-        inline const NumberParamRange kMixRange = {0.0f, 1.0f, 0.01f};
-        inline const NumberParamRange kPanDepthRange = {0.0f, 1.0f, 0.01f};
+        inline const NumberParamRange kFbRange = {0.0f, 95.0f, 1.0f};
+        inline const NumberParamRange kMixRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kPanDepthRange = {0.0f, 100.0f, 1.0f};
         inline const NumberParamRange kPanRateRange = {0.05f, 5.0f, 0.01f};
         inline const ParamInfo kParams[] = {
             {0, "Time", "Delay time (free-running)", ParamValueKind::Number, &kTimeRange, nullptr, "s"},
             {1, "Division", "Beat division index", ParamValueKind::Number, nullptr, nullptr},
             {2, "Synced", "0/1 tempo synced", ParamValueKind::Number, nullptr, nullptr},
-            {3, "Feedback", "Feedback", ParamValueKind::Number, &kFbRange, nullptr},
-            {4, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
-            {5, "Pan Depth", "Pan sweep depth", ParamValueKind::Number, &kPanDepthRange, nullptr},
+            {3, "Feedback", "Feedback", ParamValueKind::Number, &kFbRange, nullptr, "%"},
+            {4, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr, "%"},
+            {5, "Pan Depth", "Pan sweep depth", ParamValueKind::Number, &kPanDepthRange, nullptr, "%"},
             {6, "Pan Rate", "Pan rate (Hz)", ParamValueKind::Number, &kPanRateRange, nullptr, "Hz"},
         };
         inline const ::EffectMeta kMeta = {"Sweep Delay", "SWP", "Stereo delay with pan sweep.", kParams, 7};
@@ -95,12 +95,12 @@ namespace Effects
     namespace Mixer
     {
         constexpr uint8_t TypeId = 13;
-        inline const NumberParamRange kMixRange = {0.0f, 1.0f, 0.01f};
-        inline const NumberParamRange kCrossRange = {0.0f, 1.0f, 0.01f};
+        inline const NumberParamRange kMixRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kCrossRange = {0.0f, 100.0f, 1.0f};
         inline const ParamInfo kParams[] = {
-            {0, "Mix A", "Level for branch A", ParamValueKind::Number, &kMixRange, nullptr},
-            {1, "Mix B", "Level for branch B", ParamValueKind::Number, &kMixRange, nullptr},
-            {2, "Cross", "Cross-couple A/B", ParamValueKind::Number, &kCrossRange, nullptr},
+            {0, "Mix A", "Level for branch A", ParamValueKind::Number, &kMixRange, nullptr, "%"},
+            {1, "Mix B", "Level for branch B", ParamValueKind::Number, &kMixRange, nullptr, "%"},
+            {2, "Cross", "Cross-couple A/B", ParamValueKind::Number, &kCrossRange, nullptr, "%"},
         };
         inline const ::EffectMeta kMeta = {"Mixer", "MIX", "Mix two branches into stereo.", kParams, 3};
     }
@@ -111,17 +111,17 @@ namespace Effects
     namespace Reverb
     {
         constexpr uint8_t TypeId = 14;
-        inline const NumberParamRange kMixRange = {0.0f, 1.0f, 0.01f};
-        inline const NumberParamRange kDecayRange = {0.2f, 0.95f, 0.01f};
-        inline const NumberParamRange kDampRange = {0.0f, 0.8f, 0.01f};
+        inline const NumberParamRange kMixRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kDecayRange = {20.0f, 95.0f, 1.0f};
+        inline const NumberParamRange kDampRange = {0.0f, 80.0f, 1.0f};
         inline const NumberParamRange kPreRange = {0.0f, 200.0f, 1.0f};
-        inline const NumberParamRange kSizeRange = {0.0f, 1.0f, 0.01f};
+        inline const NumberParamRange kSizeRange = {0.0f, 100.0f, 1.0f};
         inline const ParamInfo kParams[] = {
-            {0, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
-            {1, "Decay", "Reverb decay", ParamValueKind::Number, &kDecayRange, nullptr},
-            {2, "Damping", "High damping", ParamValueKind::Number, &kDampRange, nullptr},
+            {0, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr, "%"},
+            {1, "Decay", "Reverb decay", ParamValueKind::Number, &kDecayRange, nullptr, "%"},
+            {2, "Damping", "High damping", ParamValueKind::Number, &kDampRange, nullptr, "%"},
             {3, "PreDelay", "Pre-delay", ParamValueKind::Number, &kPreRange, nullptr, "ms"},
-            {4, "Size", "Room size", ParamValueKind::Number, &kSizeRange, nullptr},
+            {4, "Size", "Room size", ParamValueKind::Number, &kSizeRange, nullptr, "%"},
         };
         inline const ::EffectMeta kMeta = {"Reverb", "REV", "Simple Schroeder reverb.", kParams, 5};
     }
@@ -154,16 +154,16 @@ namespace Effects
     {
         constexpr uint8_t TypeId = 16;
         inline const NumberParamRange kRateRange = {0.1f, 2.0f, 0.01f};
-        inline const NumberParamRange kDepthRange = {0.0f, 1.0f, 0.01f};
-        inline const NumberParamRange kFeedbackRange = {0.0f, 0.9f, 0.01f};
+        inline const NumberParamRange kDepthRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kFeedbackRange = {0.0f, 90.0f, 1.0f};
         inline const NumberParamRange kDelayRange = {5.0f, 25.0f, 0.1f};
-        inline const NumberParamRange kMixRange = {0.0f, 1.0f, 0.01f};
+        inline const NumberParamRange kMixRange = {0.0f, 100.0f, 1.0f};
         inline const ParamInfo kParams[] = {
-            {0, "Rate", "LFO rate (Hz)", ParamValueKind::Number, &kRateRange, nullptr},
-            {1, "Depth", "Modulation depth", ParamValueKind::Number, &kDepthRange, nullptr},
-            {2, "Feedback", "Feedback amount", ParamValueKind::Number, &kFeedbackRange, nullptr},
-            {3, "Delay", "Base delay (ms)", ParamValueKind::Number, &kDelayRange, nullptr},
-            {4, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
+            {0, "Rate", "LFO rate (Hz)", ParamValueKind::Number, &kRateRange, nullptr, "Hz"},
+            {1, "Depth", "Modulation depth", ParamValueKind::Number, &kDepthRange, nullptr, "%"},
+            {2, "Feedback", "Feedback amount", ParamValueKind::Number, &kFeedbackRange, nullptr, "%"},
+            {3, "Delay", "Base delay (ms)", ParamValueKind::Number, &kDelayRange, nullptr, "ms"},
+            {4, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr, "%"},
         };
         inline const ::EffectMeta kMeta = {"Chorus", "CHO", "Classic stereo chorus.", kParams, 5};
     }
@@ -178,13 +178,13 @@ namespace Effects
         inline const NumberParamRange kAttackRange = {0.1f, 50.0f, 0.1f};
         inline const NumberParamRange kHoldRange = {10.0f, 500.0f, 1.0f};
         inline const NumberParamRange kReleaseRange = {10.0f, 500.0f, 1.0f};
-        inline const NumberParamRange kRangeRange = {0.0f, 1.0f, 0.01f};
+        inline const NumberParamRange kRangeRange = {0.0f, 100.0f, 1.0f};
         inline const ParamInfo kParams[] = {
-            {0, "Threshold", "Gate open level", ParamValueKind::Number, &kThreshRange, nullptr},
-            {1, "Attack", "Gate open speed", ParamValueKind::Number, &kAttackRange, nullptr},
-            {2, "Hold", "Hold time after signal", ParamValueKind::Number, &kHoldRange, nullptr},
-            {3, "Release", "Gate close speed", ParamValueKind::Number, &kReleaseRange, nullptr},
-            {4, "Range", "Floor level when closed", ParamValueKind::Number, &kRangeRange, nullptr},
+            {0, "Threshold", "Gate open level", ParamValueKind::Number, &kThreshRange, nullptr, "dB"},
+            {1, "Attack", "Gate open speed", ParamValueKind::Number, &kAttackRange, nullptr, "ms"},
+            {2, "Hold", "Hold time after signal", ParamValueKind::Number, &kHoldRange, nullptr, "ms"},
+            {3, "Release", "Gate close speed", ParamValueKind::Number, &kReleaseRange, nullptr, "ms"},
+            {4, "Range", "Floor level when closed", ParamValueKind::Number, &kRangeRange, nullptr, "%"},
         };
         inline const ::EffectMeta kMeta = {"Noise Gate", "NGT", "Cut signal below threshold to eliminate hum/buzz.", kParams, 5};
     }
@@ -198,13 +198,13 @@ namespace Effects
         // All bands: -12dB to +12dB (0.5 = 0dB flat)
         inline const NumberParamRange kBandRange = {-12.0f, 12.0f, 0.5f};
         inline const ParamInfo kParams[] = {
-            {0, "100 Hz", "Bass/thump", ParamValueKind::Number, &kBandRange, nullptr},
-            {1, "200 Hz", "Warmth/body", ParamValueKind::Number, &kBandRange, nullptr},
-            {2, "400 Hz", "Low-mid", ParamValueKind::Number, &kBandRange, nullptr},
-            {3, "800 Hz", "Midrange/punch", ParamValueKind::Number, &kBandRange, nullptr},
-            {4, "1.6 kHz", "Upper-mid/bite", ParamValueKind::Number, &kBandRange, nullptr},
-            {5, "3.2 kHz", "Presence/clarity", ParamValueKind::Number, &kBandRange, nullptr},
-            {6, "6.4 kHz", "Treble/air", ParamValueKind::Number, &kBandRange, nullptr},
+            {0, "100 Hz", "Bass/thump", ParamValueKind::Number, &kBandRange, nullptr, "dB"},
+            {1, "200 Hz", "Warmth/body", ParamValueKind::Number, &kBandRange, nullptr, "dB"},
+            {2, "400 Hz", "Low-mid", ParamValueKind::Number, &kBandRange, nullptr, "dB"},
+            {3, "800 Hz", "Midrange/punch", ParamValueKind::Number, &kBandRange, nullptr, "dB"},
+            {4, "1.6 kHz", "Upper-mid/bite", ParamValueKind::Number, &kBandRange, nullptr, "dB"},
+            {5, "3.2 kHz", "Presence/clarity", ParamValueKind::Number, &kBandRange, nullptr, "dB"},
+            {6, "6.4 kHz", "Treble/air", ParamValueKind::Number, &kBandRange, nullptr, "dB"},
         };
         inline const ::EffectMeta kMeta = {"Graphic EQ", "GEQ", "7-band EQ optimized for guitar.", kParams, 7};
     }
@@ -216,16 +216,16 @@ namespace Effects
     {
         constexpr uint8_t TypeId = 19;
         inline const NumberParamRange kRateRange = {0.05f, 5.0f, 0.01f};
-        inline const NumberParamRange kDepthRange = {0.0f, 1.0f, 0.01f};
-        inline const NumberParamRange kFeedbackRange = {-0.95f, 0.95f, 0.01f};
+        inline const NumberParamRange kDepthRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kFeedbackRange = {-95.0f, 95.0f, 1.0f};
         inline const NumberParamRange kDelayRange = {0.1f, 10.0f, 0.1f};
-        inline const NumberParamRange kMixRange = {0.0f, 1.0f, 0.01f};
+        inline const NumberParamRange kMixRange = {0.0f, 100.0f, 1.0f};
         inline const ParamInfo kParams[] = {
-            {0, "Rate", "LFO rate (Hz)", ParamValueKind::Number, &kRateRange, nullptr},
-            {1, "Depth", "Modulation depth", ParamValueKind::Number, &kDepthRange, nullptr},
-            {2, "Feedback", "Feedback (-95% to +95%)", ParamValueKind::Number, &kFeedbackRange, nullptr},
-            {3, "Delay", "Base delay (ms)", ParamValueKind::Number, &kDelayRange, nullptr},
-            {4, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
+            {0, "Rate", "LFO rate (Hz)", ParamValueKind::Number, &kRateRange, nullptr, "Hz"},
+            {1, "Depth", "Modulation depth", ParamValueKind::Number, &kDepthRange, nullptr, "%"},
+            {2, "Feedback", "Feedback (-95% to +95%)", ParamValueKind::Number, &kFeedbackRange, nullptr, "%"},
+            {3, "Delay", "Base delay (ms)", ParamValueKind::Number, &kDelayRange, nullptr, "ms"},
+            {4, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr, "%"},
         };
         inline const ::EffectMeta kMeta = {"Flanger", "FLG", "Classic jet/swoosh flanger.", kParams, 5};
     }
@@ -237,16 +237,16 @@ namespace Effects
     {
         constexpr uint8_t TypeId = 20;
         inline const NumberParamRange kRateRange = {0.1f, 2.0f, 0.01f};
-        inline const NumberParamRange kDepthRange = {0.0f, 1.0f, 0.01f};
-        inline const NumberParamRange kFeedbackRange = {0.0f, 0.75f, 0.01f};
+        inline const NumberParamRange kDepthRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kFeedbackRange = {0.0f, 75.0f, 1.0f};
         inline const NumberParamRange kFreqRange = {100.0f, 1600.0f, 1.0f};
-        inline const NumberParamRange kMixRange = {0.0f, 1.0f, 0.01f};
+        inline const NumberParamRange kMixRange = {0.0f, 100.0f, 1.0f};
         inline const ParamInfo kParams[] = {
-            {0, "Rate", "LFO rate (Hz)", ParamValueKind::Number, &kRateRange, nullptr},
-            {1, "Depth", "Sweep depth", ParamValueKind::Number, &kDepthRange, nullptr},
-            {2, "Feedback", "Resonance", ParamValueKind::Number, &kFeedbackRange, nullptr},
-            {3, "Freq", "Base frequency (Hz)", ParamValueKind::Number, &kFreqRange, nullptr},
-            {4, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
+            {0, "Rate", "LFO rate (Hz)", ParamValueKind::Number, &kRateRange, nullptr, "Hz"},
+            {1, "Depth", "Sweep depth", ParamValueKind::Number, &kDepthRange, nullptr, "%"},
+            {2, "Feedback", "Resonance", ParamValueKind::Number, &kFeedbackRange, nullptr, "%"},
+            {3, "Freq", "Base frequency (Hz)", ParamValueKind::Number, &kFreqRange, nullptr, "Hz"},
+            {4, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr, "%"},
         };
         inline const ::EffectMeta kMeta = {"Phaser", "PHS", "Classic sweeping phaser.", kParams, 5};
     }
@@ -271,16 +271,17 @@ namespace Effects
         };
         inline const EnumParamInfo kModelEnum = {kModelOptions, 8};
 
-        inline const NumberParamRange kGainRange = {0.0f, 1.0f, 0.01f};
-        inline const NumberParamRange kEqRange = {0.0f, 1.0f, 0.01f};
+        inline const NumberParamRange kInputRange = {0.0f, 40.0f, 0.5f};
+        inline const NumberParamRange kOutputRange = {-20.0f, 20.0f, 0.5f};
+        inline const NumberParamRange kEqRange = {-12.0f, 12.0f, 0.5f};
 
         inline const ParamInfo kParams[] = {
             {0, "Model", "Amp model selection", ParamValueKind::Enum, nullptr, &kModelEnum, nullptr, true},
-            {1, "Input", "Input gain/drive", ParamValueKind::Number, &kGainRange, nullptr},
-            {2, "Output", "Output level", ParamValueKind::Number, &kGainRange, nullptr},
-            {3, "Bass", "Low frequency boost/cut", ParamValueKind::Number, &kEqRange, nullptr},
-            {4, "Mid", "Mid frequency boost/cut", ParamValueKind::Number, &kEqRange, nullptr},
-            {5, "Treble", "High frequency boost/cut", ParamValueKind::Number, &kEqRange, nullptr},
+            {1, "Input", "Input gain/drive", ParamValueKind::Number, &kInputRange, nullptr, "dB"},
+            {2, "Output", "Output level", ParamValueKind::Number, &kOutputRange, nullptr, "dB"},
+            {3, "Bass", "Low frequency boost/cut", ParamValueKind::Number, &kEqRange, nullptr, "dB"},
+            {4, "Mid", "Mid frequency boost/cut", ParamValueKind::Number, &kEqRange, nullptr, "dB"},
+            {5, "Treble", "High frequency boost/cut", ParamValueKind::Number, &kEqRange, nullptr, "dB"},
         };
         inline const ::EffectMeta kMeta = {"Neural Amp", "NAM", "AI-trained amp simulation (AIDA-X/RTNeural).", kParams, 6};
     }
@@ -313,17 +314,17 @@ namespace Effects
         };
         inline const EnumParamInfo kIREnum = {kIROptions, 15};
 
-        inline const NumberParamRange kMixRange = {0.0f, 1.0f, 0.01f};
-        inline const NumberParamRange kOutputRange = {0.0f, 1.0f, 0.01f};
-        inline const NumberParamRange kLowCutRange = {0.0f, 1.0f, 0.01f};
-        inline const NumberParamRange kHighCutRange = {0.0f, 1.0f, 0.01f};
+        inline const NumberParamRange kMixRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kOutputRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kLowCutRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kHighCutRange = {0.0f, 100.0f, 1.0f};
 
         inline const ParamInfo kParams[] = {
             {0, "Cabinet", "Cabinet IR selection", ParamValueKind::Enum, nullptr, &kIREnum, nullptr, true},
-            {1, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr},
-            {2, "Output", "Output level (-20dB to +20dB)", ParamValueKind::Number, &kOutputRange, nullptr},
-            {3, "Low Cut", "Cuts bass (0=off, 1=800Hz)", ParamValueKind::Number, &kLowCutRange, nullptr},
-            {4, "High Cut", "Cuts treble (0=bright, 1=dark)", ParamValueKind::Number, &kHighCutRange, nullptr},
+            {1, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr, "%"},
+            {2, "Output", "Output level (-20dB to +20dB)", ParamValueKind::Number, &kOutputRange, nullptr, "%"},
+            {3, "Low Cut", "Cuts bass (0=off, 1=800Hz)", ParamValueKind::Number, &kLowCutRange, nullptr, "%"},
+            {4, "High Cut", "Cuts treble (0=bright, 1=dark)", ParamValueKind::Number, &kHighCutRange, nullptr, "%"},
         };
         inline const ::EffectMeta kMeta = {"Cabinet IR", "CAB", "Impulse response convolution for speaker cabinet simulation.", kParams, 5};
     }

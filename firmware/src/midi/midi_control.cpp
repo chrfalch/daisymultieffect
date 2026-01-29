@@ -938,7 +938,8 @@ void MidiControl::ApplyPendingInAudioThread()
                 sw.params[i].value = (i < n) ? snap[i].value : 0;
             }
         }
-        // Note: We don't send back since this was received via SysEx
+        // Send updated patch back so app receives new default params
+        SendPatchDump();
     }
     else if (kind == PendingKind::SetSlotRouting)
     {

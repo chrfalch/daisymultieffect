@@ -666,6 +666,8 @@ final class DaisyMidiController: @unchecked Sendable {
             let numParams = data[offset]
             offset += 1
 
+            log("Slot \(slot.slotIndex): typeId=\(slot.typeId), numParams=\(numParams)")
+
             for p in 0..<8 {
                 let paramId = data[offset]
                 offset += 1
@@ -673,6 +675,7 @@ final class DaisyMidiController: @unchecked Sendable {
                 offset += 1
                 if p < numParams {
                     slot.params[paramId] = paramVal
+                    log("  param[\(paramId)] = \(paramVal)")
                 }
             }
 
@@ -1080,6 +1083,8 @@ final class DaisyMidiController: @unchecked Sendable {
         if p.slots[Int(slot)].typeId == typeId { return }
 
         p.slots[Int(slot)].typeId = typeId
+        // Clear old params when effect type changes - new params will follow
+        p.slots[Int(slot)].params.removeAll()
         patch = p
         onPatchUpdate?(p)
     }
@@ -1149,6 +1154,8 @@ final class DaisyMidiController: @unchecked Sendable {
         if p.slots[Int(slot)].typeId == typeId { return }
 
         p.slots[Int(slot)].typeId = typeId
+        // Clear old params when effect type changes - new params will come from VST
+        p.slots[Int(slot)].params.removeAll()
         patch = p
 
         sendSysex(MidiProtocol.encodeSetType(slot: slot, typeId: typeId))

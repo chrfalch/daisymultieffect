@@ -4,6 +4,15 @@ import type { Patch, EffectMeta } from "../modules/daisy-multi-fx";
 const CURRENT_PATCH_KEY = "@daisymultifx/currentPatch";
 const EFFECT_META_KEY = "@daisymultifx/effectMeta";
 
+/** Schema version for effect metadata cache. Bump this when the EffectMeta structure changes. */
+const EFFECT_META_SCHEMA_VERSION = 2;
+
+/** Wrapper for versioned effect metadata storage */
+interface VersionedEffectMeta {
+  version: number;
+  data: EffectMeta[];
+}
+
 /**
  * Save the current patch to local storage.
  * This is a synchronous operation.
@@ -53,7 +62,11 @@ export function clearCurrentPatch(): void {
  */
 export function saveEffectMeta(effectMeta: EffectMeta[]): void {
   try {
-    const json = JSON.stringify(effectMeta);
+    const versioned: VersionedEffectMeta = {
+      version: EFFECT_META_SCHEMA_VERSION,
+      data: effectMeta,
+    };
+    const json = JSON.stringify(versioned);
     storage.set(EFFECT_META_KEY, json);
   } catch (error) {
     console.warn("[patchStorage] Failed to save effect metadata:", error);
@@ -63,8 +76,9 @@ export function saveEffectMeta(effectMeta: EffectMeta[]): void {
 /**
  * Load effect metadata from local storage.
  * This is a synchronous operation.
+ * Returns empty array if the cached data is missing, invalid, or from an older schema version.
  *
- * @returns The saved effect metadata, or empty array if not saved or on parse error
+ * @returns The saved effect metadata, or empty array if not saved, outdated, or on parse error
  */
 export function loadEffectMeta(): EffectMeta[] {
   try {
@@ -72,7 +86,31 @@ export function loadEffectMeta(): EffectMeta[] {
     if (!json) {
       return [];
     }
-    return JSON.parse(json) as EffectMeta[];
+    const parsed = JSON.parse(json);
+
+    // Check if it's versioned data
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "version" in parsed &&
+      "data" in parsed
+    ) {
+      const versioned = parsed as VersionedEffectMeta;
+      if (versioned.version === EFFECT_META_SCHEMA_VERSION) {
+        return versioned.data;
+      }
+      // Outdated schema version - return empty to trigger fresh fetch
+      console.log(
+        `[patchStorage] Effect metadata schema outdated (v${versioned.version} vs v${EFFECT_META_SCHEMA_VERSION}), will refetch`
+      );
+      return [];
+    }
+
+    // Legacy unversioned data - return empty to trigger fresh fetch
+    console.log(
+      "[patchStorage] Effect metadata cache is unversioned, will refetch"
+    );
+    return [];
   } catch (error) {
     console.warn("[patchStorage] Failed to load effect metadata:", error);
     return [];

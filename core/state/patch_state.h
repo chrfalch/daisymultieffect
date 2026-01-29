@@ -328,6 +328,58 @@ namespace daisyfx
                 s.params[3] = {3, 64};
                 s.params[4] = {4, 64};
                 break;
+            case 17: // Noise Gate
+                s.numParams = 5;
+                s.params[0] = {0, 64};  // Threshold
+                s.params[1] = {1, 32};  // Attack
+                s.params[2] = {2, 64};  // Hold
+                s.params[3] = {3, 64};  // Release
+                s.params[4] = {4, 0};   // Range
+                break;
+            case 18: // Graphic EQ
+                s.numParams = 7;
+                s.params[0] = {0, 64};  // 100Hz (0dB = center)
+                s.params[1] = {1, 64};  // 200Hz
+                s.params[2] = {2, 64};  // 400Hz
+                s.params[3] = {3, 64};  // 800Hz
+                s.params[4] = {4, 64};  // 1.6kHz
+                s.params[5] = {5, 64};  // 3.2kHz
+                s.params[6] = {6, 64};  // 6.4kHz
+                break;
+            case 19: // Flanger
+                s.numParams = 5;
+                s.params[0] = {0, 40};  // Rate
+                s.params[1] = {1, 64};  // Depth
+                s.params[2] = {2, 64};  // Feedback (center = 0)
+                s.params[3] = {3, 32};  // Delay
+                s.params[4] = {4, 64};  // Mix
+                break;
+            case 20: // Phaser
+                s.numParams = 5;
+                s.params[0] = {0, 40};  // Rate
+                s.params[1] = {1, 64};  // Depth
+                s.params[2] = {2, 32};  // Feedback
+                s.params[3] = {3, 64};  // Freq
+                s.params[4] = {4, 64};  // Mix
+                break;
+            case 21: // Neural Amp
+                s.numParams = 6;
+                s.sumToMono = 1;
+                s.params[0] = {0, 0};   // Model (enum: Fender 57)
+                s.params[1] = {1, 64};  // Input
+                s.params[2] = {2, 64};  // Output
+                s.params[3] = {3, 64};  // Bass
+                s.params[4] = {4, 64};  // Mid
+                s.params[5] = {5, 64};  // Treble
+                break;
+            case 22: // Cabinet IR
+                s.numParams = 5;
+                s.params[0] = {0, 0};   // Cabinet (enum: first IR)
+                s.params[1] = {1, 127}; // Mix (100%)
+                s.params[2] = {2, 64};  // Output
+                s.params[3] = {3, 0};   // Low Cut (off)
+                s.params[4] = {4, 0};   // High Cut (off)
+                break;
             default:
                 s.numParams = 0;
                 break;
