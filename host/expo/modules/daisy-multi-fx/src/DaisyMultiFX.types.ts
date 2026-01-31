@@ -32,6 +32,9 @@ export interface EffectParam {
 
   /** If true, the app shows this param's current value label on the pedal face */
   isDisplayParam?: boolean;
+
+  /** If true, this param is readonly (firmware writes value, app displays only) */
+  isReadonly?: boolean;
 }
 
 /**
@@ -48,6 +51,8 @@ export interface EffectMeta {
   description?: string;
   /** Available parameters for this effect */
   params: EffectParam[];
+  /** If true, this effect takes exclusive audio routing when enabled */
+  isGlobal?: boolean;
 }
 
 /**
@@ -119,6 +124,8 @@ export interface DeviceStatus {
   cpuAvg: number;
   /** Maximum CPU load since last reset (0.0-1.0) */
   cpuMax: number;
+  /** Output params from effects with readonly parameters (e.g., tuner note/cents) */
+  outputParams?: { slotIndex: number; params: { id: number; value: number }[] }[];
 }
 
 /**

@@ -20,6 +20,7 @@
 #include "effects/neural_amp.h"
 #include "effects/cabinet_ir.h"
 #include "effects/tremolo.h"
+#include "effects/tuner.h"
 
 namespace
 {
@@ -199,22 +200,60 @@ void MidiControl::SendButtonStateChange(uint8_t btn, uint8_t slot, bool enabled)
 
 void MidiControl::SendStatusUpdate(float inputLevel, float outputLevel, float cpuAvg, float cpuMax)
 {
-    // Pack 4 Q16.16 values: inputLevel, outputLevel, cpuAvg, cpuMax
-    uint8_t qIn[5], qOut[5], qAvg[5], qMax[5];
-    packQ16_16(floatToQ16_16(inputLevel), qIn);
-    packQ16_16(floatToQ16_16(outputLevel), qOut);
-    packQ16_16(floatToQ16_16(cpuAvg), qAvg);
-    packQ16_16(floatToQ16_16(cpuMax), qMax);
+    // Extended status: base 4 values + optional output param snapshots
+    uint8_t msg[256];
+    size_t p = 0;
 
-    // F0 7D 01 42 [inputLevel 5B] [outputLevel 5B] [cpuAvg 5B] [cpuMax 5B] F7
-    uint8_t msg[] = {
-        0xF0, 0x7D, 0x01, 0x42,
-        qIn[0], qIn[1], qIn[2], qIn[3], qIn[4],
-        qOut[0], qOut[1], qOut[2], qOut[3], qOut[4],
-        qAvg[0], qAvg[1], qAvg[2], qAvg[3], qAvg[4],
-        qMax[0], qMax[1], qMax[2], qMax[3], qMax[4],
-        0xF7};
-    SendSysEx(msg, sizeof(msg));
+    msg[p++] = 0xF0;
+    msg[p++] = 0x7D;
+    msg[p++] = 0x01; // sender = firmware
+    msg[p++] = 0x42; // STATUS_UPDATE
+
+    // Pack 4 base Q16.16 values
+    packQ16_16(floatToQ16_16(inputLevel), &msg[p]); p += 5;
+    packQ16_16(floatToQ16_16(outputLevel), &msg[p]); p += 5;
+    packQ16_16(floatToQ16_16(cpuAvg), &msg[p]); p += 5;
+    packQ16_16(floatToQ16_16(cpuMax), &msg[p]); p += 5;
+
+    // Append output param snapshots from slots with readonly output params
+    size_t countPos = p;
+    msg[p++] = 0; // placeholder for numSlotsWithOutput
+    uint8_t numSlotsWithOutput = 0;
+
+    if (board_)
+    {
+        for (int i = 0; i < 12; i++)
+        {
+            auto &s = board_->slots[i];
+            if (!s.effect || !s.enabled)
+                continue;
+
+            OutputParamDesc outputs[8];
+            uint8_t n = s.effect->GetOutputParams(outputs, 8);
+            if (n == 0)
+                continue;
+
+            // Check room: slotIdx(1) + numParams(1) + n * (paramId(1) + Q16.16(5))
+            if (p + 2 + n * 6 >= sizeof(msg) - 1)
+                break;
+
+            msg[p++] = (uint8_t)(i & 0x7F);
+            msg[p++] = (uint8_t)(n & 0x7F);
+
+            for (uint8_t j = 0; j < n; j++)
+            {
+                msg[p++] = outputs[j].id & 0x7F;
+                packQ16_16(floatToQ16_16(outputs[j].value), &msg[p]);
+                p += 5;
+            }
+
+            numSlotsWithOutput++;
+        }
+    }
+
+    msg[countPos] = numSlotsWithOutput & 0x7F;
+    msg[p++] = 0xF7;
+    SendSysEx(msg, p);
 }
 
 void MidiControl::SendSetParam(uint8_t slot, uint8_t paramId, uint8_t value)
@@ -324,6 +363,7 @@ void MidiControl::SendEffectList()
         NeuralAmpEffect::TypeId,
         CabinetIREffect::TypeId,
         TremoloEffect::TypeId,
+        TunerEffect::TypeId,
     };
 
     for (uint8_t typeId : types)
@@ -381,6 +421,12 @@ void MidiControl::SendEffectList()
             for (size_t i = 0; i < effectDescLen; i++)
                 msg[p++] = (uint8_t)(effectDesc[i] & 0x7F);
 
+            // Effect-level flags byte (bit 0 = isGlobal)
+            uint8_t effectFlags = 0;
+            if (meta->isGlobal)
+                effectFlags |= 0x01;
+            msg[p++] = (uint8_t)(effectFlags & 0x7F);
+
             const uint8_t numParams = meta->numParams;
             msg[p++] = (uint8_t)(numParams & 0x7F);
             for (uint8_t pi = 0; pi < numParams; pi++)
@@ -398,6 +444,8 @@ void MidiControl::SendEffectList()
                     flags |= 0x02;
                 if (par.isDisplayParam)
                     flags |= 0x04;
+                if (par.isReadonly)
+                    flags |= 0x08;
                 msg[p++] = (uint8_t)(flags & 0x7F);
 
                 const char *pname = par.name ? par.name : "";

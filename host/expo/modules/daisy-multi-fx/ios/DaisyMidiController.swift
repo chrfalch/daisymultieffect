@@ -610,7 +610,7 @@ final class DaisyMidiController: @unchecked Sendable {
 
         case MidiProtocol.Resp.statusUpdate:
             // 7D <sender> 42 [inputLevel 5B] [outputLevel 5B] [cpuAvg 5B] [cpuMax 5B]
-            // Total: 3 header + 4*5 values = 23 bytes
+            // [numSlotsWithOutput] ([slotIndex] [numParams] ([paramId] [valueQ16.16_5B])xN)xS
             if data.count >= 23 {
                 let inputLevel = MidiProtocol.q16_16ToFloat(MidiProtocol.unpackQ16_16(data[3..<8]))
                 let outputLevel = MidiProtocol.q16_16ToFloat(
@@ -618,11 +618,47 @@ final class DaisyMidiController: @unchecked Sendable {
                 let cpuAvg = MidiProtocol.q16_16ToFloat(MidiProtocol.unpackQ16_16(data[13..<18]))
                 let cpuMax = MidiProtocol.q16_16ToFloat(MidiProtocol.unpackQ16_16(data[18..<23]))
 
+                // Parse output params if present
+                var outputParams: [SlotOutputParams] = []
+                var offset = 23
+                if offset < data.count {
+                    let numSlots = Int(data[offset])
+                    offset += 1
+                    for s in 0..<numSlots {
+                        guard offset + 2 <= data.count else {
+                            log("Output params: slot \(s) - not enough data for header")
+                            break
+                        }
+                        let slotIndex = Int(data[offset])
+                        offset += 1
+                        let numParams = Int(data[offset])
+                        offset += 1
+                        log("Output params: slot \(s) - slotIndex=\(slotIndex), numParams=\(numParams)")
+                        var params: [(id: Int, value: Float)] = []
+                        for p in 0..<numParams {
+                            guard offset + 6 <= data.count else {
+                                log("Output params: param \(p) - not enough data")
+                                break
+                            }
+                            let paramId = Int(data[offset])
+                            offset += 1
+                            let value = unpackQ16_16(data, offset: offset)
+                            offset += 5
+                            log("Output params: slot=\(slotIndex) param id=\(paramId), value=\(value)")
+                            params.append((id: paramId, value: value))
+                        }
+                        outputParams.append(SlotOutputParams(slotIndex: slotIndex, params: params))
+                    }
+                } else {
+                    log("No output params extension (data ends at base)")
+                }
+
                 let status = DeviceStatus(
                     inputLevel: inputLevel,
                     outputLevel: outputLevel,
                     cpuAvg: cpuAvg,
-                    cpuMax: cpuMax
+                    cpuMax: cpuMax,
+                    outputParams: outputParams
                 )
                 onStatusUpdate?(status)
             }
@@ -950,6 +986,12 @@ final class DaisyMidiController: @unchecked Sendable {
             String(bytes: data[offset..<(offset + effectDescLen)], encoding: .ascii) ?? ""
         offset += effectDescLen
 
+        // Effect-level flags byte (bit 0 = isGlobal)
+        guard offset < data.count else { return nil }
+        let effectFlags = data[offset]
+        offset += 1
+        let isGlobal = (effectFlags & 0x01) != 0
+
         guard offset < data.count else { return nil }
         let numParams = Int(data[offset])
         offset += 1
@@ -1016,6 +1058,7 @@ final class DaisyMidiController: @unchecked Sendable {
             }
 
             let isDisplayParam = (flags & 0x04) != 0
+            let isReadonly = (flags & 0x08) != 0
 
             // Parse enum options if flag 0x02 is set
             var enumOptions: [EnumOption]? = nil
@@ -1054,7 +1097,8 @@ final class DaisyMidiController: @unchecked Sendable {
                     description: desc.isEmpty ? nil : desc,
                     unitPrefix: unitPrefix.isEmpty ? nil : unitPrefix,
                     unitSuffix: unitSuffix.isEmpty ? nil : unitSuffix,
-                    isDisplayParam: isDisplayParam
+                    isDisplayParam: isDisplayParam,
+                    isReadonly: isReadonly
                 ))
         }
 
@@ -1063,7 +1107,8 @@ final class DaisyMidiController: @unchecked Sendable {
             name: name,
             shortName: shortName,
             description: effectDesc.isEmpty ? nil : effectDesc,
-            params: params
+            params: params,
+            isGlobal: isGlobal
         )
     }
 

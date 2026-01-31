@@ -8,8 +8,8 @@
  *
  * - Output is always muted.
  * - Uses decimated AMDF (absolute mean difference) to estimate pitch.
- * - No parameters.
- * - Uses fast math helpers for small CPU.
+ * - Readonly output params: Note (enum 0-11) and Cents (-50 to +50).
+ * - Marked isGlobal: takes exclusive audio routing when enabled.
  */
 struct TunerEffect : BaseEffect
 {
@@ -39,6 +39,11 @@ struct TunerEffect : BaseEffect
     float lastPitchHz_ = 0.0f;
     float lastConfidence_ = 0.0f;
 
+    // Derived tuner output: note index (0-11) and cents offset (-50..+50)
+    // -1 = no detection (sentinel for UI to show "--")
+    float lastNoteIndex_ = -1.0f;
+    float lastCentsOffset_ = 0.0f;
+
     const EffectMeta &GetMetadata() const override { return Effects::Tuner::kMeta; }
     uint8_t GetTypeId() const override { return TypeId; }
     ChannelMode GetSupportedModes() const override { return ChannelMode::MonoOrStereo; }
@@ -53,6 +58,8 @@ struct TunerEffect : BaseEffect
         hopCounter_ = 0;
         lastPitchHz_ = 0.0f;
         lastConfidence_ = 0.0f;
+        lastNoteIndex_ = -1.0f;
+        lastCentsOffset_ = 0.0f;
         for (int i = 0; i < kWindowSize; ++i)
             buffer_[i] = 0.0f;
     }
@@ -92,6 +99,15 @@ struct TunerEffect : BaseEffect
     float GetLastPitchHz() const { return lastPitchHz_; }
     float GetLastConfidence() const { return lastConfidence_; }
 
+    uint8_t GetOutputParams(OutputParamDesc *out, uint8_t max) const override
+    {
+        if (max < 2)
+            return 0;
+        out[0] = {0, lastNoteIndex_};
+        out[1] = {1, lastCentsOffset_};
+        return 2;
+    }
+
 private:
     inline float GetSample(int i) const
     {
@@ -129,6 +145,8 @@ private:
         {
             lastPitchHz_ = 0.0f;
             lastConfidence_ = 0.0f;
+            lastNoteIndex_ = -1.0f;
+            lastCentsOffset_ = 0.0f;
             return;
         }
 
@@ -182,5 +200,18 @@ private:
         // Light smoothing for stability
         lastPitchHz_ = (lastPitchHz_ <= 0.0f) ? freq : (0.8f * lastPitchHz_ + 0.2f * freq);
         lastConfidence_ = (0.7f * lastConfidence_) + (0.3f * confidence);
+
+        // Convert Hz to nearest note + cents offset
+        // MIDI note = 12 * log2(hz / 440) + 69, note index = midi % 12
+        if (lastPitchHz_ > 0.0f)
+        {
+            float semitones = 12.0f * FastMath::fastLog2(lastPitchHz_ / 440.0f) + 69.0f;
+            float nearestNote = static_cast<float>(static_cast<int>(semitones + 0.5f));
+            lastCentsOffset_ = (semitones - nearestNote) * 100.0f;
+            int noteIdx = static_cast<int>(nearestNote) % 12;
+            if (noteIdx < 0)
+                noteIdx += 12;
+            lastNoteIndex_ = static_cast<float>(noteIdx);
+        }
     }
 };

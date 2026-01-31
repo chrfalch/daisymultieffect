@@ -18,6 +18,10 @@ interface SliderProps {
   onValueChange?: (value: number) => void;
   onValueChangeEnd?: (value: number) => void;
   updateIntervalMs?: number;
+  /** Disable gesture input (read-only display) */
+  disabled?: boolean;
+  /** Fill from center instead of left edge (useful for bipolar values like -50..+50) */
+  centerOrigin?: boolean;
 }
 
 export const Slider: React.FC<SliderProps> = ({
@@ -31,6 +35,8 @@ export const Slider: React.FC<SliderProps> = ({
   onValueChange,
   onValueChangeEnd,
   updateIntervalMs = 30,
+  disabled = false,
+  centerOrigin = false,
 }) => {
   const width = useSharedValue(0);
   const translateX = useSharedValue(0);
@@ -172,13 +178,19 @@ export const Slider: React.FC<SliderProps> = ({
     runOnJS(finishUpdate)(newValue);
   });
 
-  const gesture = Gesture.Race(panGesture, tapGesture);
+  const gesture = disabled
+    ? Gesture.Tap().enabled(false)
+    : Gesture.Race(panGesture, tapGesture);
 
   const fillStyle = useAnimatedStyle(() => {
-    const fillWidth = valueToPosition(currentValue.value);
-    return {
-      width: fillWidth,
-    };
+    if (centerOrigin) {
+      const center = width.value / 2;
+      const pos = valueToPosition(currentValue.value);
+      const left = Math.min(center, pos);
+      const fillWidth = Math.abs(pos - center);
+      return { left, width: fillWidth };
+    }
+    return { width: valueToPosition(currentValue.value) };
   });
 
   const handleLayout = (e: LayoutChangeEvent) => {

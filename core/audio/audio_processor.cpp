@@ -18,6 +18,7 @@ AudioProcessor::AudioProcessor(TempoSource &tempo)
       fx_neuralamps_{},
       fx_cabinetirs_{},
       fx_tremolos_{},
+      fx_tuners_{},
       delay_next_(0),
       sweep_next_(0),
       dist_next_(0),
@@ -31,7 +32,8 @@ AudioProcessor::AudioProcessor(TempoSource &tempo)
       phaser_next_(0),
       neuralamp_next_(0),
       cabinetir_next_(0),
-      tremolo_next_(0)
+      tremolo_next_(0),
+      tuner_next_(0)
 {
 }
 
@@ -106,6 +108,10 @@ BaseEffect *AudioProcessor::Instantiate(uint8_t typeId, int slotIndex)
         if (tremolo_next_ < kMaxTremolos)
             return &fx_tremolos_[tremolo_next_++];
         return nullptr;
+    case TunerEffect::TypeId:
+        if (tuner_next_ < kMaxTuners)
+            return &fx_tuners_[tuner_next_++];
+        return nullptr;
     default:
         return nullptr;
     }
@@ -128,6 +134,7 @@ void AudioProcessor::ApplyPatch(const PatchWireDesc &pw)
     neuralamp_next_ = 0;
     cabinetir_next_ = 0;
     tremolo_next_ = 0;
+    tuner_next_ = 0;
 
     // Clear all slots
     for (int i = 0; i < 12; i++)
@@ -185,6 +192,24 @@ void AudioProcessor::ProcessFrame(float inL, float inR, float &outL, float &outR
     float inPeak = FastMath::fmax(FastMath::fabs(inL), FastMath::fabs(inR));
     if (inPeak > inputPeakLevel_)
         inputPeakLevel_ = inPeak;
+
+    // Global effect check: if any enabled slot has isGlobal metadata,
+    // route audio exclusively to that slot and skip all others.
+    for (int i = 0; i < 12; i++)
+    {
+        auto &s = board_.slots[i];
+        if (s.effect && s.enabled && s.effect->GetMetadata().isGlobal)
+        {
+            float procL = inL, procR = inR;
+            s.effect->ProcessStereo(procL, procR);
+            outL = procL * outputGain_;
+            outR = procR * outputGain_;
+            float outPeak = FastMath::fmax(FastMath::fabs(outL), FastMath::fabs(outR));
+            if (outPeak > outputPeakLevel_)
+                outputPeakLevel_ = outPeak;
+            return;
+        }
+    }
 
     // Fade time for bypass/enable transitions
     const float fadeSeconds = 0.005f; // 5ms

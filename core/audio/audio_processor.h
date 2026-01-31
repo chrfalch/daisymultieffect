@@ -22,6 +22,7 @@
 #include "effects/neural_amp.h"
 #include "effects/cabinet_ir.h"
 #include "effects/tremolo.h"
+#include "effects/tuner.h"
 
 // Platform-agnostic audio processor.
 // Manages effect instances and processes audio frames.
@@ -151,6 +152,7 @@ private:
     static constexpr int kMaxNeuralAmps = 2; // Neural amps are CPU-intensive
     static constexpr int kMaxCabinetIRs = 2; // Cabinet IRs use convolution
     static constexpr int kMaxTremolos = 4;
+    static constexpr int kMaxTuners = 1;
 
     DelayEffect fx_delays_[kMaxDelays];
     StereoSweepDelayEffect fx_sweeps_[kMaxSweeps];
@@ -166,6 +168,7 @@ private:
     NeuralAmpEffect fx_neuralamps_[kMaxNeuralAmps];
     CabinetIREffect fx_cabinetirs_[kMaxCabinetIRs];
     TremoloEffect fx_tremolos_[kMaxTremolos];
+    TunerEffect fx_tuners_[kMaxTuners];
 
     // Pool counters
     int delay_next_ = 0;
@@ -182,6 +185,7 @@ private:
     int neuralamp_next_ = 0;
     int cabinetir_next_ = 0;
     int tremolo_next_ = 0;
+    int tuner_next_ = 0;
 
     // Input/output gain staging
     // Default: +18dB input boost to bring instrument level signals

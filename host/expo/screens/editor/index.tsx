@@ -3,6 +3,7 @@ import { Text, StyleSheet, ScrollView, Pressable } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useDaisyMultiFX } from "../../hooks/useDaisyMultiFX";
+import { useDeviceStatus } from "../../hooks/useDeviceStatus";
 import { Card } from "../../components/Card";
 import { CardTitle } from "../../components/CardTitle";
 import { GraphView } from "../../components/GraphView";
@@ -74,6 +75,7 @@ export const EditorScreen: React.FC = () => {
     getParamMeta,
     getDisplayLabel,
   } = useDaisyMultiFX();
+  const deviceStatus = useDeviceStatus();
   const [expandedSlot, setExpandedSlot] = React.useState<number>(0);
   const [panelTab, setPanelTab] = React.useState<PanelTab>("parameters");
   const [globalBypass, setGlobalBypassState] = React.useState(false);
@@ -98,6 +100,21 @@ export const EditorScreen: React.FC = () => {
     if (!slot) return undefined;
     return effectMeta.find((e) => e.typeId === slot.typeId)?.description;
   }, [effectMeta, slot?.typeId]);
+
+  // Get all params metadata for the selected effect (needed for readonly params)
+  const selectedEffectParams = React.useMemo(() => {
+    if (!slot) return undefined;
+    return effectMeta.find((e) => e.typeId === slot.typeId)?.params;
+  }, [effectMeta, slot?.typeId]);
+
+  // Extract output params for the selected slot from device status
+  const selectedSlotOutputParams = React.useMemo(() => {
+    if (!slot || !deviceStatus?.outputParams) return undefined;
+    const slotOutput = deviceStatus.outputParams.find(
+      (s) => s.slotIndex === slot.slotIndex,
+    );
+    return slotOutput?.params;
+  }, [deviceStatus?.outputParams, slot?.slotIndex]);
 
   return (
     <GestureHandlerRootView style={styles.flex}>
@@ -219,6 +236,8 @@ export const EditorScreen: React.FC = () => {
                 getParamName={getParamName}
                 getParamMeta={getParamMeta}
                 setSlotParam={setSlotParam}
+                effectParams={selectedEffectParams}
+                outputParams={selectedSlotOutputParams}
               />
             </VStack>
 

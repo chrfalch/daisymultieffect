@@ -125,6 +125,7 @@ struct EffectParamMeta: Equatable {
     var unitPrefix: String?
     var unitSuffix: String?
     var isDisplayParam: Bool = false
+    var isReadonly: Bool = false
 
     func toDictionary() -> [String: Any] {
         var dict: [String: Any] = [
@@ -150,6 +151,9 @@ struct EffectParamMeta: Equatable {
         if isDisplayParam {
             dict["isDisplayParam"] = true
         }
+        if isReadonly {
+            dict["isReadonly"] = true
+        }
         return dict
     }
 }
@@ -161,6 +165,7 @@ struct EffectMeta: Equatable {
     var shortName: String  // 3-character short name
     var description: String?
     var params: [EffectParamMeta]
+    var isGlobal: Bool = false
 
     func toDictionary() -> [String: Any] {
         var dict: [String: Any] = [
@@ -171,6 +176,9 @@ struct EffectMeta: Equatable {
         ]
         if let description, !description.isEmpty {
             dict["description"] = description
+        }
+        if isGlobal {
+            dict["isGlobal"] = true
         }
         return dict
     }
@@ -199,6 +207,19 @@ struct ConnectionStatus {
 
 // MARK: - Device Status
 
+/// Output param snapshot from a single slot
+struct SlotOutputParams {
+    var slotIndex: Int
+    var params: [(id: Int, value: Float)]
+
+    func toDictionary() -> [String: Any] {
+        return [
+            "slotIndex": slotIndex,
+            "params": params.map { ["id": $0.id, "value": Double($0.value)] },
+        ]
+    }
+}
+
 /// Device status with audio levels and CPU load
 struct DeviceStatus {
     /// Input level (linear, 0.0-1.0+)
@@ -209,13 +230,19 @@ struct DeviceStatus {
     var cpuAvg: Float
     /// Maximum CPU load since last reset (0.0-1.0)
     var cpuMax: Float
+    /// Output params from effects (e.g., tuner note/cents)
+    var outputParams: [SlotOutputParams] = []
 
     func toDictionary() -> [String: Any] {
-        return [
+        var dict: [String: Any] = [
             "inputLevel": inputLevel,
             "outputLevel": outputLevel,
             "cpuAvg": cpuAvg,
             "cpuMax": cpuMax,
         ]
+        if !outputParams.isEmpty {
+            dict["outputParams"] = outputParams.map { $0.toDictionary() }
+        }
+        return dict
     }
 }

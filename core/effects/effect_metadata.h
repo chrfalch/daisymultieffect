@@ -361,6 +361,29 @@ namespace Effects
     }
 
     //=========================================================================
+    // Tuner (global, readonly output params)
+    //=========================================================================
+    namespace Tuner
+    {
+        constexpr uint8_t TypeId = 24;
+
+        inline const EnumParamOption kNoteOptions[] = {
+            {0, "C"}, {1, "C#"}, {2, "D"}, {3, "D#"},
+            {4, "E"}, {5, "F"}, {6, "F#"}, {7, "G"},
+            {8, "G#"}, {9, "A"}, {10, "A#"}, {11, "B"},
+        };
+        inline const EnumParamInfo kNoteEnum = {kNoteOptions, 12};
+
+        inline const NumberParamRange kCentsRange = {-50.0f, 50.0f, 0.1f};
+
+        inline const ParamInfo kParams[] = {
+            {0, "Note", "Nearest note", ParamValueKind::Enum, nullptr, &kNoteEnum, nullptr, true, true},
+            {1, "Cents", "Offset from note", ParamValueKind::Number, &kCentsRange, nullptr, "ct", false, true},
+        };
+        inline const ::EffectMeta kMeta = {"Tuner", "TUN", "Chromatic guitar tuner (mutes output).", kParams, 2, true};
+    }
+
+    //=========================================================================
     // Master list of all effects (ordered for UI display)
     //=========================================================================
 
@@ -387,6 +410,7 @@ namespace Effects
         {NeuralAmp::TypeId, &NeuralAmp::kMeta},
         {CabinetIR::TypeId, &CabinetIR::kMeta},
         {Tremolo::TypeId, &Tremolo::kMeta},
+        {Tuner::TypeId, &Tuner::kMeta},
     };
 
     constexpr size_t kNumEffects = sizeof(kAllEffects) / sizeof(kAllEffects[0]);

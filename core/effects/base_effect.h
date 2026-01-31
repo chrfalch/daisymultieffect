@@ -8,6 +8,12 @@ struct ParamDesc
     uint8_t value;
 }; // 0..127 snapshot
 
+struct OutputParamDesc
+{
+    uint8_t id;
+    float value; // Raw float value (Q16.16 encoded for SysEx)
+};
+
 enum class ChannelMode : uint8_t
 {
     Mono,
@@ -49,6 +55,7 @@ struct ParamInfo
     const EnumParamInfo *enumeration; // if Enum
     const char *unit = nullptr;       // Display unit suffix (e.g. "s", "ms", "dB", "Hz")
     bool isDisplayParam = false;      // If true, app shows this param's current value label on the pedal
+    bool isReadonly = false;          // If true, firmware writes value, app displays only
 };
 
 struct EffectMeta
@@ -58,6 +65,7 @@ struct EffectMeta
     const char *description;
     const ParamInfo *params;
     uint8_t numParams;
+    bool isGlobal = false; // If true, routes audio exclusively to this slot when enabled
 };
 
 struct BaseEffect
@@ -80,4 +88,8 @@ struct BaseEffect
     virtual uint8_t GetParamsSnapshot(ParamDesc *out, uint8_t max) const = 0;
 
     virtual const EffectMeta &GetMetadata() const = 0;
+
+    // Return current values for readonly/output params.
+    // Called from main loop (not ISR), safe to read effect state.
+    virtual uint8_t GetOutputParams(OutputParamDesc *out, uint8_t max) const { return 0; }
 };
