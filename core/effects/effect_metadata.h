@@ -330,6 +330,37 @@ namespace Effects
     }
 
     //=========================================================================
+    // Tremolo
+    //=========================================================================
+    namespace Tremolo
+    {
+        constexpr uint8_t TypeId = 23;
+        inline const NumberParamRange kRateRange = {0.5f, 15.0f, 0.1f};
+        inline const NumberParamRange kDepthRange = {0.0f, 100.0f, 1.0f};
+
+        inline const EnumParamOption kShapeOptions[] = {
+            {0, "Sine"},
+            {1, "Triangle"},
+            {2, "Square"},
+        };
+        inline const EnumParamInfo kShapeEnum = {kShapeOptions, 3};
+
+        inline const EnumParamOption kStereoOptions[] = {
+            {0, "Mono"},
+            {1, "Stereo"},
+        };
+        inline const EnumParamInfo kStereoEnum = {kStereoOptions, 2};
+
+        inline const ParamInfo kParams[] = {
+            {0, "Rate", "LFO speed", ParamValueKind::Number, &kRateRange, nullptr, "Hz"},
+            {1, "Depth", "Modulation depth", ParamValueKind::Number, &kDepthRange, nullptr, "%"},
+            {2, "Shape", "LFO waveform", ParamValueKind::Enum, nullptr, &kShapeEnum, nullptr, true},
+            {3, "Stereo", "Mono or stereo panning", ParamValueKind::Enum, nullptr, &kStereoEnum},
+        };
+        inline const ::EffectMeta kMeta = {"Tremolo", "TRM", "Amplitude modulation tremolo.", kParams, 4};
+    }
+
+    //=========================================================================
     // Master list of all effects (ordered for UI display)
     //=========================================================================
 
@@ -355,6 +386,7 @@ namespace Effects
         {Phaser::TypeId, &Phaser::kMeta},
         {NeuralAmp::TypeId, &NeuralAmp::kMeta},
         {CabinetIR::TypeId, &CabinetIR::kMeta},
+        {Tremolo::TypeId, &Tremolo::kMeta},
     };
 
     constexpr size_t kNumEffects = sizeof(kAllEffects) / sizeof(kAllEffects[0]);

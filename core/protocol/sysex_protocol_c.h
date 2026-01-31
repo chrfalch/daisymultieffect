@@ -178,7 +178,8 @@ extern "C"
         SYSEX_EFFECT_FLANGER = 19,
         SYSEX_EFFECT_PHASER = 20,
         SYSEX_EFFECT_NEURAL_AMP = 21,
-        SYSEX_EFFECT_CABINET_IR = 22
+        SYSEX_EFFECT_CABINET_IR = 22,
+        SYSEX_EFFECT_TREMOLO = 23
     };
 
     /* =============================================================================

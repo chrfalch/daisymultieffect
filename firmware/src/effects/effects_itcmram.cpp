@@ -27,6 +27,7 @@
 #include "effects/delay.h"
 #include "effects/stereo_sweep_delay.h"
 #include "effects/stereo_mixer.h"
+#include "effects/tremolo.h"
 
 // ---------------------------------------------------------------------------
 // Reverb: ProcessTank — stereo 4+4 comb filters + 2+2 allpass filters
@@ -347,6 +348,42 @@ void StereoSweepDelayEffect::ProcessStereo(float &l, float &r)
     float dry = 1.0f - mix_, wet = mix_;
     l = inL * dry + wetL * wet;
     r = inR * dry + wetR * wet;
+}
+
+// ---------------------------------------------------------------------------
+// Tremolo: ProcessStereo — LFO-modulated amplitude
+// ---------------------------------------------------------------------------
+ITCMRAM_CODE __attribute__((noinline))
+void TremoloEffect::ProcessStereo(float &l, float &r)
+{
+    // Advance LFO phase
+    lfoPhase_ += lfoInc_;
+    if (lfoPhase_ >= 1.0f)
+        lfoPhase_ -= 1.0f;
+
+    // Compute LFO value (0..1)
+    float lfo = computeLfo(lfoPhase_);
+
+    // Compute gain: 1.0 at lfo=0, (1-depth) at lfo=1
+    float gainL = 1.0f - depth_ * lfo;
+
+    if (stereo_ > 0.5f)
+    {
+        // Stereo mode: opposite-phase LFO for right channel
+        float phaseR = lfoPhase_ + 0.5f;
+        if (phaseR >= 1.0f)
+            phaseR -= 1.0f;
+        float lfoR = computeLfo(phaseR);
+        float gainR = 1.0f - depth_ * lfoR;
+        l *= gainL;
+        r *= gainR;
+    }
+    else
+    {
+        // Mono mode: same modulation on both channels
+        l *= gainL;
+        r *= gainL;
+    }
 }
 
 // ---------------------------------------------------------------------------

@@ -19,6 +19,7 @@
 #include "effects/phaser.h"
 #include "effects/neural_amp.h"
 #include "effects/cabinet_ir.h"
+#include "effects/tremolo.h"
 
 namespace
 {
@@ -322,6 +323,7 @@ void MidiControl::SendEffectList()
         PhaserEffect::TypeId,
         NeuralAmpEffect::TypeId,
         CabinetIREffect::TypeId,
+        TremoloEffect::TypeId,
     };
 
     for (uint8_t typeId : types)
