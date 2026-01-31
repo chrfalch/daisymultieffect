@@ -1219,6 +1219,10 @@ final class DaisyMidiController: @unchecked Sendable {
         onPatchUpdate?(p)
     }
 
+    func setGlobalBypass(bypass: Bool) {
+        sendSysex(MidiProtocol.encodeSetGlobalBypass(bypass: bypass))
+    }
+
     func setInputGain(gainDb: Float) {
         guard var p = patch else { return }
         // Clamp to valid range: 0 to +24 dB

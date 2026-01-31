@@ -50,6 +50,11 @@ public:
     float GetInputGain() const { return inputGain_; }
     float GetOutputGain() const { return outputGain_; }
 
+    // Global bypass: skip all processing, pass audio straight through
+    // with only gain staging applied. Reduces CPU to near-zero.
+    void SetGlobalBypass(bool bypass) { globalBypass_ = bypass; }
+    bool GetGlobalBypass() const { return globalBypass_; }
+
     // Get peak levels (post-gain for input, post-processing for output)
     // Call ResetPeakLevels() after reading to start fresh measurement
     float GetInputPeakLevel() const { return inputPeakLevel_; }
@@ -180,6 +185,7 @@ private:
     // Guitar pickups output ~0.1 peak, this brings it to ~0.8 peak.
     float inputGain_ = 8.0f;  // ~+18dB boost for instrument level input
     float outputGain_ = 1.0f; // Unity output gain
+    bool globalBypass_ = false;
 
     // Peak level tracking (updated per frame)
     float inputPeakLevel_ = 0.0f;  // Post-gain input peak

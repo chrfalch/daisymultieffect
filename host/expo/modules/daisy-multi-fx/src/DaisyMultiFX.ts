@@ -151,6 +151,16 @@ export function setSlotChannelPolicy(
 }
 
 /**
+ * Set global bypass on/off.
+ * When enabled, all processing is skipped and audio passes through
+ * with only gain staging applied. Reduces CPU to near-zero.
+ * @param bypass - true to bypass, false to resume processing
+ */
+export function setGlobalBypass(bypass: boolean): void {
+  DaisyMultiFXModule.setGlobalBypass(bypass);
+}
+
+/**
  * Set input gain (pre-effects).
  * Used to boost instrument-level signals to line level.
  * @param gainDb - Gain in dB (0 to +24 dB)

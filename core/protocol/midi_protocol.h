@@ -46,6 +46,7 @@ namespace daisyfx
             constexpr uint8_t SET_CHANNEL_POLICY = 0x26;
             constexpr uint8_t SET_INPUT_GAIN = 0x27;
             constexpr uint8_t SET_OUTPUT_GAIN = 0x28;
+            constexpr uint8_t SET_GLOBAL_BYPASS = 0x29;
             constexpr uint8_t REQUEST_META = 0x32;
         }
 
@@ -120,6 +121,7 @@ namespace daisyfx
             uint8_t channelPolicy = 0;
             float inputGainDb = 0.0f;  // For SET_INPUT_GAIN
             float outputGainDb = 0.0f; // For SET_OUTPUT_GAIN
+            bool globalBypass = false; // For SET_GLOBAL_BYPASS
             PatchWireDesc patch{};     // For LOAD_PATCH
             bool valid = false;
         };
@@ -302,6 +304,17 @@ namespace daisyfx
         }
 
         /**
+         * Encode SET_GLOBAL_BYPASS command.
+         * Format: F0 7D <sender> 29 <bypass> F7
+         * @param bypass true to bypass all processing, false to resume
+         */
+        inline std::vector<uint8_t> encodeSetGlobalBypass(uint8_t sender, bool bypass)
+        {
+            return {0xF0, MANUFACTURER_ID, sender, Cmd::SET_GLOBAL_BYPASS,
+                    static_cast<uint8_t>(bypass ? 1 : 0), 0xF7};
+        }
+
+        /**
          * Encode SET_OUTPUT_GAIN command.
          * Format: F0 7D <sender> 28 <gainDb_Q16.16_5bytes> F7
          * @param gainDb Output gain in dB (-12 to +12 dB typical)
@@ -456,6 +469,15 @@ namespace daisyfx
                 if (size >= 8)
                 {
                     msg.outputGainDb = unpackQ16_16(&data[3]);
+                    msg.valid = true;
+                }
+                break;
+
+            case Cmd::SET_GLOBAL_BYPASS:
+                // 7D <sender> 29 <bypass>
+                if (size >= 4)
+                {
+                    msg.globalBypass = data[3] != 0;
                     msg.valid = true;
                 }
                 break;

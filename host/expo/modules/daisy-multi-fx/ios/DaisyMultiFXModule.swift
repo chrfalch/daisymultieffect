@@ -112,6 +112,10 @@ public class DaisyMultiFXModule: Module {
                 slot: UInt8(slot), channelPolicy: UInt8(channelPolicy))
         }
 
+        Function("setGlobalBypass") { (bypass: Bool) in
+            self.controller.setGlobalBypass(bypass: bypass)
+        }
+
         Function("setInputGain") { (gainDb: Double) in
             self.controller.setInputGain(gainDb: Float(gainDb))
         }

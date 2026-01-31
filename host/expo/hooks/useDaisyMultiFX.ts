@@ -21,6 +21,7 @@ import {
   setSlotSumToMono,
   setSlotMix,
   setSlotChannelPolicy,
+  setGlobalBypass,
   setInputGain,
   setOutputGain,
   loadPatch,
@@ -63,6 +64,9 @@ export interface UseDaisyMultiFXResult {
   setSlotSumToMono: (slot: number, sumToMono: boolean) => void;
   setSlotMix: (slot: number, dry: number, wet: number) => void;
   setSlotChannelPolicy: (slot: number, channelPolicy: number) => void;
+
+  // Global bypass
+  setGlobalBypass: (bypass: boolean) => void;
 
   // Global gain control
   setInputGain: (gainDb: number) => void;
@@ -337,6 +341,9 @@ export function useDaisyMultiFX(
     setSlotSumToMono,
     setSlotMix,
     setSlotChannelPolicy,
+
+    // Global bypass
+    setGlobalBypass,
 
     // Global gain control
     setInputGain,

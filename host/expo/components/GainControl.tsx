@@ -1,13 +1,15 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Slider } from "./Slider";
 import { HStack, VStack } from "./Stack";
 
 interface GainControlProps {
   inputGainDb: number;
   outputGainDb: number;
+  globalBypass: boolean;
   onInputGainChange: (gainDb: number) => void;
   onOutputGainChange: (gainDb: number) => void;
+  onGlobalBypassChange: (bypass: boolean) => void;
 }
 
 /**
@@ -21,8 +23,10 @@ function formatGainDb(value: number): string {
 export const GainControl: React.FC<GainControlProps> = ({
   inputGainDb,
   outputGainDb,
+  globalBypass,
   onInputGainChange,
   onOutputGainChange,
+  onGlobalBypassChange,
 }) => {
   return (
     <VStack gap={12}>
@@ -51,6 +55,22 @@ export const GainControl: React.FC<GainControlProps> = ({
             onValueChange={onOutputGainChange}
           />
         </View>
+        <Pressable
+          onPress={() => onGlobalBypassChange(!globalBypass)}
+          style={[
+            styles.bypassButton,
+            globalBypass && styles.bypassButtonActive,
+          ]}
+        >
+          <Text
+            style={[
+              styles.bypassButtonText,
+              globalBypass && styles.bypassButtonTextActive,
+            ]}
+          >
+            BYPASS
+          </Text>
+        </Pressable>
       </HStack>
     </VStack>
   );
@@ -59,5 +79,28 @@ export const GainControl: React.FC<GainControlProps> = ({
 const styles = StyleSheet.create({
   sliderContainer: {
     flex: 1,
+  },
+  bypassButton: {
+    backgroundColor: "#E0E0E0",
+    paddingHorizontal: 16,
+    marginVertical: 6,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#E0E0E0",
+    justifyContent: "center",
+    alignItems: "center",
+    alignSelf: "stretch",
+  },
+  bypassButtonActive: {
+    backgroundColor: "#F44336",
+    borderColor: "#D32F2F",
+  },
+  bypassButtonText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#666",
+  },
+  bypassButtonTextActive: {
+    color: "#fff",
   },
 });

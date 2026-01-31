@@ -12,14 +12,16 @@
 #include <cmath>
 #include <cstring>
 // Linker symbols for ITCMRAM code copy (defined in STM32H750IB_custom.lds)
-extern "C" {
+extern "C"
+{
     extern uint32_t _siitcmram_text; // Load address (in QSPI flash)
     extern uint32_t _sitcmram_text;  // Start address (in ITCMRAM)
     extern uint32_t _eitcmram_text;  // End address (in ITCMRAM)
 }
 
 // Linker symbols for DTCMRAM initialized data copy (LUT tables, etc.)
-extern "C" {
+extern "C"
+{
     extern uint32_t _sidtcmram_data; // Load address (in QSPI flash)
     extern uint32_t _sdtcmram_data;  // Start address (in DTCMRAM)
     extern uint32_t _edtcmram_data;  // End address (in DTCMRAM)
@@ -137,7 +139,7 @@ static void AudioCallback(daisy::AudioHandle::InputBuffer in,
 
 int main()
 {
-    g_hw.Init();
+    g_hw.Init(true);
 
     // Copy ITCMRAM code from QSPI flash and enable FTZ/DN float modes
     init_tcmram();
@@ -149,7 +151,7 @@ int main()
 
     g_ui.Init(g_hw, g_processor, g_midi, g_tempoControl);
 
-    constexpr size_t kBlockSize = 48;
+    constexpr size_t kBlockSize = 256;
     g_hw.SetAudioBlockSize(kBlockSize);
 
     // Initialize CPU load meter

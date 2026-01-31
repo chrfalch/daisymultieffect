@@ -31,6 +31,7 @@ enum MidiProtocol {
         static let setChannelPolicy: UInt8 = 0x26
         static let setInputGain: UInt8 = 0x27
         static let setOutputGain: UInt8 = 0x28
+        static let setGlobalBypass: UInt8 = 0x29
         static let requestMeta: UInt8 = 0x32
     }
 
@@ -113,6 +114,11 @@ enum MidiProtocol {
         msg.append(contentsOf: packQ16_16(floatToQ16_16(gainDb)))
         msg.append(0xF7)
         return msg
+    }
+
+    /// Encode SET_GLOBAL_BYPASS command
+    static func encodeSetGlobalBypass(bypass: Bool) -> [UInt8] {
+        [0xF0, manufacturerId, Sender.swift, Cmd.setGlobalBypass, bypass ? 1 : 0, 0xF7]
     }
 
     /// Encode LOAD_PATCH command - sends complete patch in single message (~332 bytes)

@@ -64,6 +64,7 @@ export const EditorScreen: React.FC = () => {
     setSlotSumToMono,
     setSlotMix,
     setSlotChannelPolicy,
+    setGlobalBypass,
     setInputGain,
     setOutputGain,
     getEffectName,
@@ -75,6 +76,15 @@ export const EditorScreen: React.FC = () => {
   } = useDaisyMultiFX();
   const [expandedSlot, setExpandedSlot] = React.useState<number>(0);
   const [panelTab, setPanelTab] = React.useState<PanelTab>("parameters");
+  const [globalBypass, setGlobalBypassState] = React.useState(false);
+
+  const handleGlobalBypassChange = React.useCallback(
+    (bypass: boolean) => {
+      setGlobalBypassState(bypass);
+      setGlobalBypass(bypass);
+    },
+    [setGlobalBypass],
+  );
 
   const selectSlot = (slotIndex: number) => {
     setExpandedSlot(slotIndex);
@@ -127,8 +137,10 @@ export const EditorScreen: React.FC = () => {
               <GainControl
                 inputGainDb={patch.inputGainDb}
                 outputGainDb={patch.outputGainDb}
+                globalBypass={globalBypass}
                 onInputGainChange={setInputGain}
                 onOutputGainChange={setOutputGain}
+                onGlobalBypassChange={handleGlobalBypassChange}
               />
             </VStack>
           </Card>

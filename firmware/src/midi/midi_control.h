@@ -35,6 +35,7 @@ public:
         SetSlotChannelPolicy = 7,
         SetInputGain = 8,
         SetOutputGain = 9,
+        SetGlobalBypass = 10,
     };
 
     void Init(daisy::DaisySeed &hw, AudioProcessor &processor, Board &board, TempoSource &tempo);

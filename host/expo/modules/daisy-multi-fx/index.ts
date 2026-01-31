@@ -30,6 +30,8 @@ export {
   setSlotSumToMono,
   setSlotMix,
   setSlotChannelPolicy,
+  // Global bypass
+  setGlobalBypass,
   // Gain control
   setInputGain,
   setOutputGain,

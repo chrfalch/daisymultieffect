@@ -160,6 +160,14 @@ void AudioProcessor::ApplyPatch(const PatchWireDesc &pw)
 
 void AudioProcessor::ProcessFrame(float inL, float inR, float &outL, float &outR)
 {
+    // Global bypass: pass through with gain staging only, skip all DSP
+    if (globalBypass_)
+    {
+        outL = inL * inputGain_ * outputGain_;
+        outR = inR * inputGain_ * outputGain_;
+        return;
+    }
+
     board_.ResetFrameBuffers();
 
     // Apply input gain staging (boost instrument level to line level)

@@ -85,6 +85,9 @@ extern "C"
         /** Set output gain (dB): F0 7D <sender> 28 <gainDb_Q16.16_5bytes> F7 */
         SYSEX_CMD_SET_OUTPUT_GAIN = 0x28,
 
+        /** Set global bypass: F0 7D <sender> 29 <bypass> F7 (0=off, 1=on) */
+        SYSEX_CMD_SET_GLOBAL_BYPASS = 0x29,
+
         /** Request all effect metadata: F0 7D 32 F7 */
         SYSEX_CMD_REQUEST_EFFECT_META = 0x32
     };

@@ -691,6 +691,15 @@ void MidiControl::HandleSysexMessage(const uint8_t *bytes, size_t len)
         }
         break;
 
+    case 0x29: // set global bypass: F0 7D <sender> 29 <bypass> F7
+        if (payload + 1 <= len)
+        {
+            const uint8_t bypass = bytes[payload] & 0x7F;
+            daisy::ScopedIrqBlocker lock;
+            pending_word_ = PackPending(PendingKind::SetGlobalBypass, 0, 0, bypass);
+        }
+        break;
+
     case 0x14: // load full patch: F0 7D <sender> 14 <numSlots> [slot data...] [buttons...] [gains...] F7
     {
         // Same wire format as PATCH_DUMP (0x13) response
@@ -853,6 +862,13 @@ void MidiControl::ApplyPendingInAudioThread()
     const uint8_t slot = PendingSlotOf(w);
     const uint8_t pid = PendingIdOf(w);
     const uint8_t value = PendingValueOf(w);
+
+    if (kind == PendingKind::SetGlobalBypass)
+    {
+        processor_->SetGlobalBypass(value != 0);
+        return;
+    }
+
     if (kind == PendingKind::None || slot >= 12)
         return;
 
