@@ -21,6 +21,8 @@
 #include "effects/cabinet_ir.h"
 #include "effects/tremolo.h"
 #include "effects/tuner.h"
+#include "effects/pitch_shifter.h"
+#include "effects/shimmer_reverb.h"
 
 namespace
 {
@@ -364,6 +366,8 @@ void MidiControl::SendEffectList()
         CabinetIREffect::TypeId,
         TremoloEffect::TypeId,
         TunerEffect::TypeId,
+        PitchShifterEffect::TypeId,
+        ShimmerReverbEffect::TypeId,
     };
 
     for (uint8_t typeId : types)

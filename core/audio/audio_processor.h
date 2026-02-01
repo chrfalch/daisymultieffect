@@ -23,6 +23,8 @@
 #include "effects/cabinet_ir.h"
 #include "effects/tremolo.h"
 #include "effects/tuner.h"
+#include "effects/pitch_shifter.h"
+#include "effects/shimmer_reverb.h"
 
 // Platform-agnostic audio processor.
 // Manages effect instances and processes audio frames.
@@ -131,6 +133,26 @@ public:
 
     static constexpr int GetMaxCabinetIRs() { return kMaxCabinetIRs; }
 
+    // Pitch shifter buffer binding (L/R delay buffers, kBufSize floats each)
+    void BindPitchShifterBuffers(int index, float *bufL, float *bufR)
+    {
+        if (index >= 0 && index < kMaxPitchShifters)
+            fx_pitchshifters_[index].BindBuffers(bufL, bufR);
+    }
+
+    // Shimmer reverb buffer binding (same structure as reverb + shimmer pitch shifter buf)
+    void BindShimmerReverbBuffers(int index, float *preBuf,
+                                  float *combBufsL[4], float *combBufsR[4],
+                                  float *apBufsL[2], float *apBufsR[2],
+                                  float *shimmerBuf)
+    {
+        if (index >= 0 && index < kMaxShimmerReverbs)
+            fx_shimmerreverbs_[index].BindBuffers(preBuf, combBufsL, combBufsR, apBufsL, apBufsR, shimmerBuf);
+    }
+
+    static constexpr int GetMaxPitchShifters() { return kMaxPitchShifters; }
+    static constexpr int GetMaxShimmerReverbs() { return kMaxShimmerReverbs; }
+
 private:
     BaseEffect *Instantiate(uint8_t typeId, int slotIndex);
 
@@ -153,6 +175,8 @@ private:
     static constexpr int kMaxCabinetIRs = 2; // Cabinet IRs use convolution
     static constexpr int kMaxTremolos = 4;
     static constexpr int kMaxTuners = 1;
+    static constexpr int kMaxPitchShifters = 4;
+    static constexpr int kMaxShimmerReverbs = 2;
 
     DelayEffect fx_delays_[kMaxDelays];
     StereoSweepDelayEffect fx_sweeps_[kMaxSweeps];
@@ -169,6 +193,8 @@ private:
     CabinetIREffect fx_cabinetirs_[kMaxCabinetIRs];
     TremoloEffect fx_tremolos_[kMaxTremolos];
     TunerEffect fx_tuners_[kMaxTuners];
+    PitchShifterEffect fx_pitchshifters_[kMaxPitchShifters];
+    ShimmerReverbEffect fx_shimmerreverbs_[kMaxShimmerReverbs];
 
     // Pool counters
     int delay_next_ = 0;
@@ -186,6 +212,8 @@ private:
     int cabinetir_next_ = 0;
     int tremolo_next_ = 0;
     int tuner_next_ = 0;
+    int pitchshifter_next_ = 0;
+    int shimmerreverb_next_ = 0;
 
     // Input/output gain staging
     // Default: +18dB input boost to bring instrument level signals

@@ -19,6 +19,8 @@ AudioProcessor::AudioProcessor(TempoSource &tempo)
       fx_cabinetirs_{},
       fx_tremolos_{},
       fx_tuners_{},
+      fx_pitchshifters_{},
+      fx_shimmerreverbs_{},
       delay_next_(0),
       sweep_next_(0),
       dist_next_(0),
@@ -33,7 +35,9 @@ AudioProcessor::AudioProcessor(TempoSource &tempo)
       neuralamp_next_(0),
       cabinetir_next_(0),
       tremolo_next_(0),
-      tuner_next_(0)
+      tuner_next_(0),
+      pitchshifter_next_(0),
+      shimmerreverb_next_(0)
 {
 }
 
@@ -112,6 +116,14 @@ BaseEffect *AudioProcessor::Instantiate(uint8_t typeId, int slotIndex)
         if (tuner_next_ < kMaxTuners)
             return &fx_tuners_[tuner_next_++];
         return nullptr;
+    case PitchShifterEffect::TypeId:
+        if (pitchshifter_next_ < kMaxPitchShifters)
+            return &fx_pitchshifters_[pitchshifter_next_++];
+        return nullptr;
+    case ShimmerReverbEffect::TypeId:
+        if (shimmerreverb_next_ < kMaxShimmerReverbs)
+            return &fx_shimmerreverbs_[shimmerreverb_next_++];
+        return nullptr;
     default:
         return nullptr;
     }
@@ -135,6 +147,8 @@ void AudioProcessor::ApplyPatch(const PatchWireDesc &pw)
     cabinetir_next_ = 0;
     tremolo_next_ = 0;
     tuner_next_ = 0;
+    pitchshifter_next_ = 0;
+    shimmerreverb_next_ = 0;
 
     // Clear all slots
     for (int i = 0; i < 12; i++)

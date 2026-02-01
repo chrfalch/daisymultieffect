@@ -17,6 +17,7 @@
 #endif
 
 #include "effects/reverb.h"
+#include "effects/shimmer_reverb.h"
 #include "effects/eq.h"
 #include "effects/phaser.h"
 #include "effects/compressor.h"
@@ -34,6 +35,32 @@
 // ---------------------------------------------------------------------------
 ITCMRAM_CODE __attribute__((noinline))
 void SimpleReverbEffect::ProcessTank(float inL, float inR, float &outL, float &outR)
+{
+    float sL = 0, sR = 0;
+    for (int i = 0; i < 4; i++)
+    {
+        sL += combsL[i].Process(inL);
+        sR += combsR[i].Process(inR);
+    }
+    sL *= 0.25f;
+    sR *= 0.25f;
+    sL = apsL[0].Process(sL);
+    sL = apsL[1].Process(sL);
+    sR = apsR[0].Process(sR);
+    sR = apsR[1].Process(sR);
+    if (sL > 1) sL = 1;
+    if (sL < -1) sL = -1;
+    if (sR > 1) sR = 1;
+    if (sR < -1) sR = -1;
+    outL = sL;
+    outR = sR;
+}
+
+// ---------------------------------------------------------------------------
+// Shimmer Reverb: ProcessTank — stereo 4+4 comb + 2+2 allpass (same as reverb)
+// ---------------------------------------------------------------------------
+ITCMRAM_CODE __attribute__((noinline))
+void ShimmerReverbEffect::ProcessTank(float inL, float inR, float &outL, float &outR)
 {
     float sL = 0, sR = 0;
     for (int i = 0; i < 4; i++)

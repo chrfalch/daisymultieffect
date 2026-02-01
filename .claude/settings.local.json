@@ -17,7 +17,8 @@
       "Bash(basename:*)",
       "Bash(arm-none-eabi-size:*)",
       "Bash(arm-none-eabi-nm:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(cmake --build:*)"
     ]
   }
 }

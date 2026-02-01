@@ -4,6 +4,8 @@
 #include "core/effects/delay.h"
 #include "core/effects/stereo_sweep_delay.h"
 #include "core/effects/reverb.h"
+#include "core/effects/pitch_shifter.h"
+#include "core/effects/shimmer_reverb.h"
 
 #include <memory>
 #include <vector>
@@ -20,6 +22,8 @@ public:
         AllocateDelayBuffers();
         AllocateSweepBuffers();
         AllocateReverbBuffers();
+        AllocatePitchShifterBuffers();
+        AllocateShimmerReverbBuffers();
     }
 
     void BindTo(AudioProcessor &processor)
@@ -39,15 +43,51 @@ public:
         // Bind reverb buffers
         for (int i = 0; i < AudioProcessor::GetMaxReverbs(); i++)
         {
-            float *combPtrs[4] = {
-                reverbComb_[i][0].data(),
-                reverbComb_[i][1].data(),
-                reverbComb_[i][2].data(),
-                reverbComb_[i][3].data()};
-            float *apPtrs[2] = {
-                reverbAp_[i][0].data(),
-                reverbAp_[i][1].data()};
-            processor.BindReverbBuffers(i, reverbPre_[i].data(), combPtrs, apPtrs);
+            float *combPtrsL[4] = {
+                reverbCombL_[i][0].data(),
+                reverbCombL_[i][1].data(),
+                reverbCombL_[i][2].data(),
+                reverbCombL_[i][3].data()};
+            float *combPtrsR[4] = {
+                reverbCombR_[i][0].data(),
+                reverbCombR_[i][1].data(),
+                reverbCombR_[i][2].data(),
+                reverbCombR_[i][3].data()};
+            float *apPtrsL[2] = {
+                reverbApL_[i][0].data(),
+                reverbApL_[i][1].data()};
+            float *apPtrsR[2] = {
+                reverbApR_[i][0].data(),
+                reverbApR_[i][1].data()};
+            processor.BindReverbBuffers(i, reverbPre_[i].data(), combPtrsL, combPtrsR, apPtrsL, apPtrsR);
+        }
+
+        // Bind pitch shifter buffers
+        for (int i = 0; i < AudioProcessor::GetMaxPitchShifters(); i++)
+        {
+            processor.BindPitchShifterBuffers(i, pitchBufL_[i].data(), pitchBufR_[i].data());
+        }
+
+        // Bind shimmer reverb buffers
+        for (int i = 0; i < AudioProcessor::GetMaxShimmerReverbs(); i++)
+        {
+            float *combPtrsL[4] = {
+                shimRevCombL_[i][0].data(),
+                shimRevCombL_[i][1].data(),
+                shimRevCombL_[i][2].data(),
+                shimRevCombL_[i][3].data()};
+            float *combPtrsR[4] = {
+                shimRevCombR_[i][0].data(),
+                shimRevCombR_[i][1].data(),
+                shimRevCombR_[i][2].data(),
+                shimRevCombR_[i][3].data()};
+            float *apPtrsL[2] = {
+                shimRevApL_[i][0].data(),
+                shimRevApL_[i][1].data()};
+            float *apPtrsR[2] = {
+                shimRevApR_[i][0].data(),
+                shimRevApR_[i][1].data()};
+            processor.BindShimmerReverbBuffers(i, shimRevPre_[i].data(), combPtrsL, combPtrsR, apPtrsL, apPtrsR, shimRevPitchBuf_[i].data());
         }
     }
 
@@ -77,12 +117,42 @@ private:
             reverbPre_[i].resize(SimpleReverbEffect::MAX_PRE, 0.0f);
             for (int c = 0; c < 4; c++)
             {
-                reverbComb_[i][c].resize(SimpleReverbEffect::Comb::MAX_DELAY, 0.0f);
+                reverbCombL_[i][c].resize(SimpleReverbEffect::Comb::MAX_DELAY, 0.0f);
+                reverbCombR_[i][c].resize(SimpleReverbEffect::Comb::MAX_DELAY, 0.0f);
             }
             for (int a = 0; a < 2; a++)
             {
-                reverbAp_[i][a].resize(SimpleReverbEffect::Allpass::MAX_DELAY, 0.0f);
+                reverbApL_[i][a].resize(SimpleReverbEffect::Allpass::MAX_DELAY, 0.0f);
+                reverbApR_[i][a].resize(SimpleReverbEffect::Allpass::MAX_DELAY, 0.0f);
             }
+        }
+    }
+
+    void AllocatePitchShifterBuffers()
+    {
+        for (int i = 0; i < AudioProcessor::GetMaxPitchShifters(); i++)
+        {
+            pitchBufL_[i].resize(PitchShifterDsp::kBufSize, 0.0f);
+            pitchBufR_[i].resize(PitchShifterDsp::kBufSize, 0.0f);
+        }
+    }
+
+    void AllocateShimmerReverbBuffers()
+    {
+        for (int i = 0; i < AudioProcessor::GetMaxShimmerReverbs(); i++)
+        {
+            shimRevPre_[i].resize(ShimmerReverbEffect::MAX_PRE, 0.0f);
+            for (int c = 0; c < 4; c++)
+            {
+                shimRevCombL_[i][c].resize(ShimmerReverbEffect::Comb::MAX_DELAY, 0.0f);
+                shimRevCombR_[i][c].resize(ShimmerReverbEffect::Comb::MAX_DELAY, 0.0f);
+            }
+            for (int a = 0; a < 2; a++)
+            {
+                shimRevApL_[i][a].resize(ShimmerReverbEffect::Allpass::MAX_DELAY, 0.0f);
+                shimRevApR_[i][a].resize(ShimmerReverbEffect::Allpass::MAX_DELAY, 0.0f);
+            }
+            shimRevPitchBuf_[i].resize(PitchShifterDsp::kBufSize, 0.0f);
         }
     }
 
@@ -94,8 +164,22 @@ private:
     std::vector<float> sweepBufL_[2];
     std::vector<float> sweepBufR_[2];
 
-    // Reverb buffers
+    // Reverb buffers (stereo L/R)
     std::vector<float> reverbPre_[2];
-    std::vector<float> reverbComb_[2][4];
-    std::vector<float> reverbAp_[2][2];
+    std::vector<float> reverbCombL_[2][4];
+    std::vector<float> reverbCombR_[2][4];
+    std::vector<float> reverbApL_[2][2];
+    std::vector<float> reverbApR_[2][2];
+
+    // Pitch shifter buffers (stereo L/R)
+    std::vector<float> pitchBufL_[4];
+    std::vector<float> pitchBufR_[4];
+
+    // Shimmer reverb buffers (stereo L/R + shimmer pitch shifter)
+    std::vector<float> shimRevPre_[2];
+    std::vector<float> shimRevCombL_[2][4];
+    std::vector<float> shimRevCombR_[2][4];
+    std::vector<float> shimRevApL_[2][2];
+    std::vector<float> shimRevApR_[2][2];
+    std::vector<float> shimRevPitchBuf_[2];
 };

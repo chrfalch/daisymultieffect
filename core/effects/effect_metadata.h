@@ -384,6 +384,50 @@ namespace Effects
     }
 
     //=========================================================================
+    // Pitch Shifter
+    //=========================================================================
+    namespace PitchShifter
+    {
+        constexpr uint8_t TypeId = 25;
+        inline const NumberParamRange kMixRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kPitchRange = {-24.0f, 24.0f, 1.0f};
+        inline const NumberParamRange kFunRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kToneRange = {0.0f, 100.0f, 1.0f};
+        inline const ParamInfo kParams[] = {
+            {0, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr, "%"},
+            {1, "Pitch", "Transposition in semitones", ParamValueKind::Number, &kPitchRange, nullptr, "st"},
+            {2, "Fun", "Random flutter/tape wobble", ParamValueKind::Number, &kFunRange, nullptr, "%"},
+            {3, "Tone", "Post low-pass filter", ParamValueKind::Number, &kToneRange, nullptr, "%"},
+        };
+        inline const ::EffectMeta kMeta = {"Pitch Shifter", "PIT", "Pitch shifter with flutter.", kParams, 4};
+    }
+
+    //=========================================================================
+    // Shimmer Reverb
+    //=========================================================================
+    namespace ShimmerReverb
+    {
+        constexpr uint8_t TypeId = 26;
+        inline const NumberParamRange kMixRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kDecayRange = {20.0f, 95.0f, 1.0f};
+        inline const NumberParamRange kDampRange = {0.0f, 80.0f, 1.0f};
+        inline const NumberParamRange kPreRange = {0.0f, 200.0f, 1.0f};
+        inline const NumberParamRange kSizeRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kShimmerRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kPitchRange = {5.0f, 24.0f, 1.0f};
+        inline const ParamInfo kParams[] = {
+            {0, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr, "%"},
+            {1, "Decay", "Reverb decay", ParamValueKind::Number, &kDecayRange, nullptr, "%"},
+            {2, "Damping", "High damping", ParamValueKind::Number, &kDampRange, nullptr, "%"},
+            {3, "PreDelay", "Pre-delay", ParamValueKind::Number, &kPreRange, nullptr, "ms"},
+            {4, "Size", "Room size", ParamValueKind::Number, &kSizeRange, nullptr, "%"},
+            {5, "Shimmer", "Shimmer feedback amount", ParamValueKind::Number, &kShimmerRange, nullptr, "%"},
+            {6, "Pitch", "Shimmer pitch shift", ParamValueKind::Number, &kPitchRange, nullptr, "st"},
+        };
+        inline const ::EffectMeta kMeta = {"Shimmer Reverb", "SHM", "Reverb with shimmer feedback.", kParams, 7};
+    }
+
+    //=========================================================================
     // Master list of all effects (ordered for UI display)
     //=========================================================================
 
@@ -411,6 +455,8 @@ namespace Effects
         {CabinetIR::TypeId, &CabinetIR::kMeta},
         {Tremolo::TypeId, &Tremolo::kMeta},
         {Tuner::TypeId, &Tuner::kMeta},
+        {PitchShifter::TypeId, &PitchShifter::kMeta},
+        {ShimmerReverb::TypeId, &ShimmerReverb::kMeta},
     };
 
     constexpr size_t kNumEffects = sizeof(kAllEffects) / sizeof(kAllEffects[0]);
