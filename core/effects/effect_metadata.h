@@ -2,6 +2,7 @@
 
 #include "base_effect.h"
 #include <cstdint>
+#include <cstddef>
 
 /**
  * Effect Metadata - Single source of truth for all effect metadata.
