@@ -29,6 +29,7 @@
 #include "effects/stereo_sweep_delay.h"
 #include "effects/stereo_mixer.h"
 #include "effects/tremolo.h"
+#include "effects/leslie.h"
 
 // ---------------------------------------------------------------------------
 // Reverb: ProcessTank — stereo 4+4 comb filters + 2+2 allpass filters
@@ -434,4 +435,121 @@ void StereoMixerEffect::ProcessStereo(float &l, float &r)
 
     l = outL;
     r = outR;
+}
+
+// ---------------------------------------------------------------------------
+// Leslie: ProcessRotor — Doppler + amplitude modulation helper
+// ---------------------------------------------------------------------------
+ITCMRAM_CODE __attribute__((noinline))
+void LeslieEffect::ProcessRotor(float inL, float inR, float angle, float radius,
+                                float *delayBufL, float *delayBufR,
+                                float &outL, float &outR)
+{
+    // Virtual microphones at ±90° (left/right)
+    const float micAngleL = FastMath::kHalfPi;      // 90° left
+    const float micAngleR = -FastMath::kHalfPi;     // -90° right
+    
+    // Calculate Doppler delay in samples
+    float dopplerScale = (radius / SPEED_OF_SOUND) * sampleRate_;
+    
+    // For left channel: angle relative to left microphone
+    float angleRelL = angle - micAngleL;
+    float dopplerDelayL = dopplerScale * FastMath::fastCos(angleRelL);
+    
+    // For right channel: angle relative to right microphone
+    float angleRelR = angle - micAngleR;
+    float dopplerDelayR = dopplerScale * FastMath::fastCos(angleRelR);
+    
+    // Base delay to keep all reads positive
+    float baseDelay = DELAY_BUF_SIZE / 2.0f;
+    float readDelayL = baseDelay + dopplerDelayL;
+    float readDelayR = baseDelay + dopplerDelayR;
+    
+    // Read from delay buffers with interpolation
+    float dopplerL = ReadDelayInterpolated(delayBufL, readDelayL);
+    float dopplerR = ReadDelayInterpolated(delayBufR, readDelayR);
+    
+    // Amplitude modulation (volume changes based on direction)
+    float ampModL = 0.6f + 0.4f * FastMath::fastCos(angleRelL);
+    float ampModR = 0.6f + 0.4f * FastMath::fastCos(angleRelR);
+    
+    // Stereo panning (position in stereo field)
+    float pan = FastMath::fastSin(angle) * separation_;
+    float panL = 0.5f - pan * 0.5f;
+    float panR = 0.5f + pan * 0.5f;
+    
+    // Combine modulations
+    outL = dopplerL * ampModL * panL;
+    outR = dopplerR * ampModR * panR;
+    
+    // Write input to delay buffers
+    delayBufL[delayWriteIdx_] = inL;
+    delayBufR[delayWriteIdx_] = inR;
+}
+
+// ---------------------------------------------------------------------------
+// Leslie: ProcessStereo — Full rotary speaker simulation
+// ---------------------------------------------------------------------------
+ITCMRAM_CODE __attribute__((noinline))
+void LeslieEffect::ProcessStereo(float &l, float &r)
+{
+    float dryL = l, dryR = r;
+    
+    // 1. Optional input drive (soft saturation)
+    if (drive_ > 0.01f)
+    {
+        float driveAmount = drive_ * 3.0f;
+        l = SoftClip(l * (1.0f + driveAmount)) / (1.0f + driveAmount * 0.5f);
+        r = SoftClip(r * (1.0f + driveAmount)) / (1.0f + driveAmount * 0.5f);
+    }
+    
+    // 2. Crossover filtering
+    // Horn path: 4th-order highpass
+    float hornL = hornHP1L_.Process(l);
+    hornL = hornHP2L_.Process(hornL);
+    float hornR = hornHP1R_.Process(r);
+    hornR = hornHP2R_.Process(hornR);
+    
+    // Bass path: 4th-order lowpass
+    float bassL = bassLP1L_.Process(l);
+    bassL = bassLP2L_.Process(bassL);
+    float bassR = bassLP1R_.Process(r);
+    bassR = bassLP2R_.Process(bassR);
+    
+    // 3. Speed smoothing (exponential approach to target)
+    hornSpeed_ += (hornTargetSpeed_ - hornSpeed_) * accelCoeff_;
+    bassSpeed_ += (bassTargetSpeed_ - bassSpeed_) * accelCoeff_;
+    
+    // 4. Update rotor angles
+    float hornInc = FastMath::kTwoPi * hornSpeed_ / sampleRate_;
+    float bassInc = FastMath::kTwoPi * bassSpeed_ / sampleRate_;
+    hornAngle_ += hornInc;
+    bassAngle_ += bassInc;
+    
+    // Wrap angles to [0, 2π)
+    if (hornAngle_ >= FastMath::kTwoPi)
+        hornAngle_ -= FastMath::kTwoPi;
+    if (bassAngle_ >= FastMath::kTwoPi)
+        bassAngle_ -= FastMath::kTwoPi;
+    
+    // 5. Process horn rotor
+    float hornOutL, hornOutR;
+    ProcessRotor(hornL, hornR, hornAngle_, HORN_RADIUS,
+                hornDelayL_, hornDelayR_, hornOutL, hornOutR);
+    
+    // 6. Process bass rotor
+    float bassOutL, bassOutR;
+    ProcessRotor(bassL, bassR, bassAngle_, BASS_RADIUS,
+                bassDelayL_, bassDelayR_, bassOutL, bassOutR);
+    
+    // 7. Mix rotors with level controls
+    float wetL = hornOutL * hornLevel_ + bassOutL * bassLevel_;
+    float wetR = hornOutR * hornLevel_ + bassOutR * bassLevel_;
+    
+    // 8. Wet/dry mix
+    l = dryL * (1.0f - mix_) + wetL * mix_;
+    r = dryR * (1.0f - mix_) + wetR * mix_;
+    
+    // Advance delay write pointer
+    delayWriteIdx_ = (delayWriteIdx_ + 1) % DELAY_BUF_SIZE;
 }
