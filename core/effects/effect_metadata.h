@@ -435,11 +435,11 @@ namespace Effects
     {
         constexpr uint8_t TypeId = 27;
 
-        // Speed mode enum options
+        // Speed mode enum options (reordered so default 0 = Slow)
         inline const EnumParamOption kSpeedOptions[] = {
-            {0, "Stop"},
-            {1, "Slow"},
-            {2, "Fast"},
+            {0, "Slow"},
+            {1, "Fast"},
+            {2, "Stop"},
         };
         inline const EnumParamInfo kSpeedEnum = {kSpeedOptions, 3};
 

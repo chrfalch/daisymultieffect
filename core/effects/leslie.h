@@ -39,12 +39,12 @@ struct LeslieEffect : BaseEffect
     static constexpr float HORN_RADIUS = 0.19f;     // meters
     static constexpr float BASS_RADIUS = 0.24f;     // meters
     
-    // Speed modes
+    // Speed modes (ordered so 0=Slow is default)
     enum SpeedMode
     {
-        SPEED_STOP = 0,
-        SPEED_SLOW = 1,
-        SPEED_FAST = 2
+        SPEED_SLOW = 0,
+        SPEED_FAST = 1,
+        SPEED_STOP = 2
     };
     
     // Delay buffers for Doppler effect (4 total: horn L/R, bass L/R)
@@ -66,21 +66,21 @@ struct LeslieEffect : BaseEffect
     float hornTargetSpeed_ = 0.0f; // Target horn speed
     float bassTargetSpeed_ = 0.0f; // Target bass speed
     
-    // Speed presets (Hz)
-    float hornSpeedSlow_ = 0.7f;   // 42 RPM
-    float hornSpeedFast_ = 6.67f;  // 400 RPM
-    float bassSpeedSlow_ = 0.5f;   // 30 RPM
-    float bassSpeedFast_ = 5.4f;   // 324 RPM
+    // Speed presets (Hz) - musical speeds for guitar
+    float hornSpeedSlow_ = 0.5f;   // 30 RPM
+    float hornSpeedFast_ = 1.4f;   // 84 RPM
+    float bassSpeedSlow_ = 0.4f;   // 24 RPM
+    float bassSpeedFast_ = 1.2f;   // 72 RPM
     
     // Acceleration smoothing coefficient
     float accelCoeff_ = 0.01f;
     
     // Parameters (normalized 0-1, except speed mode which is 0-2)
-    SpeedMode speedMode_ = SPEED_STOP;
+    SpeedMode speedMode_ = SPEED_SLOW;  // Default to slow rotation so effect is audible
     float acceleration_ = 0.4f;   // id1: 0.1-5.0s mapped to 0-1
     float separation_ = 0.5f;     // id2: stereo width 0-100%
-    float hornLevel_ = 0.7f;      // id3: horn mix 0-100%
-    float bassLevel_ = 0.7f;      // id4: bass mix 0-100%
+    float hornLevel_ = 1.0f;      // id3: horn mix 0-100%
+    float bassLevel_ = 1.0f;      // id4: bass mix 0-100%
     float crossover_ = 0.5f;      // id5: 400-1200 Hz mapped to 0-1
     float drive_ = 0.0f;          // id6: input saturation 0-100%
     float mix_ = 1.0f;            // id7: wet/dry 0-100%
@@ -95,11 +95,11 @@ struct LeslieEffect : BaseEffect
     {
         sampleRate_ = sr;
         
-        // Calculate speed presets from RPM
-        hornSpeedSlow_ = 42.0f / 60.0f;   // 42 RPM -> Hz
-        hornSpeedFast_ = 400.0f / 60.0f;  // 400 RPM -> Hz
-        bassSpeedSlow_ = 30.0f / 60.0f;   // 30 RPM -> Hz
-        bassSpeedFast_ = 324.0f / 60.0f;  // 324 RPM -> Hz
+        // Speed presets - musical speeds for guitar
+        hornSpeedSlow_ = 0.5f;   // 30 RPM
+        bassSpeedSlow_ = 0.4f;   // 24 RPM
+        hornSpeedFast_ = 1.7f;   // 102 RPM
+        bassSpeedFast_ = 1.4f;   // 84 RPM
         
         // Clear delay buffers
         for (int i = 0; i < DELAY_BUF_SIZE; i++)
@@ -114,9 +114,7 @@ struct LeslieEffect : BaseEffect
         // Reset rotor state
         hornAngle_ = 0.0f;
         bassAngle_ = 0.0f;
-        hornSpeed_ = 0.0f;
-        bassSpeed_ = 0.0f;
-        
+
         // Reset crossover filters
         hornHP1L_.Reset();
         hornHP2L_.Reset();
@@ -126,24 +124,30 @@ struct LeslieEffect : BaseEffect
         bassLP2L_.Reset();
         bassLP1R_.Reset();
         bassLP2R_.Reset();
-        
+
         // Initialize filters and parameters
         UpdateCrossover();
         UpdateAcceleration();
         UpdateTargetSpeeds();
+
+        // Start rotors at target speed for immediate effect
+        hornSpeed_ = hornTargetSpeed_;
+        bassSpeed_ = bassTargetSpeed_;
     }
     
     void SetParam(uint8_t id, float v) override
     {
         switch (id)
         {
-        case 0: // Speed mode (0=stop, 1=slow, 2=fast)
+        case 0: // Speed mode (0=slow, 1=fast, 2=stop)
             {
-                int mode = (int)(v * 2.0f + 0.5f); // Map 0-1 to 0-2
-                if (mode < 0) mode = 0;
+                // Match Neural Amp pattern: v is 0-1 scaled from MIDI 0-127
+                // For 3 enum values, map v*127 to index 0-2
+                int mode = (int)(v * 127.0f + 0.5f);
                 if (mode > 2) mode = 2;
                 speedMode_ = (SpeedMode)mode;
                 UpdateTargetSpeeds();
+                // Let acceleration smoothing handle the speed change
             }
             break;
         case 1: // Acceleration (0.1-5.0s)
@@ -176,7 +180,8 @@ struct LeslieEffect : BaseEffect
     {
         if (max < 8)
             return 0;
-        out[0] = {0, (uint8_t)(((int)speedMode_ / 2.0f) * 127.0f + 0.5f)};
+        // Speed mode: return enum index directly (0, 1, or 2)
+        out[0] = {0, (uint8_t)speedMode_};
         out[1] = {1, (uint8_t)(acceleration_ * 127.0f + 0.5f)};
         out[2] = {2, (uint8_t)(separation_ * 127.0f + 0.5f)};
         out[3] = {3, (uint8_t)(hornLevel_ * 127.0f + 0.5f)};
@@ -319,49 +324,47 @@ private:
                      float &outL, float &outR)
 #if !defined(DAISY_SEED_BUILD)
     {
-        // Virtual microphones at ±90° (left/right)
-        const float micAngleL = FastMath::kHalfPi;      // 90° left
-        const float micAngleR = -FastMath::kHalfPi;     // -90° right
+        // Write input to delay buffers first
+        delayBufL[delayWriteIdx_] = inL;
+        delayBufR[delayWriteIdx_] = inR;
 
         // Calculate Doppler delay in samples
-        // delay = (radius / speedOfSound) * cos(angle_relative_to_mic) * sampleRate
+        // delay = (radius / speedOfSound) * cos(angle) * sampleRate
         float dopplerScale = (radius / SPEED_OF_SOUND) * sampleRate_;
-
-        // For left channel: angle relative to left microphone
-        float angleRelL = angle - micAngleL;
-        float dopplerDelayL = dopplerScale * FastMath::fastCos(angleRelL);
-
-        // For right channel: angle relative to right microphone
-        float angleRelR = angle - micAngleR;
-        float dopplerDelayR = dopplerScale * FastMath::fastCos(angleRelR);
+        float dopplerOffset = dopplerScale * FastMath::fastCos(angle);
 
         // Base delay to keep all reads positive
         float baseDelay = DELAY_BUF_SIZE / 2.0f;
-        float readDelayL = baseDelay + dopplerDelayL;
-        float readDelayR = baseDelay + dopplerDelayR;
+        float readDelay = baseDelay + dopplerOffset;
 
-        // Read from delay buffers with interpolation
-        float dopplerL = ReadDelayInterpolated(delayBufL, readDelayL);
-        float dopplerR = ReadDelayInterpolated(delayBufR, readDelayR);
+        // Read from delay buffers with interpolation (same delay for both channels)
+        float dopplerL = ReadDelayInterpolated(delayBufL, readDelay);
+        float dopplerR = ReadDelayInterpolated(delayBufR, readDelay);
 
-        // Amplitude modulation (volume changes based on direction)
-        // 0.6 + 0.4*cos(angle_rel) gives range [0.2, 1.0]
-        float ampModL = 0.6f + 0.4f * FastMath::fastCos(angleRelL);
-        float ampModR = 0.6f + 0.4f * FastMath::fastCos(angleRelR);
+        // Amplitude modulation: speaker facing listener = louder
+        // Range [0.7, 1.3] centered at unity gain
+        float ampMod = 1.0f + 0.3f * FastMath::fastCos(angle);
 
-        // Stereo panning (position in stereo field)
-        // sin(angle) gives L/R position, scaled by separation
-        float pan = FastMath::fastSin(angle) * separation_;
-        float panL = 0.5f - pan * 0.5f; // 0=full left, 1=full right
-        float panR = 0.5f + pan * 0.5f;
+        // Apply amplitude modulation
+        float modL = dopplerL * ampMod;
+        float modR = dopplerR * ampMod;
 
-        // Combine modulations
-        outL = dopplerL * ampModL * panL;
-        outR = dopplerR * ampModR * panR;
+        // Stereo placement based on rotor angle
+        // sin(angle) gives position: -1 = left, +1 = right
+        float pan = FastMath::fastSin(angle);
 
-        // Write input to delay buffers
-        delayBufL[delayWriteIdx_] = inL;
-        delayBufR[delayWriteIdx_] = inR;
+        // Stereo crossfade controlled by separation parameter
+        // separation=0: mono (no stereo movement)
+        // separation=1: full stereo panning
+        float panAmount = pan * separation_;
+
+        // Equal-power-ish panning that maintains unity gain at center
+        // Left gets more when pan is negative, right gets more when positive
+        float gainL = 1.0f - panAmount * 0.5f;  // 0.5 to 1.5
+        float gainR = 1.0f + panAmount * 0.5f;  // 0.5 to 1.5
+
+        outL = modL * gainL;
+        outR = modR * gainR;
     }
 #else
     ; // Firmware: defined in effects_itcmram.cpp (ITCMRAM-placed)
