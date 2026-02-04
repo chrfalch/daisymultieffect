@@ -3,26 +3,9 @@
 #include <cstring>
 
 #include "audio/audio_processor.h"
+#include "effects/effect_metadata.h"
 #include "effects/effect_registry.h"
 #include "midi/sysex_utils.h"
-
-#include "effects/delay.h"
-#include "effects/stereo_sweep_delay.h"
-#include "effects/overdrive.h"
-#include "effects/stereo_mixer.h"
-#include "effects/reverb.h"
-#include "effects/compressor.h"
-#include "effects/chorus.h"
-#include "effects/noise_gate.h"
-#include "effects/eq.h"
-#include "effects/flanger.h"
-#include "effects/phaser.h"
-#include "effects/neural_amp.h"
-#include "effects/cabinet_ir.h"
-#include "effects/tremolo.h"
-#include "effects/tuner.h"
-#include "effects/pitch_shifter.h"
-#include "effects/shimmer_reverb.h"
 
 namespace
 {
@@ -350,29 +333,17 @@ void MidiControl::SendEffectList()
     // V2 (name + params): F0 7D 35 <typeId> <nameLen> <name...> <numParams>
     //    (paramId kind nameLen name...)xN
     // F7
-    const uint8_t types[] = {
-        DelayEffect::TypeId,
-        StereoSweepDelayEffect::TypeId,
-        OverdriveEffect::TypeId,
-        StereoMixerEffect::TypeId,
-        SimpleReverbEffect::TypeId,
-        CompressorEffect::TypeId,
-        ChorusEffect::TypeId,
-        NoiseGateEffect::TypeId,
-        GraphicEQEffect::TypeId,
-        FlangerEffect::TypeId,
-        PhaserEffect::TypeId,
-        NeuralAmpEffect::TypeId,
-        CabinetIREffect::TypeId,
-        TremoloEffect::TypeId,
-        TunerEffect::TypeId,
-        PitchShifterEffect::TypeId,
-        ShimmerReverbEffect::TypeId,
-    };
 
-    for (uint8_t typeId : types)
+    // Dynamically iterate over all registered effects from effect_metadata.h
+    for (size_t i = 0; i < Effects::kNumEffects; ++i)
     {
-        const EffectMeta *meta = EffectRegistry::Lookup(typeId);
+        const uint8_t typeId = Effects::kAllEffects[i].typeId;
+
+        // Skip the "Off" effect (TypeId 0) - it's just a bypass state
+        if (typeId == Effects::Off::TypeId)
+            continue;
+
+        const EffectMeta *meta = Effects::kAllEffects[i].meta;
         if (!meta || !meta->name)
             continue;
 
