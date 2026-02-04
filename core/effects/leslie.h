@@ -317,51 +317,55 @@ private:
     void ProcessRotor(float inL, float inR, float angle, float radius,
                      float *delayBufL, float *delayBufR,
                      float &outL, float &outR)
+#if !defined(DAISY_SEED_BUILD)
     {
         // Virtual microphones at ±90° (left/right)
         const float micAngleL = FastMath::kHalfPi;      // 90° left
         const float micAngleR = -FastMath::kHalfPi;     // -90° right
-        
+
         // Calculate Doppler delay in samples
         // delay = (radius / speedOfSound) * cos(angle_relative_to_mic) * sampleRate
         float dopplerScale = (radius / SPEED_OF_SOUND) * sampleRate_;
-        
+
         // For left channel: angle relative to left microphone
         float angleRelL = angle - micAngleL;
         float dopplerDelayL = dopplerScale * FastMath::fastCos(angleRelL);
-        
+
         // For right channel: angle relative to right microphone
         float angleRelR = angle - micAngleR;
         float dopplerDelayR = dopplerScale * FastMath::fastCos(angleRelR);
-        
+
         // Base delay to keep all reads positive
         float baseDelay = DELAY_BUF_SIZE / 2.0f;
         float readDelayL = baseDelay + dopplerDelayL;
         float readDelayR = baseDelay + dopplerDelayR;
-        
+
         // Read from delay buffers with interpolation
         float dopplerL = ReadDelayInterpolated(delayBufL, readDelayL);
         float dopplerR = ReadDelayInterpolated(delayBufR, readDelayR);
-        
+
         // Amplitude modulation (volume changes based on direction)
         // 0.6 + 0.4*cos(angle_rel) gives range [0.2, 1.0]
         float ampModL = 0.6f + 0.4f * FastMath::fastCos(angleRelL);
         float ampModR = 0.6f + 0.4f * FastMath::fastCos(angleRelR);
-        
+
         // Stereo panning (position in stereo field)
         // sin(angle) gives L/R position, scaled by separation
         float pan = FastMath::fastSin(angle) * separation_;
         float panL = 0.5f - pan * 0.5f; // 0=full left, 1=full right
         float panR = 0.5f + pan * 0.5f;
-        
+
         // Combine modulations
         outL = dopplerL * ampModL * panL;
         outR = dopplerR * ampModR * panR;
-        
+
         // Write input to delay buffers
         delayBufL[delayWriteIdx_] = inL;
         delayBufR[delayWriteIdx_] = inR;
     }
+#else
+    ; // Firmware: defined in effects_itcmram.cpp (ITCMRAM-placed)
+#endif
     
     // Read from delay buffer with linear interpolation
     float ReadDelayInterpolated(float *buf, float delaySamples)
