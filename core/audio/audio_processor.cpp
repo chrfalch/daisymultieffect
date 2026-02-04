@@ -21,6 +21,7 @@ AudioProcessor::AudioProcessor(TempoSource &tempo)
       fx_tuners_{},
       fx_pitchshifters_{},
       fx_shimmerreverbs_{},
+      fx_leslies_{},
       delay_next_(0),
       sweep_next_(0),
       dist_next_(0),
@@ -37,7 +38,8 @@ AudioProcessor::AudioProcessor(TempoSource &tempo)
       tremolo_next_(0),
       tuner_next_(0),
       pitchshifter_next_(0),
-      shimmerreverb_next_(0)
+      shimmerreverb_next_(0),
+      leslie_next_(0)
 {
 }
 
@@ -124,6 +126,10 @@ BaseEffect *AudioProcessor::Instantiate(uint8_t typeId, int slotIndex)
         if (shimmerreverb_next_ < kMaxShimmerReverbs)
             return &fx_shimmerreverbs_[shimmerreverb_next_++];
         return nullptr;
+    case LeslieEffect::TypeId:
+        if (leslie_next_ < kMaxLeslies)
+            return &fx_leslies_[leslie_next_++];
+        return nullptr;
     default:
         return nullptr;
     }
@@ -149,6 +155,7 @@ void AudioProcessor::ApplyPatch(const PatchWireDesc &pw)
     tuner_next_ = 0;
     pitchshifter_next_ = 0;
     shimmerreverb_next_ = 0;
+    leslie_next_ = 0;
 
     // Clear all slots
     for (int i = 0; i < 12; i++)

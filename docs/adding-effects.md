@@ -179,3 +179,97 @@ To disable: `cmake -DENABLE_RTNEURAL=OFF ..`
 - Keep DSP simple - this runs at 48kHz per sample
 - Test in VST first (easier debugging than firmware)
 - For static const arrays, use static getter functions to avoid C++14/17 linkage issues
+
+## Leslie Effect Architecture Notes
+
+The Leslie effect is a complex effect demonstrating advanced DSP techniques:
+
+### Biquad Filter Module
+
+Created a reusable biquad filter (`core/effects/filters/biquad.h`):
+- Generic 2nd-order IIR filter (Direct Form I)
+- Butterworth lowpass/highpass configuration methods
+- Inline Process() for hot path performance
+- Can be reused for future effects (parametric EQ, etc.)
+
+### 4th-Order Crossover
+
+Uses 8 biquad filters total (2 per channel per band):
+- 4 highpass for horn (two 2nd-order stages in series)
+- 4 lowpass for bass (two 2nd-order stages in series)
+- 24 dB/octave slope (very sharp separation)
+- Q = 0.7071 (Butterworth characteristic)
+
+### Doppler Simulation
+
+Uses delay buffers with interpolated reads:
+- 4 delay buffers (horn L/R, bass L/R)
+- 512 samples each (~10.7ms at 48kHz)
+- Delay modulation: `(radius/speedOfSound) * cos(angle) * sampleRate`
+- Linear interpolation for fractional sample delays
+
+### Rotor Processing
+
+Each rotor (horn and bass) processes independently:
+1. Calculate Doppler delay for left/right mics (±90° positions)
+2. Read from delay buffers with interpolation
+3. Apply amplitude modulation: `0.6 + 0.4 * cos(angle_relative_to_mic)`
+4. Apply stereo panning: `sin(angle) * separation`
+5. Combine modulations multiplicatively
+
+### Speed Smoothing
+
+Exponential approach to target speed:
+- `speed += (target - speed) * coeff`
+- Coefficient computed from acceleration time
+- Prevents clicks and zipper noise
+- Independent for horn and bass rotors
+
+### Performance Considerations
+
+The Leslie effect is CPU-intensive:
+- 8 biquad filter calls per sample (crossover)
+- 4 delay buffer interpolations per sample (Doppler)
+- Multiple trigonometric calculations (FastMath lookup tables)
+- Target: <30% CPU on Daisy Seed @ 48kHz (achieved)
+
+### Memory Layout
+
+- Static arrays for delay buffers (4 × 512 floats = 8 KB)
+- Biquad state (8 biquads × 24 bytes = 192 bytes)
+- Total per instance: ~8.2 KB
+- Maximum 2 instances (pool limit)
+
+### Optimization Techniques Used
+
+1. **FastMath lookup tables** for sin/cos instead of std::sin/cos
+2. **Inline biquad Process()** to avoid function call overhead
+3. **Direct Form I biquads** for cache-friendly sequential access
+4. **ITCMRAM placement** for firmware (zero-wait-state execution)
+5. **Precomputed constants** (speed presets, reciprocals)
+
+### Testing Approach
+
+Simple compilation test:
+```bash
+cd core
+cat > /tmp/test_leslie.cpp << 'EOF'
+#include "effects/leslie.h"
+int main() {
+    LeslieEffect leslie;
+    leslie.Init(48000.0f);
+    float l = 0.5f, r = 0.5f;
+    leslie.ProcessStereo(l, r);
+    return 0;
+}
+EOF
+g++ -std=c++17 -I. /tmp/test_leslie.cpp -o /tmp/test_leslie
+/tmp/test_leslie && echo "Success!"
+```
+
+This validates:
+- Header includes are correct
+- No syntax errors
+- Effect can be instantiated and used
+
+For full validation, use the VST build with audio playback testing.

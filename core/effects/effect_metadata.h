@@ -2,6 +2,7 @@
 
 #include "base_effect.h"
 #include <cstdint>
+#include <cstddef>
 
 /**
  * Effect Metadata - Single source of truth for all effect metadata.
@@ -428,6 +429,41 @@ namespace Effects
     }
 
     //=========================================================================
+    // Leslie (Rotating Speaker Simulator)
+    //=========================================================================
+    namespace Leslie
+    {
+        constexpr uint8_t TypeId = 27;
+
+        // Speed mode enum options (reordered so default 0 = Slow)
+        inline const EnumParamOption kSpeedOptions[] = {
+            {0, "Slow"},
+            {1, "Fast"},
+            {2, "Stop"},
+        };
+        inline const EnumParamInfo kSpeedEnum = {kSpeedOptions, 3};
+
+        inline const NumberParamRange kAccelRange = {0.1f, 5.0f, 0.1f};
+        inline const NumberParamRange kSeparationRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kLevelRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kCrossoverRange = {400.0f, 1200.0f, 10.0f};
+        inline const NumberParamRange kDriveRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kMixRange = {0.0f, 100.0f, 1.0f};
+
+        inline const ParamInfo kParams[] = {
+            {0, "Speed", "Stop/Slow/Fast", ParamValueKind::Enum, nullptr, &kSpeedEnum, nullptr, true},
+            {1, "Accel", "Acceleration time", ParamValueKind::Number, &kAccelRange, nullptr, "s"},
+            {2, "Separation", "Stereo width", ParamValueKind::Number, &kSeparationRange, nullptr, "%"},
+            {3, "Horn Level", "Horn rotor level", ParamValueKind::Number, &kLevelRange, nullptr, "%"},
+            {4, "Bass Level", "Bass rotor level", ParamValueKind::Number, &kLevelRange, nullptr, "%"},
+            {5, "Crossover", "Crossover frequency", ParamValueKind::Number, &kCrossoverRange, nullptr, "Hz"},
+            {6, "Drive", "Input saturation", ParamValueKind::Number, &kDriveRange, nullptr, "%"},
+            {7, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr, "%"},
+        };
+        inline const ::EffectMeta kMeta = {"Leslie", "LES", "Rotating speaker cabinet simulator with Doppler and AM.", kParams, 8};
+    }
+
+    //=========================================================================
     // Master list of all effects (ordered for UI display)
     //=========================================================================
 
@@ -457,6 +493,7 @@ namespace Effects
         {Tuner::TypeId, &Tuner::kMeta},
         {PitchShifter::TypeId, &PitchShifter::kMeta},
         {ShimmerReverb::TypeId, &ShimmerReverb::kMeta},
+        {Leslie::TypeId, &Leslie::kMeta},
     };
 
     constexpr size_t kNumEffects = sizeof(kAllEffects) / sizeof(kAllEffects[0]);

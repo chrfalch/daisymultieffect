@@ -25,6 +25,7 @@
 #include "effects/tuner.h"
 #include "effects/pitch_shifter.h"
 #include "effects/shimmer_reverb.h"
+#include "effects/leslie.h"
 
 // Platform-agnostic audio processor.
 // Manages effect instances and processes audio frames.
@@ -152,6 +153,7 @@ public:
 
     static constexpr int GetMaxPitchShifters() { return kMaxPitchShifters; }
     static constexpr int GetMaxShimmerReverbs() { return kMaxShimmerReverbs; }
+    static constexpr int GetMaxLeslies() { return kMaxLeslies; }
 
 private:
     BaseEffect *Instantiate(uint8_t typeId, int slotIndex);
@@ -177,6 +179,7 @@ private:
     static constexpr int kMaxTuners = 1;
     static constexpr int kMaxPitchShifters = 4;
     static constexpr int kMaxShimmerReverbs = 2;
+    static constexpr int kMaxLeslies = 2; // Leslie effects are CPU-intensive
 
     DelayEffect fx_delays_[kMaxDelays];
     StereoSweepDelayEffect fx_sweeps_[kMaxSweeps];
@@ -195,6 +198,7 @@ private:
     TunerEffect fx_tuners_[kMaxTuners];
     PitchShifterEffect fx_pitchshifters_[kMaxPitchShifters];
     ShimmerReverbEffect fx_shimmerreverbs_[kMaxShimmerReverbs];
+    LeslieEffect fx_leslies_[kMaxLeslies];
 
     // Pool counters
     int delay_next_ = 0;
@@ -214,6 +218,7 @@ private:
     int tuner_next_ = 0;
     int pitchshifter_next_ = 0;
     int shimmerreverb_next_ = 0;
+    int leslie_next_ = 0;
 
     // Input/output gain staging
     // Default: +18dB input boost to bring instrument level signals
