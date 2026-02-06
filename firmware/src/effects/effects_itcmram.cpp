@@ -30,6 +30,7 @@
 #include "effects/stereo_mixer.h"
 #include "effects/tremolo.h"
 #include "effects/leslie.h"
+#include "effects/looper.h"
 
 // ---------------------------------------------------------------------------
 // Reverb: ProcessTank — stereo 4+4 comb filters + 2+2 allpass filters
@@ -587,4 +588,127 @@ void LeslieEffect::ProcessStereo(float &l, float &r)
 
     // Advance delay write pointer
     delayWriteIdx_ = (delayWriteIdx_ + 1) % DELAY_BUF_SIZE;
+}
+
+// ---------------------------------------------------------------------------
+// Looper: ProcessStereo — Record/playback/overdub with seamless looping
+// ---------------------------------------------------------------------------
+ITCMRAM_CODE __attribute__((noinline))
+void LooperEffect::ProcessStereo(float &l, float &r)
+{
+    if (!bufL_ || !bufR_)
+        return;
+    
+    float outL = 0.0f;
+    float outR = 0.0f;
+    
+    switch (state_)
+    {
+    case State::Idle:
+        // Pass through
+        outL = l;
+        outR = r;
+        break;
+        
+    case State::Recording:
+        // Record input to buffer
+        if (writePos_ < MAX_SAMPLES)
+        {
+            bufL_[writePos_] = l;
+            bufR_[writePos_] = r;
+            writePos_++;
+        }
+        else
+        {
+            // Buffer full, stop recording and start playing
+            loopLength_ = MAX_SAMPLES;
+            readPos_ = 0;
+            state_ = State::Playing;
+        }
+        // Pass through during recording
+        outL = l;
+        outR = r;
+        break;
+        
+    case State::Playing:
+        // Play back loop
+        if (loopLength_ > 0)
+        {
+            // Apply crossfade at loop boundaries for seamless looping
+            float playL = bufL_[readPos_];
+            float playR = bufR_[readPos_];
+            
+            // Crossfade at loop start/end
+            if (readPos_ < FADE_SAMPLES)
+            {
+                // Fade in from end
+                float fadeIn = (float)readPos_ / (float)FADE_SAMPLES;
+                int endPos = loopLength_ - FADE_SAMPLES + readPos_;
+                if (endPos >= 0 && endPos < loopLength_)
+                {
+                    float fadeOut = 1.0f - fadeIn;
+                    playL = playL * fadeIn + bufL_[endPos] * fadeOut;
+                    playR = playR * fadeIn + bufR_[endPos] * fadeOut;
+                }
+            }
+            
+            outL = l + playL * level_;
+            outR = r + playR * level_;
+            
+            readPos_++;
+            if (readPos_ >= loopLength_)
+                readPos_ = 0;
+        }
+        else
+        {
+            // No loop, pass through
+            outL = l;
+            outR = r;
+        }
+        break;
+        
+    case State::Overdubbing:
+        // Play back and record simultaneously with feedback
+        if (loopLength_ > 0)
+        {
+            // Read existing content
+            float playL = bufL_[readPos_];
+            float playR = bufR_[readPos_];
+            
+            // Apply crossfade at loop boundaries
+            if (readPos_ < FADE_SAMPLES)
+            {
+                float fadeIn = (float)readPos_ / (float)FADE_SAMPLES;
+                int endPos = loopLength_ - FADE_SAMPLES + readPos_;
+                if (endPos >= 0 && endPos < loopLength_)
+                {
+                    float fadeOut = 1.0f - fadeIn;
+                    playL = playL * fadeIn + bufL_[endPos] * fadeOut;
+                    playR = playR * fadeIn + bufR_[endPos] * fadeOut;
+                }
+            }
+            
+            // Mix new input with existing (overdub with feedback)
+            bufL_[readPos_] = playL * feedback_ + l;
+            bufR_[readPos_] = playR * feedback_ + r;
+            
+            // Output is mix of input and playback
+            outL = l + playL * level_;
+            outR = r + playR * level_;
+            
+            readPos_++;
+            if (readPos_ >= loopLength_)
+                readPos_ = 0;
+        }
+        else
+        {
+            // No loop, pass through
+            outL = l;
+            outR = r;
+        }
+        break;
+    }
+    
+    l = outL;
+    r = outR;
 }

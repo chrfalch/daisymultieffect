@@ -464,6 +464,35 @@ namespace Effects
     }
 
     //=========================================================================
+    // Looper (Record/Playback/Overdub)
+    //=========================================================================
+    namespace Looper
+    {
+        constexpr uint8_t TypeId = 28;
+
+        inline const NumberParamRange kLevelRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kFeedbackRange = {0.0f, 100.0f, 1.0f};
+
+        // Action parameter is a trigger value that maps to different operations:
+        // 0.0-0.2: Stop/Idle
+        // 0.2-0.4: Record toggle
+        // 0.4-0.6: Play
+        // 0.6-0.8: Overdub
+        // 0.8-1.0: Clear
+        inline const NumberParamRange kActionRange = {0.0f, 100.0f, 1.0f};
+
+        inline const ParamInfo kParams[] = {
+            {0, "Level", "Playback level", ParamValueKind::Number, &kLevelRange, nullptr, "%"},
+            {1, "Feedback", "Overdub feedback amount", ParamValueKind::Number, &kFeedbackRange, nullptr, "%"},
+            {2, "Action", "Control action (0=stop, 25=rec, 50=play, 75=overdub, 100=clear)", ParamValueKind::Number, &kActionRange, nullptr, "%"},
+            {3, "State", "Current state (0=idle, 1=rec, 2=play, 3=overdub)", ParamValueKind::Number, nullptr, nullptr, nullptr, true, true},
+            {4, "Loop Length", "Loop duration", ParamValueKind::Number, nullptr, nullptr, "s", false, true},
+            {5, "Position", "Playback position", ParamValueKind::Number, nullptr, nullptr, "%", false, true},
+        };
+        inline const ::EffectMeta kMeta = {"Looper", "LPR", "Record, playback, and overdub loops up to 60 seconds.", kParams, 6};
+    }
+
+    //=========================================================================
     // Master list of all effects (ordered for UI display)
     //=========================================================================
 
@@ -494,6 +523,7 @@ namespace Effects
         {PitchShifter::TypeId, &PitchShifter::kMeta},
         {ShimmerReverb::TypeId, &ShimmerReverb::kMeta},
         {Leslie::TypeId, &Leslie::kMeta},
+        {Looper::TypeId, &Looper::kMeta},
     };
 
     constexpr size_t kNumEffects = sizeof(kAllEffects) / sizeof(kAllEffects[0]);
