@@ -158,11 +158,12 @@ private:
      */
     float Perlin1D(float x) const
     {
-        // Find lattice coordinate
-        int X = static_cast<int>(floorf(x)) & 255;
+        // Find lattice coordinate and handle negative values properly
+        float xFloor = floorf(x);
+        int X = (static_cast<int>(xFloor) & 0xFF);  // Bitwise AND handles both positive and negative
         
-        // Relative position within cell
-        x -= floorf(x);
+        // Relative position within cell [0, 1)
+        x -= xFloor;
         
         // Compute fade curve value
         float u = fade(x);

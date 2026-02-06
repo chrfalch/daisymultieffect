@@ -123,14 +123,16 @@ float modulatedDelay = baseDelay + speedMod * modulationAmount;
 
 The `GetTapeSpeed()` method returns a float value with these characteristics:
 
-- **Range**: Approximately -1.0 to +1.0, but not strictly bounded
+- **Range**: Approximately -0.5 to +0.5 with default parameters (not strictly bounded)
 - **Mean**: Near 0 over time
 - **Distribution**: Smooth, continuous variations (not random noise)
 - **Temporal coherence**: Strongly correlated between adjacent samples
 
-Typical output statistics (measured over 1 second at 48kHz with default parameters):
-- Range: ~0.8 to 1.2
-- Average absolute value: ~0.3 to 0.4
+Typical output statistics (measured over 10 seconds at 48kHz with default parameters: wow_rate=0.5Hz, flutter_rate=3.0Hz, wow_depth=1.0, flutter_depth=0.5):
+- Min: ~-0.41
+- Max: ~+0.37
+- Range: ~0.78
+- Mean: ~0 (close to zero over time)
 
 ## Performance Considerations
 
