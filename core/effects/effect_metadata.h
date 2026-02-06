@@ -489,7 +489,7 @@ namespace Effects
             {4, "Loop Length", "Loop duration", ParamValueKind::Number, nullptr, nullptr, "s", false, true},
             {5, "Position", "Playback position", ParamValueKind::Number, nullptr, nullptr, "%", false, true},
         };
-        inline const ::EffectMeta kMeta = {"Looper", "LPR", "Record, playback, and overdub loops up to 60 seconds.", kParams, 6};
+        inline const ::EffectMeta kMeta = {"Looper", "LPR", "Record, playback, and overdub loops up to 30 seconds.", kParams, 6};
     }
 
     //=========================================================================

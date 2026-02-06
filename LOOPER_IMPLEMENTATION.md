@@ -7,7 +7,7 @@ A complete looper pedal effect has been implemented for the DaisyMultiFX multi-e
 ## What Was Implemented
 
 ### Core DSP (`core/effects/looper.h`)
-- 60-second stereo recording capability
+- 30-second stereo recording capability
 - Seamless looping with crossfade at boundaries
 - State machine: Idle → Recording → Playing ↔ Overdubbing
 - Overdubbing with adjustable feedback
@@ -28,7 +28,7 @@ A complete looper pedal effect has been implemented for the DaisyMultiFX multi-e
 - Added counter reset in ApplyPatch()
 
 ### Firmware Integration
-- **static_defs.cpp**: SDRAM buffer allocation (23MB)
+- **static_defs.cpp**: SDRAM buffer allocation (11.5MB)
 - **effects_itcmram.cpp**: High-performance ProcessStereo() implementation
 - Buffers bound via BindProcessorBuffers()
 
@@ -39,10 +39,10 @@ A complete looper pedal effect has been implemented for the DaisyMultiFX multi-e
 
 ## Memory Requirements
 
-- **SDRAM**: 23 MB (2,880,000 samples × 2 channels × 4 bytes)
+- **SDRAM**: 11.5 MB (1,440,000 samples × 2 channels × 4 bytes)
 - **SRAM**: ~1 KB (state variables)
 - **Pool Size**: 1 instance maximum
-- **Total Available**: 64 MB SDRAM (36% used by single looper)
+- **Total Available**: 64 MB SDRAM (18% used by single looper)
 
 ## CPU Performance (Estimated)
 
@@ -171,7 +171,7 @@ patch.slots[5].params[2].value = 0;    // Action = Idle
 1. **Single instance**: Only one looper can be active (memory constraint)
 2. **No undo**: Cannot recover previous overdub layer
 3. **Fixed length**: Loop length set by first recording
-4. **60-second maximum**: Buffer size limit
+4. **30-second maximum**: Buffer size limit
 
 ## Future Enhancements
 

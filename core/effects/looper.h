@@ -7,7 +7,7 @@
 
 // Looper pedal effect with recording, playback, and overdubbing
 // Features:
-// - Record up to 60 seconds stereo
+// - Record up to 30 seconds stereo
 // - Seamless loop playback with crossfade
 // - Overdubbing with adjustable feedback
 // - Clear and undo functionality
@@ -15,8 +15,8 @@ struct LooperEffect : BaseEffect
 {
     static constexpr uint8_t TypeId = Effects::Looper::TypeId;
     
-    // Buffer size: 60 seconds at 48kHz stereo = 2,880,000 samples per channel
-    static constexpr int MAX_SAMPLES = 48000 * 60;
+    // Buffer size: 30 seconds at 48kHz stereo = 1,440,000 samples per channel
+    static constexpr int MAX_SAMPLES = 48000 * 30;
     
     enum class State : uint8_t
     {

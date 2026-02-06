@@ -43,7 +43,7 @@ DSY_SDRAM_BSS float g_shimRevApL[kMaxShimmerReverbs][2][ShimmerReverbEffect::All
 DSY_SDRAM_BSS float g_shimRevApR[kMaxShimmerReverbs][2][ShimmerReverbEffect::Allpass::MAX_DELAY];
 DSY_SDRAM_BSS float g_shimRevPitchBuf[kMaxShimmerReverbs][PitchShifterDsp::kBufSize];
 
-// LooperEffect: 1 instance x 2 channels x MAX_SAMPLES (60s @ 48kHz = ~23MB)
+// LooperEffect: 1 instance x 2 channels x MAX_SAMPLES (30s @ 48kHz = ~11.5MB)
 static constexpr int kMaxLoopers = 1;
 DSY_SDRAM_BSS float g_looperBufL[kMaxLoopers][LooperEffect::MAX_SAMPLES];
 DSY_SDRAM_BSS float g_looperBufR[kMaxLoopers][LooperEffect::MAX_SAMPLES];

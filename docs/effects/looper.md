@@ -1,10 +1,10 @@
 # Looper Effect
 
-The Looper is a recording/playback/overdubbing effect that allows you to record up to 60 seconds of stereo audio, play it back in a seamless loop, and layer additional recordings on top via overdubbing.
+The Looper is a recording/playback/overdubbing effect that allows you to record up to 30 seconds of stereo audio, play it back in a seamless loop, and layer additional recordings on top via overdubbing.
 
 ## Features
 
-- **60-second stereo recording** at 48kHz (2,880,000 samples per channel)
+- **30-second stereo recording** at 48kHz (1,440,000 samples per channel)
 - **Seamless looping** with crossfade at loop boundaries (eliminates clicks)
 - **Overdubbing** with adjustable feedback (0-100%)
 - **State machine**: Idle → Recording → Playing ↔ Overdubbing
@@ -13,7 +13,7 @@ The Looper is a recording/playback/overdubbing effect that allows you to record 
 
 ## Memory Requirements
 
-- **SDRAM**: 23 MB (2 channels × 2,880,000 samples × 4 bytes)
+- **SDRAM**: 11.5 MB (2 channels × 1,440,000 samples × 4 bytes)
 - **Pool size**: 1 instance maximum (due to memory constraints)
 - **SRAM**: Minimal (~1KB for state variables)
 
@@ -121,7 +121,7 @@ The looper uses a 10ms (480 samples at 48kHz) crossfade at the loop boundary to 
 ┌─────────────────────────────────────────────────┐
 │  SDRAM Buffer (per channel)                     │
 │  ┌────────────────────────────────────────────┐ │
-│  │ 2,880,000 samples (60 seconds @ 48kHz)    │ │
+│  │ 1,440,000 samples (30 seconds @ 48kHz)    │ │
 │  │                                            │ │
 │  │  ┌────────┬──────────────────────┬─────┐  │ │
 │  │  │ Active │      Loop Content    │Empty│  │ │
@@ -192,7 +192,7 @@ Use output parameters for visual feedback:
 ### Memory Safety
 
 - All buffer accesses are bounds-checked
-- Recording automatically stops at 60 seconds and transitions to Playing
+- Recording automatically stops at 30 seconds and transitions to Playing
 - Buffer overflow is impossible (MAX_SAMPLES hard limit)
 
 ### Latency
@@ -228,7 +228,7 @@ Possible improvements for future versions:
 
 ### Memory Full (Recording Stops Early)
 
-- **Cause**: Reached 60-second limit
+- **Cause**: Reached 30-second limit
 - **Solution**: Clear loop and record shorter phrase
 
 ### Overdub Gets Quieter Each Pass

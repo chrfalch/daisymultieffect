@@ -53,7 +53,7 @@ Any state → Idle: Set Action to Stop (0-19%) or Clear (80-100%)
 
 ## Memory Requirements
 
-- **Buffer size**: 23 MB SDRAM (60 seconds stereo @ 48kHz)
+- **Buffer size**: 11.5 MB SDRAM (30 seconds stereo @ 48kHz)
 - **Max instances**: 1
 - **Pool constant**: `kMaxLoopers = 1`
 
@@ -119,7 +119,7 @@ float position = outputs[2].value;
 const EffectMeta& meta = Effects::Looper::kMeta;
 // meta.name = "Looper"
 // meta.shortName = "LPR"
-// meta.description = "Record, playback, and overdub loops up to 60 seconds."
+// meta.description = "Record, playback, and overdub loops up to 30 seconds."
 // meta.numParams = 6
 ```
 
@@ -150,7 +150,7 @@ Assumes 10,000 cycles/sample total budget.
 | Clicks at loop boundary | Non-periodic content | Reduce Level parameter |
 | Overdub too loud | Feedback too high | Reduce Feedback to 70-80% |
 | Overdub too quiet | Feedback too low | Increase Feedback to 85-95% |
-| Recording stops early | 60s limit reached | Clear and record shorter |
+| Recording stops early | 30s limit reached | Clear and record shorter |
 | No playback | Loop not recorded | Record first, then play |
 
 ## See Also
