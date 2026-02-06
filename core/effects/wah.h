@@ -78,12 +78,13 @@ private:
         currentFreq_ = minFreq * std::pow(maxFreq / minFreq, position_);
         
         // Set bandpass filter with high Q for wah characteristic
-        // Q of 10-15 gives the classic wah resonance
+        // Q of 12 gives the classic wah resonance
         SetBandpass(currentFreq_, 12.0f, sampleRate_);
     }
 
     // Configure as bandpass filter with adjustable Q
     // Based on RBJ Audio EQ Cookbook formulas
+    // Note: Uses local pi constant for consistency with Biquad's SetLowpass/SetHighpass methods
     void SetBandpass(float fc, float Q, float fs)
     {
         const float pi = 3.14159265358979323846f;
