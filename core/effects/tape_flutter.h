@@ -1,7 +1,7 @@
 
 #pragma once
 #include <cstdint>
-#include <cmath>
+#include "fast_math.h"
 
 /**
  * Tape Flutter Utility
@@ -159,7 +159,7 @@ private:
     float Perlin1D(float x) const
     {
         // Find lattice coordinate and handle negative values properly
-        float xFloor = floorf(x);
+        float xFloor = FastMath::ffloor(x);
         int X = (static_cast<int>(xFloor) & 0xFF);  // Bitwise AND handles both positive and negative
         
         // Relative position within cell [0, 1)

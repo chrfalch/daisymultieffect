@@ -9,7 +9,7 @@ Based on the implementation from: https://github.com/bkshepherd/DaisySeedProject
 ## Features
 
 - **Header-only**: No separate compilation needed, just include the header
-- **No dependencies**: Uses only standard C++ (cstdint, cmath)
+- **Minimal dependencies**: Uses only FastMath utilities and standard C++ (cstdint)
 - **Efficient**: Suitable for real-time audio processing on embedded hardware
 - **Perlin noise based**: Uses Ken Perlin's permutation table for natural randomness
 - **Two-component modulation**: Separate wow (slow) and flutter (fast) components
