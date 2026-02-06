@@ -17,6 +17,8 @@ The Looper is a recording/playback/overdubbing effect that allows you to record 
 - **Pool size**: 1 instance maximum (due to memory constraints)
 - **SRAM**: Minimal (~1KB for state variables)
 
+> **Note**: The maximum loop duration (30 seconds by default) can be easily configured. See [Looper Configuration Guide](looper-configuration.md) for details on changing the duration and memory impact.
+
 ## Parameters
 
 ### Input Parameters
@@ -245,4 +247,5 @@ Possible improvements for future versions:
 
 - [Adding Effects](../adding-effects.md) - How to add new effects
 - [Delay Effect](delay.md) - Similar time-based effect
+- [Looper Configuration](looper-configuration.md) - How to change max loop duration
 - [Architecture](../../architecture.md) - Overall system design

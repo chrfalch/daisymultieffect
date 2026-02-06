@@ -7,7 +7,7 @@ A complete looper pedal effect has been implemented for the DaisyMultiFX multi-e
 ## What Was Implemented
 
 ### Core DSP (`core/effects/looper.h`)
-- 30-second stereo recording capability
+- 30-second stereo recording capability (configurable via `LOOPER_DURATION_SECONDS`)
 - Seamless looping with crossfade at boundaries
 - State machine: Idle → Recording → Playing ↔ Overdubbing
 - Overdubbing with adjustable feedback
@@ -34,8 +34,20 @@ A complete looper pedal effect has been implemented for the DaisyMultiFX multi-e
 
 ### Documentation
 1. **looper.md** - Complete technical documentation
-2. **looper-examples.md** - 8 practical code examples
-3. **looper-quick-ref.md** - Quick reference guide
+2. **looper-configuration.md** - Guide to changing loop duration
+3. **looper-examples.md** - 8 practical code examples
+4. **looper-quick-ref.md** - Quick reference guide
+
+## Configuration
+
+The looper's maximum duration can be easily changed by modifying the `LOOPER_DURATION_SECONDS` constant in `core/effects/looper.h`. See [looper-configuration.md](docs/effects/looper-configuration.md) for details.
+
+**Current default**: 30 seconds (11.5 MB)
+
+**Common alternatives**:
+- 15 seconds = 5.8 MB
+- 45 seconds = 17.3 MB
+- 60 seconds = 23 MB
 
 ## Memory Requirements
 

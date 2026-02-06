@@ -15,8 +15,24 @@ struct LooperEffect : BaseEffect
 {
     static constexpr uint8_t TypeId = Effects::Looper::TypeId;
     
+    // ===========================================================================
+    // LOOPER CONFIGURATION - Adjust duration here
+    // ===========================================================================
+    // Change LOOPER_DURATION_SECONDS to modify max loop time
+    // Memory usage = LOOPER_DURATION_SECONDS × 48000 samples/s × 2 channels × 4 bytes
+    //
+    // Memory requirements at different durations:
+    //   10 seconds = ~3.8 MB SDRAM
+    //   20 seconds = ~7.7 MB SDRAM  
+    //   30 seconds = ~11.5 MB SDRAM (current default)
+    //   45 seconds = ~17.3 MB SDRAM
+    //   60 seconds = ~23 MB SDRAM
+    //
+    // Note: Daisy Seed has 64 MB SDRAM total. Consider other effects when adjusting.
+    // ===========================================================================
+    static constexpr int LOOPER_DURATION_SECONDS = 30;
+    static constexpr int MAX_SAMPLES = 48000 * LOOPER_DURATION_SECONDS;
     // Buffer size: 30 seconds at 48kHz stereo = 1,440,000 samples per channel
-    static constexpr int MAX_SAMPLES = 48000 * 30;
     
     enum class State : uint8_t
     {

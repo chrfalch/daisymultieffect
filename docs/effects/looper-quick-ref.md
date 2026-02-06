@@ -56,6 +56,9 @@ Any state → Idle: Set Action to Stop (0-19%) or Clear (80-100%)
 - **Buffer size**: 11.5 MB SDRAM (30 seconds stereo @ 48kHz)
 - **Max instances**: 1
 - **Pool constant**: `kMaxLoopers = 1`
+- **Configurable**: Duration can be changed via `LOOPER_DURATION_SECONDS` in `looper.h`
+
+See [Looper Configuration Guide](looper-configuration.md) for how to change the duration.
 
 ## Code Snippets
 
@@ -156,5 +159,6 @@ Assumes 10,000 cycles/sample total budget.
 ## See Also
 
 - [Looper Documentation](looper.md) - Complete documentation
+- [Looper Configuration](looper-configuration.md) - How to change max loop duration
 - [Looper Examples](looper-examples.md) - Usage examples
 - [Adding Effects](../adding-effects.md) - Effect architecture
