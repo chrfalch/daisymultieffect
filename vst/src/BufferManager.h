@@ -3,6 +3,7 @@
 #include "core/audio/audio_processor.h"
 #include "core/effects/delay.h"
 #include "core/effects/stereo_sweep_delay.h"
+#include "core/effects/tape_delay.h"
 #include "core/effects/reverb.h"
 #include "core/effects/pitch_shifter.h"
 #include "core/effects/shimmer_reverb.h"
@@ -21,6 +22,7 @@ public:
         // Pre-allocate all buffers
         AllocateDelayBuffers();
         AllocateSweepBuffers();
+        AllocateTapeDelayBuffers();
         AllocateReverbBuffers();
         AllocatePitchShifterBuffers();
         AllocateShimmerReverbBuffers();
@@ -38,6 +40,12 @@ public:
         for (int i = 0; i < AudioProcessor::GetMaxSweeps(); i++)
         {
             processor.BindSweepBuffers(i, sweepBufL_[i].data(), sweepBufR_[i].data());
+        }
+
+        // Bind tape delay buffers
+        for (int i = 0; i < AudioProcessor::GetMaxTapeDelays(); i++)
+        {
+            processor.BindTapeDelayBuffers(i, tapeDelayBufL_[i].data(), tapeDelayBufR_[i].data());
         }
 
         // Bind reverb buffers
@@ -110,6 +118,15 @@ private:
         }
     }
 
+    void AllocateTapeDelayBuffers()
+    {
+        for (int i = 0; i < AudioProcessor::GetMaxTapeDelays(); i++)
+        {
+            tapeDelayBufL_[i].resize(TapeDelayEffect::MAX_SAMPLES, 0.0f);
+            tapeDelayBufR_[i].resize(TapeDelayEffect::MAX_SAMPLES, 0.0f);
+        }
+    }
+
     void AllocateReverbBuffers()
     {
         for (int i = 0; i < AudioProcessor::GetMaxReverbs(); i++)
@@ -163,6 +180,10 @@ private:
     // Sweep delay buffers
     std::vector<float> sweepBufL_[2];
     std::vector<float> sweepBufR_[2];
+
+    // Tape delay buffers
+    std::vector<float> tapeDelayBufL_[2];
+    std::vector<float> tapeDelayBufR_[2];
 
     // Reverb buffers (stereo L/R)
     std::vector<float> reverbPre_[2];
