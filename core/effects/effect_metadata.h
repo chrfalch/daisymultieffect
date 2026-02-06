@@ -463,6 +463,26 @@ namespace Effects
         inline const ::EffectMeta kMeta = {"Leslie", "LES", "Rotating speaker cabinet simulator with Doppler and AM.", kParams, 8};
     }
 
+    // Tape Delay - Delay with analog tape wow/flutter modulation
+    namespace TapeDelay
+    {
+        constexpr uint8_t TypeId = 28;
+
+        inline const NumberParamRange kFbRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kMixRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kCharRange = {0.0f, 100.0f, 1.0f};
+
+        inline const ParamInfo kParams[] = {
+            {0, "Time", "Delay time (free-running)", ParamValueKind::Number, &Delay::kTimeRange, nullptr, "s"},
+            {1, "Division", "Beat division index", ParamValueKind::Number, nullptr, nullptr},
+            {2, "Synced", "0/1 tempo synced", ParamValueKind::Number, nullptr, nullptr},
+            {3, "Feedback", "Delay feedback", ParamValueKind::Number, &kFbRange, nullptr, "%"},
+            {4, "Mix", "Wet/dry mix", ParamValueKind::Number, &kMixRange, nullptr, "%"},
+            {5, "Character", "Tape wow/flutter amount", ParamValueKind::Number, &kCharRange, nullptr, "%"},
+        };
+        inline const ::EffectMeta kMeta = {"Tape Delay", "TPD", "Delay with analog tape wow and flutter modulation.", kParams, 6};
+    }
+
     //=========================================================================
     // Master list of all effects (ordered for UI display)
     //=========================================================================
@@ -494,6 +514,7 @@ namespace Effects
         {PitchShifter::TypeId, &PitchShifter::kMeta},
         {ShimmerReverb::TypeId, &ShimmerReverb::kMeta},
         {Leslie::TypeId, &Leslie::kMeta},
+        {TapeDelay::TypeId, &TapeDelay::kMeta},
     };
 
     constexpr size_t kNumEffects = sizeof(kAllEffects) / sizeof(kAllEffects[0]);
