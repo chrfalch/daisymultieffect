@@ -26,6 +26,7 @@
 #include "effects/pitch_shifter.h"
 #include "effects/shimmer_reverb.h"
 #include "effects/leslie.h"
+#include "effects/wah.h"
 
 // Platform-agnostic audio processor.
 // Manages effect instances and processes audio frames.
@@ -180,6 +181,7 @@ private:
     static constexpr int kMaxPitchShifters = 4;
     static constexpr int kMaxShimmerReverbs = 2;
     static constexpr int kMaxLeslies = 2; // Leslie effects are CPU-intensive
+    static constexpr int kMaxWahs = 4;
 
     DelayEffect fx_delays_[kMaxDelays];
     StereoSweepDelayEffect fx_sweeps_[kMaxSweeps];
@@ -199,6 +201,7 @@ private:
     PitchShifterEffect fx_pitchshifters_[kMaxPitchShifters];
     ShimmerReverbEffect fx_shimmerreverbs_[kMaxShimmerReverbs];
     LeslieEffect fx_leslies_[kMaxLeslies];
+    WahEffect fx_wahs_[kMaxWahs];
 
     // Pool counters
     int delay_next_ = 0;
@@ -219,6 +222,7 @@ private:
     int pitchshifter_next_ = 0;
     int shimmerreverb_next_ = 0;
     int leslie_next_ = 0;
+    int wah_next_ = 0;
 
     // Input/output gain staging
     // Default: +18dB input boost to bring instrument level signals

@@ -588,3 +588,14 @@ void LeslieEffect::ProcessStereo(float &l, float &r)
     // Advance delay write pointer
     delayWriteIdx_ = (delayWriteIdx_ + 1) % DELAY_BUF_SIZE;
 }
+
+//=============================================================================
+// WahEffect::ProcessStereo - ITCM placement for real-time performance
+//=============================================================================
+void WahEffect::ProcessStereo(float &l, float &r)
+{
+    // Process through bandpass filter
+    l = filterL_.Process(l);
+    r = filterR_.Process(r);
+}
+

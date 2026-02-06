@@ -429,6 +429,19 @@ namespace Effects
     }
 
     //=========================================================================
+    // Wah (Wah-wah pedal)
+    //=========================================================================
+    namespace Wah
+    {
+        constexpr uint8_t TypeId = 28;
+        inline const NumberParamRange kPositionRange = {0.0f, 100.0f, 1.0f};
+        inline const ParamInfo kParams[] = {
+            {0, "Position", "Filter sweep position", ParamValueKind::Number, &kPositionRange, nullptr, "%"},
+        };
+        inline const ::EffectMeta kMeta = {"Wah", "WAH", "Classic wah-wah pedal effect with swept bandpass filter.", kParams, 1};
+    }
+
+    //=========================================================================
     // Leslie (Rotating Speaker Simulator)
     //=========================================================================
     namespace Leslie
@@ -494,6 +507,7 @@ namespace Effects
         {PitchShifter::TypeId, &PitchShifter::kMeta},
         {ShimmerReverb::TypeId, &ShimmerReverb::kMeta},
         {Leslie::TypeId, &Leslie::kMeta},
+        {Wah::TypeId, &Wah::kMeta},
     };
 
     constexpr size_t kNumEffects = sizeof(kAllEffects) / sizeof(kAllEffects[0]);
