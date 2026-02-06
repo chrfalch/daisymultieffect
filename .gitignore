@@ -23,4 +23,7 @@ host/expo/android/app/build/
 *.xcworkspace/
 *.xcuserdata/
 
+# Precompiled headers
+*.gch
+
 tmp/**/*
