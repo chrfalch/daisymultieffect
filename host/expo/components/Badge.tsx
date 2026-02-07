@@ -2,11 +2,11 @@ import React from "react";
 import {
   Pressable,
   StyleProp,
+  StyleSheet,
   Text,
   TextStyle,
   ViewStyle,
 } from "react-native";
-import { useColors } from "../hooks/useColors";
 
 export interface BadgeProps {
   label: string;
@@ -23,29 +23,21 @@ export const Badge: React.FC<BadgeProps> = ({
   style,
   textStyle,
 }) => {
-  const colors = useColors();
   return (
     <Pressable
       onPress={onPress}
       disabled={!onPress}
       style={({ pressed }) => [
-        {
-          backgroundColor: selected ? colors.primary : colors.primaryTint,
-          paddingHorizontal: 12,
-          paddingVertical: 6,
-          borderRadius: 16,
-        },
-        pressed && { opacity: 0.7 },
+        styles.badge,
+        selected && styles.badgeSelected,
+        pressed && styles.badgePressed,
         style,
       ]}
     >
       <Text
         style={[
-          {
-            color: selected ? "#fff" : colors.primaryOnTint,
-            fontSize: 14,
-            fontWeight: selected ? "600" : "400",
-          },
+          styles.badgeText,
+          selected && styles.badgeTextSelected,
           textStyle,
         ]}
       >
@@ -54,3 +46,26 @@ export const Badge: React.FC<BadgeProps> = ({
     </Pressable>
   );
 };
+
+const styles = StyleSheet.create({
+  badge: {
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  badgeSelected: {
+    backgroundColor: "#2196F3",
+  },
+  badgePressed: {
+    opacity: 0.7,
+  },
+  badgeText: {
+    color: "#1976D2",
+    fontSize: 14,
+  },
+  badgeTextSelected: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+});

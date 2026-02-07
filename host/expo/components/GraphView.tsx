@@ -1,7 +1,6 @@
 import React from "react";
-import { ScrollView, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { PedalSlot } from "./PedalSlot";
-import { useColors } from "../hooks/useColors";
 import {
   buildRoutingGraphLayout,
   type GraphLayout,
@@ -39,7 +38,6 @@ export const GraphView: React.FC<{
   onToggleSlotEnabled,
   getDisplayLabel,
 }) => {
-  const colors = useColors();
   const [containerWidth, setContainerWidth] = React.useState<number | null>(
     null
   );
@@ -72,7 +70,7 @@ export const GraphView: React.FC<{
 
   return (
     <View
-      style={{ width: "100%" }}
+      style={styles.root}
       onLayout={(e) => {
         const w = e.nativeEvent.layout.width;
         if (w > 0 && w !== containerWidth) setContainerWidth(w);
@@ -81,19 +79,16 @@ export const GraphView: React.FC<{
       <ScrollView
         horizontal={!wrapped}
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingVertical: 8,
-          alignSelf: "center",
-          height: layout.height,
-          width: layout.width,
-        }}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { height: layout.height, width: layout.width },
+        ]}
       >
         <View
-          style={{
-            position: "relative",
-            width: layout.width,
-            height: layout.height,
-          }}
+          style={[
+            styles.canvas,
+            { width: layout.width, height: layout.height },
+          ]}
         >
           {layout.edges.map((e) => {
             const from = nodesById.get(e.from);
@@ -239,7 +234,7 @@ export const GraphView: React.FC<{
             }
 
             const opacity = e.enabled ? 1 : 0.3;
-            const color = colors.routingLine;
+            const color = "#1976D2";
 
             return (
               <View key={e.id} pointerEvents="none" style={{ opacity }}>
@@ -402,3 +397,16 @@ export const GraphView: React.FC<{
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  root: {
+    width: "100%",
+  },
+  scrollContent: {
+    paddingVertical: 8,
+    alignSelf: "center",
+  },
+  canvas: {
+    position: "relative",
+  },
+});

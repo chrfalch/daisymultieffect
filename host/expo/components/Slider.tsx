@@ -1,12 +1,11 @@
 import React, { useCallback, useLayoutEffect, useRef } from "react";
-import { View, Text, LayoutChangeEvent } from "react-native";
+import { View, Text, StyleSheet, LayoutChangeEvent } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   runOnJS,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { useColors } from "../hooks/useColors";
 
 interface SliderProps {
   label: string;
@@ -39,7 +38,6 @@ export const Slider: React.FC<SliderProps> = ({
   disabled = false,
   centerOrigin = false,
 }) => {
-  const colors = useColors();
   const width = useSharedValue(0);
   const translateX = useSharedValue(0);
   const startX = useSharedValue(0);
@@ -207,51 +205,24 @@ export const Slider: React.FC<SliderProps> = ({
   }, []);
 
   return (
-    <View style={{ marginVertical: 6 }}>
+    <View style={styles.container}>
       <GestureDetector gesture={gesture}>
         <View
-          style={{
-            minHeight: 56,
-            paddingVertical: 8,
-            backgroundColor: colors.surface,
-            borderWidth: 2,
-            borderColor: colors.border,
-            borderRadius: 12,
-            overflow: "hidden",
-            flexDirection: "row",
-            alignItems: "center",
-          }}
+          style={styles.sliderContainer}
           onLayout={handleLayout}
           ref={viewRef}
         >
-          <Animated.View
-            style={[
-              {
-                position: "absolute",
-                left: 0,
-                top: 0,
-                bottom: 0,
-                backgroundColor: colors.primaryTint,
-                borderRadius: 12,
-              },
-              fillStyle,
-            ]}
-          />
-          <View style={{ flex: 1, paddingLeft: 16, zIndex: 1 }}>
-            <Text style={{ color: colors.text, fontSize: 18, fontWeight: "500" }}>
-              {label}
-            </Text>
+          <Animated.View style={[styles.fill, fillStyle]} />
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>{label}</Text>
             {!!description && (
-              <Text
-                style={{ marginTop: 2, color: colors.textSecondary, fontSize: 12, fontWeight: "400" }}
-                numberOfLines={1}
-              >
+              <Text style={styles.description} numberOfLines={1}>
                 {description}
               </Text>
             )}
           </View>
-          <View style={{ paddingRight: 16, zIndex: 1 }}>
-            <Text style={{ color: colors.text, fontSize: 18, fontWeight: "400" }}>
+          <View style={styles.valueContainer}>
+            <Text style={styles.value}>
               {formatValue ? formatValue(displayValue) : String(displayValue)}
             </Text>
           </View>
@@ -260,5 +231,55 @@ export const Slider: React.FC<SliderProps> = ({
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    marginVertical: 6,
+  },
+  sliderContainer: {
+    minHeight: 56,
+    paddingVertical: 8,
+    backgroundColor: "#fff",
+    borderWidth: 2,
+    borderColor: "#EEEEEE",
+    borderRadius: 12,
+    overflow: "hidden",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  fill: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: "#E3F2FD",
+    borderRadius: 12,
+  },
+  labelContainer: {
+    flex: 1,
+    paddingLeft: 16,
+    zIndex: 1,
+  },
+  label: {
+    color: "#333",
+    fontSize: 18,
+    fontWeight: "500",
+  },
+  description: {
+    marginTop: 2,
+    color: "#666",
+    fontSize: 12,
+    fontWeight: "400",
+  },
+  valueContainer: {
+    paddingRight: 16,
+    zIndex: 1,
+  },
+  value: {
+    color: "#333",
+    fontSize: 18,
+    fontWeight: "400",
+  },
+});
 
 export default Slider;

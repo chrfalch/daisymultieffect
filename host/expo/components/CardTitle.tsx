@@ -1,6 +1,5 @@
 import React from "react";
-import { Text, TextStyle, StyleProp } from "react-native";
-import { useColors } from "../hooks/useColors";
+import { Text, StyleSheet, TextStyle, StyleProp } from "react-native";
 
 interface CardTitleProps {
   children: React.ReactNode;
@@ -8,15 +7,13 @@ interface CardTitleProps {
 }
 
 export const CardTitle: React.FC<CardTitleProps> = ({ children, style }) => {
-  const colors = useColors();
-  return (
-    <Text
-      style={[
-        { fontSize: 18, fontWeight: "600", marginBottom: 12, color: colors.text },
-        style,
-      ]}
-    >
-      {children}
-    </Text>
-  );
+  return <Text style={[styles.title, style]}>{children}</Text>;
 };
+
+const styles = StyleSheet.create({
+  title: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 12,
+  },
+});
