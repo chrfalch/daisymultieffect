@@ -3,6 +3,9 @@
 # dependencies
 node_modules/
 
+# lockfile (project uses bun.lock)
+package-lock.json
+
 # Expo
 .expo/
 dist/
