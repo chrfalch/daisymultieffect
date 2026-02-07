@@ -16,6 +16,7 @@ public:
 
 private:
     void timerCallback() override;
+    void configureNetworkMidiSession();
     void refreshDevices();
     void connectBridge();
     void disconnectBridge();

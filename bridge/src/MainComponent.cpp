@@ -1,4 +1,5 @@
 #include "MainComponent.h"
+#include "NetworkMidiSetup.h"
 
 MainComponent::MainComponent()
 {
@@ -83,6 +84,8 @@ MainComponent::MainComponent()
     logView_.setFont(juce::FontOptions(12.0f));
     addAndMakeVisible(logView_);
 
+    configureNetworkMidiSession();
+
     // Initialize device lists
     refreshDevices();
 
@@ -94,6 +97,15 @@ MainComponent::MainComponent()
     addLogMessage("Daisy MIDI Bridge started");
     addLogMessage("Select devices and click Connect");
     addLogMessage("Tip: Use 'Important' log level to reduce noise");
+}
+
+void MainComponent::configureNetworkMidiSession()
+{
+    const auto setupResult = NetworkMidiSetup::configureFromEnvironment();
+    addLogMessage(setupResult.summary);
+
+    if (setupResult.sessionEnabled && !setupResult.hostConnectAttempted)
+        addLogMessage("Tip: export DAISY_MIDI_IPAD_HOST=<ipad-ip> for automatic RTP-MIDI connection.");
 }
 
 MainComponent::~MainComponent()

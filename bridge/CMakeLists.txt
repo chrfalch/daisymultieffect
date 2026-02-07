@@ -27,7 +27,12 @@ target_sources(DaisyMidiBridge PRIVATE
     src/Main.cpp
     src/MainComponent.cpp
     src/MidiBridge.cpp
+    src/NetworkMidiSetup.cpp
 )
+
+if(APPLE)
+    target_sources(DaisyMidiBridge PRIVATE src/NetworkMidiSetup.mm)
+endif()
 
 target_compile_definitions(DaisyMidiBridge PRIVATE
     JUCE_WEB_BROWSER=0
@@ -44,3 +49,10 @@ PUBLIC
     juce::juce_recommended_config_flags
     juce::juce_recommended_warning_flags
 )
+
+if(APPLE)
+    target_link_libraries(DaisyMidiBridge PRIVATE
+        "-framework CoreMIDI"
+        "-framework Foundation"
+    )
+endif()

@@ -39,6 +39,21 @@ make flash
 ## iOS demo
 `host/apple/` inneholder Swift-filer du kan droppe inn i en ny SwiftUI-app i Xcode (iOS + macOS).
 
+## Daisy MIDI Bridge (macOS) auto Network MIDI setup
+Bridge-appen aktiverer nå macOS Network MIDI-sesjonen automatisk ved oppstart.
+
+For å prøve automatisk iPad-tilkobling også, start bridge med disse env-variablene:
+
+```sh
+export DAISY_MIDI_IPAD_HOST=192.168.1.42
+export DAISY_MIDI_IPAD_PORT=5004   # optional, default 5004
+export DAISY_MIDI_IPAD_NAME="My iPad"  # optional
+./bridge/run-bridge.sh
+```
+
+Hvis `DAISY_MIDI_IPAD_HOST` ikke er satt, blir kun Network MIDI-sesjonen aktivert
+slik at du slipper å gjøre dette manuelt i Audio MIDI Setup.
+
 ## Neste steg
 - Integrere ekte libDaisy audio + USB MIDI i `main.cpp`
 - Definere endelig 7-bit-safe patch-serialisering
