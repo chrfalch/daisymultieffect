@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { useThemeColors } from "./ThemeProvider";
 
 type ConnectionStatusValue = {
   status: string;
@@ -14,21 +15,25 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
   isConnected,
   connectionStatus,
 }) => {
+  const colors = useThemeColors();
+
   return (
     <>
       <View style={styles.statusRow}>
         <View
           style={[
             styles.statusIndicator,
-            { backgroundColor: isConnected ? "#4CAF50" : "#F44336" },
+            { backgroundColor: isConnected ? colors.success : colors.error },
           ]}
         />
-        <Text style={styles.statusText}>
+        <Text style={[styles.statusText, { color: colors.text }]}>
           {isConnected ? "Connected" : "Disconnected"}
         </Text>
       </View>
       {connectionStatus && (
-        <Text style={styles.statusDetail}>{connectionStatus.status}</Text>
+        <Text style={[styles.statusDetail, { color: colors.textSecondary }]}>
+          {connectionStatus.status}
+        </Text>
       )}
     </>
   );

@@ -3,12 +3,14 @@ import { StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Button as SwiftUIButton, ContextMenu, Host } from "@expo/ui/swift-ui";
 import type { EffectMeta, EffectSlot } from "../../modules/daisy-multi-fx";
+import { useThemeColors } from "../../components/ThemeProvider";
 
 export const EffectContextMenuButton: React.FC<{
   slot: EffectSlot;
   effectMeta: EffectMeta[];
   setSlotType: (slot: number, typeId: number) => void;
 }> = ({ slot, effectMeta, setSlotType }) => {
+  const colors = useThemeColors();
   const currentEffectName = React.useMemo(() => {
     if (slot.typeId === 0) return "Off";
     return effectMeta.find((e) => e.typeId === slot.typeId)?.name ?? "Unknown";
@@ -57,10 +59,13 @@ export const EffectContextMenuButton: React.FC<{
           <View
             accessibilityRole="button"
             accessibilityLabel="Select effect"
-            style={styles.triggerButton}
+            style={[
+              styles.triggerButton,
+              { backgroundColor: colors.accentLight },
+            ]}
           >
-            <Ionicons name="sparkles-outline" size={16} color="#1976D2" />
-            <Text numberOfLines={1} style={styles.triggerText}>
+            <Ionicons name="sparkles-outline" size={16} color={colors.accentDark} />
+            <Text numberOfLines={1} style={[styles.triggerText, { color: colors.accentDark }]}>
               {currentEffectName}
             </Text>
           </View>
@@ -72,7 +77,6 @@ export const EffectContextMenuButton: React.FC<{
 
 const styles = StyleSheet.create({
   triggerButton: {
-    backgroundColor: "#E3F2FD",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -82,7 +86,6 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   triggerText: {
-    color: "#1976D2",
     fontSize: 14,
     maxWidth: 220,
   },

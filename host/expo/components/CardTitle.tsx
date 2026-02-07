@@ -1,5 +1,6 @@
 import React from "react";
 import { Text, StyleSheet, TextStyle, StyleProp } from "react-native";
+import { useThemeColors } from "./ThemeProvider";
 
 interface CardTitleProps {
   children: React.ReactNode;
@@ -7,7 +8,12 @@ interface CardTitleProps {
 }
 
 export const CardTitle: React.FC<CardTitleProps> = ({ children, style }) => {
-  return <Text style={[styles.title, style]}>{children}</Text>;
+  const colors = useThemeColors();
+  return (
+    <Text style={[styles.title, { color: colors.text }, style]}>
+      {children}
+    </Text>
+  );
 };
 
 const styles = StyleSheet.create({

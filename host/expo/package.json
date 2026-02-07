@@ -9,20 +9,23 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@expo/ui": "0.2.0-canary-20251230-fc48ddc",
+    "@expo/ui": "~55.0.0-preview.4",
     "@expo/vector-icons": "^15.0.2",
-    "expo": "^55.0.0-canary-20251230-fc48ddc",
-    "react-native-mmkv": "^3.2.0",
-    "expo-constants": "18.1.0-canary-20251230-fc48ddc",
-    "expo-linking": "8.0.12-canary-20251230-fc48ddc",
-    "expo-router": "7.0.0-canary-20251230-fc48ddc",
-    "expo-status-bar": "3.0.10-canary-20251230-fc48ddc",
+    "expo": "55.0.0-preview.9",
+    "expo-blur": "~55.0.4",
+    "expo-constants": "~55.0.3",
+    "expo-glass-effect": "~55.0.4",
+    "expo-haptics": "~55.0.4",
+    "expo-linking": "~55.0.3",
+    "expo-router": "~55.0.0-preview.6",
+    "expo-status-bar": "~55.0.2",
     "react": "19.2.0",
     "react-native": "0.83.1",
-    "react-native-gesture-handler": "~2.28.0",
+    "react-native-gesture-handler": "~2.30.0",
+    "react-native-mmkv": "^3.2.0",
     "react-native-reanimated": "^4.2.1",
     "react-native-safe-area-context": "~5.6.0",
-    "react-native-screens": "~4.19.0"
+    "react-native-screens": "~4.22.0"
   },
   "private": true,
   "devDependencies": {

@@ -6,6 +6,7 @@ import type { EffectSlot, Patch } from "../../modules/daisy-multi-fx";
 import { Badge } from "../../components/Badge";
 import { Slider } from "../../components/Slider";
 import { HStack, VStack, WrapStack } from "../../components/Stack";
+import { useThemeColors } from "../../components/ThemeProvider";
 
 const InputSelector: React.FC<{
   label: string;
@@ -13,35 +14,40 @@ const InputSelector: React.FC<{
   options: Array<{ label: string; value: number; enabled: boolean }>;
   getRouteLabel: (value: number) => string;
   onChange: (value: number) => void;
-}> = ({ label, value, options, getRouteLabel, onChange }) => (
-  <VStack gap={4} style={styles.inputSelector}>
-    <Text style={styles.inputLabel}>{label}</Text>
-    <Host matchContents={{ horizontal: true, vertical: true }}>
-      <ContextMenu activationMethod="singlePress">
-        <ContextMenu.Items>
-          {options.map((opt) => (
-            <SwiftUIButton
-              key={`${label}-${opt.value}`}
-              label={opt.label}
-              systemImage={value === opt.value ? "checkmark" : undefined}
-              modifiers={[disabled(!opt.enabled)]}
-              onPress={opt.enabled ? () => onChange(opt.value) : undefined}
-            />
-          ))}
-        </ContextMenu.Items>
-        <ContextMenu.Trigger>
-          <View
-            accessibilityRole="button"
-            accessibilityLabel={label}
-            style={styles.menuTrigger}
-          >
-            <Text style={styles.menuTriggerText}>{getRouteLabel(value)}</Text>
-          </View>
-        </ContextMenu.Trigger>
-      </ContextMenu>
-    </Host>
-  </VStack>
-);
+}> = ({ label, value, options, getRouteLabel, onChange }) => {
+  const colors = useThemeColors();
+  return (
+    <VStack gap={4} style={styles.inputSelector}>
+      <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>{label}</Text>
+      <Host matchContents={{ horizontal: true, vertical: true }}>
+        <ContextMenu activationMethod="singlePress">
+          <ContextMenu.Items>
+            {options.map((opt) => (
+              <SwiftUIButton
+                key={`${label}-${opt.value}`}
+                label={opt.label}
+                systemImage={value === opt.value ? "checkmark" : undefined}
+                modifiers={[disabled(!opt.enabled)]}
+                onPress={opt.enabled ? () => onChange(opt.value) : undefined}
+              />
+            ))}
+          </ContextMenu.Items>
+          <ContextMenu.Trigger>
+            <View
+              accessibilityRole="button"
+              accessibilityLabel={label}
+              style={[styles.menuTrigger, { backgroundColor: colors.accentLight }]}
+            >
+              <Text style={[styles.menuTriggerText, { color: colors.accentDark }]}>
+                {getRouteLabel(value)}
+              </Text>
+            </View>
+          </ContextMenu.Trigger>
+        </ContextMenu>
+      </Host>
+    </VStack>
+  );
+};
 
 export const RoutingPanel: React.FC<{
   patch: Patch;
@@ -60,6 +66,7 @@ export const RoutingPanel: React.FC<{
   setSlotMix,
   setSlotChannelPolicy,
 }) => {
+  const colors = useThemeColors();
   const routeOptions = React.useMemo(() => {
     const options: Array<{ label: string; value: number; enabled: boolean }> = [
       { label: "IN", value: 255, enabled: true },
@@ -92,11 +99,11 @@ export const RoutingPanel: React.FC<{
   );
 
   return (
-    <ScrollView style={styles.overlayPanel}>
+    <ScrollView style={styles.routingPanel}>
       <VStack paddingVertical={16} gap={16}>
         {/* Input Sources */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Input</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Input</Text>
           <HStack gap={16} style={styles.inputsRow}>
             <InputSelector
               label="Left"
@@ -117,11 +124,11 @@ export const RoutingPanel: React.FC<{
 
         {/* Channel Processing */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Channel</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Channel</Text>
           <HStack gap={16} align="flex-start">
             <VStack gap={4}>
-              <Text style={styles.fieldLabel}>Sum to Mono</Text>
-              <Text style={styles.fieldDescription}>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Sum to Mono</Text>
+              <Text style={[styles.fieldDescription, { color: colors.textTertiary }]}>
                 Mix L+R inputs before processing
               </Text>
               <Badge
@@ -133,8 +140,8 @@ export const RoutingPanel: React.FC<{
               />
             </VStack>
             <VStack gap={4} style={styles.policyGroup}>
-              <Text style={styles.fieldLabel}>Processing</Text>
-              <Text style={styles.fieldDescription}>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Processing</Text>
+              <Text style={[styles.fieldDescription, { color: colors.textTertiary }]}>
                 Auto: effect decides · Mono: single channel · Stereo: both
               </Text>
               <HStack gap={6}>
@@ -155,7 +162,7 @@ export const RoutingPanel: React.FC<{
 
         {/* Mix Controls */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Mix</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Mix</Text>
           <VStack gap={12}>
             <Slider
               label="Dry"
@@ -190,13 +197,15 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
+  routingPanel: {
+    flex: 1,
+  },
   section: {
     gap: 10,
   },
   sectionTitle: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#333",
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
@@ -208,29 +217,24 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 12,
-    color: "#888",
   },
   fieldLabel: {
     fontSize: 12,
-    color: "#888",
   },
   fieldDescription: {
     fontSize: 11,
-    color: "#999",
     marginBottom: 2,
   },
   policyGroup: {
     flex: 1,
   },
   menuTrigger: {
-    backgroundColor: "#E3F2FD",
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 16,
     alignSelf: "flex-start",
   },
   menuTriggerText: {
-    color: "#1976D2",
     fontSize: 14,
     fontWeight: "500",
   },
