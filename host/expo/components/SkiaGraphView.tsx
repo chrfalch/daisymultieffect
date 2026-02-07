@@ -34,6 +34,8 @@ const STRIP_H = 28;
 const CORNER_R = 8;
 const FOOTSWITCH_R = 19;
 const FOOTSWITCH_INNER_R = 9;
+const MAX_DISPLAY_TEXT_LENGTH = 12;
+const LONG_PRESS_DURATION_MS = 300;
 
 // ─── Fonts ───────────────────────────────────────────────────────────
 const FONT_BOLD_18 = matchFont({
@@ -155,7 +157,7 @@ const SkiaPedal: React.FC<PedalDrawProps> = React.memo(
     const colors = getColorForType(typeId);
     const isEmpty = !name || name === "Empty" || shortName === "--";
 
-    // ── Colours ──
+    // ── Colors ──
     const borderColor = selected ? "#2196F3" : "#DDDDDD";
     const borderWidth = selected ? 2.5 : 1.5;
     const bodyBg = selected ? "#E3F2FD" : enabled ? colors.body : "#F5F5F5";
@@ -258,7 +260,7 @@ const SkiaPedal: React.FC<PedalDrawProps> = React.memo(
         <SkiaText
           x={Math.max(x + 2, dtX)}
           y={dtY}
-          text={displayText.length > 12 ? displayText.slice(0, 11) + "…" : displayText}
+          text={displayText.length > MAX_DISPLAY_TEXT_LENGTH ? displayText.slice(0, MAX_DISPLAY_TEXT_LENGTH - 1) + "…" : displayText}
           font={displayFont}
           color={subtitle ? subtitleColor : nameColor}
         />
@@ -474,7 +476,7 @@ export const SkiaGraphView: React.FC<SkiaGraphViewProps> = ({
   const dragGesture = React.useMemo(
     () =>
       Gesture.Pan()
-        .activateAfterLongPress(300)
+        .activateAfterLongPress(LONG_PRESS_DURATION_MS)
         .onStart((e) => {
           const node = findNodeAt(e.x, e.y);
           if (!node || node.slotIndex == null) return;

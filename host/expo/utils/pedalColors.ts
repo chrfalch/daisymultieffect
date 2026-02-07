@@ -29,8 +29,8 @@ const PALETTES = {
 } as const satisfies Record<string, PedalColorTheme>;
 
 /**
- * Map from effect typeId → colour theme.
- * Unknown types fall back to utility grey.
+ * Map from effect typeId → color theme.
+ * Unknown types fall back to utility gray.
  */
 const TYPE_COLOR_MAP: Record<number, PedalColorTheme> = {
   0: PALETTES.bypass, // Off
