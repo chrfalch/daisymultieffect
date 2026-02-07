@@ -23,4 +23,4 @@ host/expo/android/app/build/
 *.xcworkspace/
 *.xcuserdata/
 
-tmp/**/*
+_codeql_detected_source_root
