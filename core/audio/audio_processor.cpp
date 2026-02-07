@@ -195,6 +195,12 @@ void AudioProcessor::ApplyPatch(const PatchWireDesc &pw)
 
 void AudioProcessor::ProcessFrame(float inL, float inR, float &outL, float &outR)
 {
+    // Mono input: duplicate left channel to right.
+    // Guitar pedals have a mono instrument input on a stereo codec,
+    // so the right channel is typically silent or noise.
+    if (monoInput_)
+        inR = inL;
+
     // Global bypass: pass through with gain staging only, skip all DSP
     if (globalBypass_)
     {
