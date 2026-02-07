@@ -27,7 +27,9 @@ export interface ColorTokens {
 
   // ── Primary accent (blue) ──
   primary: string;
+  /** Stronger/emphasized variant of primary (e.g. selected text, active borders) */
   primaryDark: string;
+  /** Softer variant of primary (e.g. light borders, subtle highlights) */
   primaryLight: string;
   /** Very light tint of primary, used for fills / backgrounds */
   primaryTint: string;
