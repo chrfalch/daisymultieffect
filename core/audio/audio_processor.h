@@ -55,6 +55,13 @@ public:
     float GetInputGain() const { return inputGain_; }
     float GetOutputGain() const { return outputGain_; }
 
+    // Mono input mode: when enabled, copies left channel to right before processing.
+    // Default is true — guitar pedals have a mono instrument input on a stereo codec,
+    // so the right channel is typically silent or noise. This ensures the signal
+    // appears on both channels for stereo effects and output.
+    void SetMonoInput(bool mono) { monoInput_ = mono; }
+    bool GetMonoInput() const { return monoInput_; }
+
     // Global bypass: skip all processing, pass audio straight through
     // with only gain staging applied. Reduces CPU to near-zero.
     void SetGlobalBypass(bool bypass) { globalBypass_ = bypass; }
@@ -226,6 +233,7 @@ private:
     // Guitar pickups output ~0.1 peak, this brings it to ~0.8 peak.
     float inputGain_ = 8.0f;  // ~+18dB boost for instrument level input
     float outputGain_ = 1.0f; // Unity output gain
+    bool monoInput_ = true;   // Duplicate left to right (guitar input is mono)
     bool globalBypass_ = false;
 
     // Peak level tracking (updated per frame)
