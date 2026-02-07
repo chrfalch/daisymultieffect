@@ -7,6 +7,7 @@ import {
   TextStyle,
   ViewStyle,
 } from "react-native";
+import { useThemeColors } from "./ThemeProvider";
 
 export interface BadgeProps {
   label: string;
@@ -23,13 +24,16 @@ export const Badge: React.FC<BadgeProps> = ({
   style,
   textStyle,
 }) => {
+  const colors = useThemeColors();
+
   return (
     <Pressable
       onPress={onPress}
       disabled={!onPress}
       style={({ pressed }) => [
         styles.badge,
-        selected && styles.badgeSelected,
+        { backgroundColor: colors.accentLight },
+        selected && { backgroundColor: colors.accent },
         pressed && styles.badgePressed,
         style,
       ]}
@@ -37,7 +41,8 @@ export const Badge: React.FC<BadgeProps> = ({
       <Text
         style={[
           styles.badgeText,
-          selected && styles.badgeTextSelected,
+          { color: colors.accentDark },
+          selected && { color: colors.textInverse, fontWeight: "600" },
           textStyle,
         ]}
       >

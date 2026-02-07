@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Card } from "./Card";
+import { useThemeColors } from "./ThemeProvider";
 
 /** Pedal slot dimensions - shared with routing graph layout */
 export const PEDAL_SLOT_WIDTH = 90;
@@ -27,13 +28,13 @@ const ChannelIndicator: React.FC<{
   selected: boolean;
   enabled: boolean;
 }> = ({ sumToMono, channelPolicy, selected, enabled }) => {
+  const colors = useThemeColors();
   // Policy: 0=Auto (A), 1=Mono (M), 2=Stereo (S)
   const policyLabel =
     channelPolicy === 1 ? "M" : channelPolicy === 2 ? "S" : "A";
-  // Blue when selected (even if disabled), gray when disabled and not selected
-  const textColor = selected ? "#1976D2" : !enabled ? "#999" : "#666";
-  const bgColor = selected ? "#E3F2FD" : !enabled ? "#F0F0F0" : "#F5F5F5";
-  const borderColor = selected ? "#90CAF9" : !enabled ? "#D0D0D0" : "#E0E0E0";
+  const textColor = selected ? colors.accentDark : !enabled ? colors.textTertiary : colors.textSecondary;
+  const bgColor = selected ? colors.accentLight : !enabled ? colors.surfaceSecondary : colors.surfaceSecondary;
+  const borderColor = selected ? colors.accent : !enabled ? colors.border : colors.border;
 
   return (
     <View style={styles.channelIndicator}>
@@ -73,16 +74,17 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
   sumToMono = false,
   channelPolicy = 0,
 }) => {
+  const colors = useThemeColors();
   // Lighter gray header when disabled, blue when selected, light blue otherwise
   // Text stays blue when selected even if disabled
-  const topStripBg = !enabled ? "#E0E0E0" : selected ? "#2196F3" : "#E3F2FD";
+  const topStripBg = !enabled ? colors.bypassInactive : selected ? colors.accent : colors.accentLight;
   const topStripText = selected
     ? enabled
-      ? "#fff"
-      : "#1976D2"
+      ? colors.textInverse
+      : colors.accentDark
     : !enabled
-    ? "#999"
-    : "#1976D2";
+    ? colors.textTertiary
+    : colors.accentDark;
 
   // Check if this is an empty slot (no effect assigned)
   const isEmpty = !name || name === "Empty" || shortName === "--";
@@ -107,8 +109,9 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
               <Text
                 style={[
                   styles.name,
-                  selected && styles.nameSelected,
-                  !enabled && !selected && styles.nameDisabled,
+                  { color: colors.text },
+                  selected && { color: colors.accentDark, fontWeight: "600" },
+                  !enabled && !selected && { color: colors.textTertiary },
                 ]}
                 numberOfLines={2}
               >
@@ -118,8 +121,9 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
               <Text
                 style={[
                   styles.subtitle,
-                  selected && styles.nameSelected,
-                  !enabled && !selected && styles.nameDisabled,
+                  { color: colors.textSecondary },
+                  selected && { color: colors.accentDark, fontWeight: "600" },
+                  !enabled && !selected && { color: colors.textTertiary },
                 ]}
                 numberOfLines={2}
               >
@@ -146,10 +150,10 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
                       styles.footswitchOuter,
                       {
                         borderColor: enabled
-                          ? "#2196F3"
+                          ? colors.accent
                           : isEmpty
-                          ? "#E0E0E0"
-                          : "#D0D0D0",
+                          ? colors.border
+                          : colors.border,
                       },
                       !isEmpty && pressed && { opacity: 0.7 },
                     ]}
@@ -159,11 +163,11 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
                         styles.footswitchInner,
                         {
                           borderColor: enabled
-                            ? "#1976D2"
+                            ? colors.accentDark
                             : isEmpty
-                            ? "#E0E0E0"
-                            : "#9E9E9E",
-                          backgroundColor: enabled ? "#4CAF50" : "#fff",
+                            ? colors.border
+                            : colors.textTertiary,
+                          backgroundColor: enabled ? colors.success : colors.surfacePrimary,
                         },
                       ]}
                     />
@@ -221,14 +225,6 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 8,
     textAlign: "center",
-    color: "#888",
-  },
-  nameSelected: {
-    color: "#1976D2",
-    fontWeight: "600",
-  },
-  nameDisabled: {
-    color: "#999",
   },
 
   footswitchOuter: {
@@ -236,7 +232,6 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 19,
     borderWidth: 2,
-    backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -245,7 +240,6 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     borderWidth: 2,
-    backgroundColor: "#fff",
   },
 
   channelIndicator: {
