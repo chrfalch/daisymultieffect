@@ -1,5 +1,6 @@
 import React from "react";
-import { View, StyleSheet, ViewStyle, StyleProp } from "react-native";
+import { View, ViewStyle, StyleProp } from "react-native";
+import { useColors } from "../hooks/useColors";
 
 interface CardProps {
   children: React.ReactNode;
@@ -14,11 +15,22 @@ export const Card: React.FC<CardProps> = ({
   style,
   flex,
 }) => {
+  const colors = useColors();
   return (
     <View
       style={[
-        styles.card,
-        selected && styles.cardSelected,
+        {
+          backgroundColor: selected ? colors.primaryTint : colors.surface,
+          padding: 16,
+          borderRadius: 12,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          elevation: 3,
+          borderWidth: 2,
+          borderColor: selected ? colors.primary : colors.border,
+        },
         style,
         flex !== undefined && { flex },
       ]}
@@ -27,23 +39,3 @@ export const Card: React.FC<CardProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    borderWidth: 2,
-    borderColor: "#EEEEEE",
-  },
-  cardSelected: {
-    backgroundColor: "#E3F2FD",
-    borderWidth: 2,
-    borderColor: "#2196F3",
-  },
-});

@@ -1,11 +1,12 @@
 import React from "react";
-import { ScrollView, Text, StyleSheet, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { Button as SwiftUIButton, ContextMenu, Host } from "@expo/ui/swift-ui";
 import { disabled } from "@expo/ui/swift-ui/modifiers";
 import type { EffectSlot, Patch } from "../../modules/daisy-multi-fx";
 import { Badge } from "../../components/Badge";
 import { Slider } from "../../components/Slider";
 import { HStack, VStack, WrapStack } from "../../components/Stack";
+import { useColors } from "../../hooks/useColors";
 
 const InputSelector: React.FC<{
   label: string;
@@ -13,35 +14,46 @@ const InputSelector: React.FC<{
   options: Array<{ label: string; value: number; enabled: boolean }>;
   getRouteLabel: (value: number) => string;
   onChange: (value: number) => void;
-}> = ({ label, value, options, getRouteLabel, onChange }) => (
-  <VStack gap={4} style={styles.inputSelector}>
-    <Text style={styles.inputLabel}>{label}</Text>
-    <Host matchContents={{ horizontal: true, vertical: true }}>
-      <ContextMenu activationMethod="singlePress">
-        <ContextMenu.Items>
-          {options.map((opt) => (
-            <SwiftUIButton
-              key={`${label}-${opt.value}`}
-              label={opt.label}
-              systemImage={value === opt.value ? "checkmark" : undefined}
-              modifiers={[disabled(!opt.enabled)]}
-              onPress={opt.enabled ? () => onChange(opt.value) : undefined}
-            />
-          ))}
-        </ContextMenu.Items>
-        <ContextMenu.Trigger>
-          <View
-            accessibilityRole="button"
-            accessibilityLabel={label}
-            style={styles.menuTrigger}
-          >
-            <Text style={styles.menuTriggerText}>{getRouteLabel(value)}</Text>
-          </View>
-        </ContextMenu.Trigger>
-      </ContextMenu>
-    </Host>
-  </VStack>
-);
+}> = ({ label, value, options, getRouteLabel, onChange }) => {
+  const colors = useColors();
+  return (
+    <VStack gap={4} style={{ minWidth: 80 }}>
+      <Text style={{ fontSize: 12, color: colors.textTertiary }}>{label}</Text>
+      <Host matchContents={{ horizontal: true, vertical: true }}>
+        <ContextMenu activationMethod="singlePress">
+          <ContextMenu.Items>
+            {options.map((opt) => (
+              <SwiftUIButton
+                key={`${label}-${opt.value}`}
+                label={opt.label}
+                systemImage={value === opt.value ? "checkmark" : undefined}
+                modifiers={[disabled(!opt.enabled)]}
+                onPress={opt.enabled ? () => onChange(opt.value) : undefined}
+              />
+            ))}
+          </ContextMenu.Items>
+          <ContextMenu.Trigger>
+            <View
+              accessibilityRole="button"
+              accessibilityLabel={label}
+              style={{
+                backgroundColor: colors.primaryTint,
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                borderRadius: 16,
+                alignSelf: "flex-start",
+              }}
+            >
+              <Text style={{ color: colors.primaryOnTint, fontSize: 14, fontWeight: "500" }}>
+                {getRouteLabel(value)}
+              </Text>
+            </View>
+          </ContextMenu.Trigger>
+        </ContextMenu>
+      </Host>
+    </VStack>
+  );
+};
 
 export const RoutingPanel: React.FC<{
   patch: Patch;
@@ -60,6 +72,7 @@ export const RoutingPanel: React.FC<{
   setSlotMix,
   setSlotChannelPolicy,
 }) => {
+  const colors = useColors();
   const routeOptions = React.useMemo(() => {
     const options: Array<{ label: string; value: number; enabled: boolean }> = [
       { label: "IN", value: 255, enabled: true },
@@ -92,12 +105,22 @@ export const RoutingPanel: React.FC<{
   );
 
   return (
-    <ScrollView style={styles.overlayPanel}>
+    <ScrollView style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
       <VStack paddingVertical={16} gap={16}>
         {/* Input Sources */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Input</Text>
-          <HStack gap={16} style={styles.inputsRow}>
+        <View style={{ gap: 10 }}>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "600",
+              color: colors.text,
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+            }}
+          >
+            Input
+          </Text>
+          <HStack gap={16} style={{ flexWrap: "wrap" }}>
             <InputSelector
               label="Left"
               value={slot.inputL}
@@ -116,12 +139,22 @@ export const RoutingPanel: React.FC<{
         </View>
 
         {/* Channel Processing */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Channel</Text>
+        <View style={{ gap: 10 }}>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "600",
+              color: colors.text,
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+            }}
+          >
+            Channel
+          </Text>
           <HStack gap={16} align="flex-start">
             <VStack gap={4}>
-              <Text style={styles.fieldLabel}>Sum to Mono</Text>
-              <Text style={styles.fieldDescription}>
+              <Text style={{ fontSize: 12, color: colors.textTertiary }}>Sum to Mono</Text>
+              <Text style={{ fontSize: 11, color: colors.textDisabled, marginBottom: 2 }}>
                 Mix L+R inputs before processing
               </Text>
               <Badge
@@ -132,9 +165,9 @@ export const RoutingPanel: React.FC<{
                 }
               />
             </VStack>
-            <VStack gap={4} style={styles.policyGroup}>
-              <Text style={styles.fieldLabel}>Processing</Text>
-              <Text style={styles.fieldDescription}>
+            <VStack gap={4} style={{ flex: 1 }}>
+              <Text style={{ fontSize: 12, color: colors.textTertiary }}>Processing</Text>
+              <Text style={{ fontSize: 11, color: colors.textDisabled, marginBottom: 2 }}>
                 Auto: effect decides · Mono: single channel · Stereo: both
               </Text>
               <HStack gap={6}>
@@ -154,8 +187,18 @@ export const RoutingPanel: React.FC<{
         </View>
 
         {/* Mix Controls */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Mix</Text>
+        <View style={{ gap: 10 }}>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "600",
+              color: colors.text,
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+            }}
+          >
+            Mix
+          </Text>
           <VStack gap={12}>
             <Slider
               label="Dry"
@@ -181,57 +224,3 @@ export const RoutingPanel: React.FC<{
     </ScrollView>
   );
 };
-
-const styles = StyleSheet.create({
-  overlayPanel: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  section: {
-    gap: 10,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#333",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  inputsRow: {
-    flexWrap: "wrap",
-  },
-  inputSelector: {
-    minWidth: 80,
-  },
-  inputLabel: {
-    fontSize: 12,
-    color: "#888",
-  },
-  fieldLabel: {
-    fontSize: 12,
-    color: "#888",
-  },
-  fieldDescription: {
-    fontSize: 11,
-    color: "#999",
-    marginBottom: 2,
-  },
-  policyGroup: {
-    flex: 1,
-  },
-  menuTrigger: {
-    backgroundColor: "#E3F2FD",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 16,
-    alignSelf: "flex-start",
-  },
-  menuTriggerText: {
-    color: "#1976D2",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-});

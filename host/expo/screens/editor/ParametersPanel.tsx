@@ -1,9 +1,10 @@
 import React from "react";
-import { Text, StyleSheet, View } from "react-native";
+import { Text, View } from "react-native";
 import type { EffectParam, EffectSlot } from "../../modules/daisy-multi-fx";
 import { Slider } from "../../components/Slider";
 import { EnumPicker } from "../../components/EnumPicker";
 import { VStack } from "../../components/Stack";
+import { useColors } from "../../hooks/useColors";
 
 // ParamValueKind enum values (must match firmware base_effect.h)
 const ParamValueKind = {
@@ -20,6 +21,8 @@ export const ParametersPanel: React.FC<{
   effectParams?: EffectParam[];
   outputParams?: { id: number; value: number }[];
 }> = ({ slot, getParamName, getParamMeta, setSlotParam, effectParams, outputParams }) => {
+  const colors = useColors();
+
   const formatValueFromRange = React.useCallback(
     (
       raw: number,
@@ -93,7 +96,11 @@ export const ParametersPanel: React.FC<{
   const hasReadonlyParams = readonlyParams.length > 0;
 
   if (!hasWritableParams && !hasReadonlyParams) {
-    return <Text style={styles.todoText}>No parameters for this effect.</Text>;
+    return (
+      <Text style={{ fontSize: 14, color: colors.textSecondary }}>
+        No parameters for this effect.
+      </Text>
+    );
   }
 
   return (
@@ -114,9 +121,20 @@ export const ParametersPanel: React.FC<{
             formatValue={(v) => formatOutputValue(v, meta)}
           />
         ) : (
-          <View key={`ro-${meta.id}`} style={styles.readonlyParam}>
-            <Text style={styles.readonlyLabel}>{meta.name}</Text>
-            <Text style={styles.readonlyValue}>
+          <View
+            key={`ro-${meta.id}`}
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              paddingVertical: 8,
+              paddingHorizontal: 4,
+            }}
+          >
+            <Text style={{ fontSize: 14, color: colors.textDisabled }}>
+              {meta.name}
+            </Text>
+            <Text style={{ fontSize: 18, fontWeight: "600", color: colors.text }}>
               {formatOutputValue(value, meta)}
             </Text>
           </View>
@@ -169,26 +187,3 @@ export const ParametersPanel: React.FC<{
     </VStack>
   );
 };
-
-const styles = StyleSheet.create({
-  todoText: {
-    fontSize: 14,
-    color: "#666",
-  },
-  readonlyParam: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
-  readonlyLabel: {
-    fontSize: 14,
-    color: "#999",
-  },
-  readonlyValue: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
-  },
-});

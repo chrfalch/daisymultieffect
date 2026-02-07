@@ -1,6 +1,7 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { Card } from "./Card";
+import { useColors, type ColorTokens } from "../hooks/useColors";
 
 /** Pedal slot dimensions - shared with routing graph layout */
 export const PEDAL_SLOT_WIDTH = 90;
@@ -26,34 +27,43 @@ const ChannelIndicator: React.FC<{
   channelPolicy: number;
   selected: boolean;
   enabled: boolean;
-}> = ({ sumToMono, channelPolicy, selected, enabled }) => {
+  colors: ColorTokens;
+}> = ({ sumToMono, channelPolicy, selected, enabled, colors }) => {
   // Policy: 0=Auto (A), 1=Mono (M), 2=Stereo (S)
   const policyLabel =
     channelPolicy === 1 ? "M" : channelPolicy === 2 ? "S" : "A";
   // Blue when selected (even if disabled), gray when disabled and not selected
-  const textColor = selected ? "#1976D2" : !enabled ? "#999" : "#666";
-  const bgColor = selected ? "#E3F2FD" : !enabled ? "#F0F0F0" : "#F5F5F5";
-  const borderColor = selected ? "#90CAF9" : !enabled ? "#D0D0D0" : "#E0E0E0";
+  const textColor = selected ? colors.primaryDark : !enabled ? colors.textDisabled : colors.textSecondary;
+  const bgColor = selected ? colors.primaryTint : !enabled ? colors.surfaceRecessed : colors.surfaceRecessed;
+  const borderColor = selected ? colors.primaryLight : !enabled ? colors.disabledBorder : colors.borderLight;
 
   return (
-    <View style={styles.channelIndicator}>
+    <View style={{ flexDirection: "row", gap: 3, alignItems: "center", justifyContent: "center" }}>
       {sumToMono && (
         <View
-          style={[
-            styles.indicatorBadge,
-            { backgroundColor: bgColor, borderColor },
-          ]}
+          style={{
+            paddingHorizontal: 5,
+            paddingVertical: 2,
+            borderRadius: 4,
+            borderWidth: 1,
+            backgroundColor: bgColor,
+            borderColor,
+          }}
         >
-          <Text style={[styles.indicatorText, { color: textColor }]}>Σ</Text>
+          <Text style={{ fontSize: 9, fontWeight: "600", color: textColor }}>Σ</Text>
         </View>
       )}
       <View
-        style={[
-          styles.indicatorBadge,
-          { backgroundColor: bgColor, borderColor },
-        ]}
+        style={{
+          paddingHorizontal: 5,
+          paddingVertical: 2,
+          borderRadius: 4,
+          borderWidth: 1,
+          backgroundColor: bgColor,
+          borderColor,
+        }}
       >
-        <Text style={[styles.indicatorText, { color: textColor }]}>
+        <Text style={{ fontSize: 9, fontWeight: "600", color: textColor }}>
           {policyLabel}
         </Text>
       </View>
@@ -73,54 +83,76 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
   sumToMono = false,
   channelPolicy = 0,
 }) => {
+  const colors = useColors();
+
   // Lighter gray header when disabled, blue when selected, light blue otherwise
   // Text stays blue when selected even if disabled
-  const topStripBg = !enabled ? "#E0E0E0" : selected ? "#2196F3" : "#E3F2FD";
+  const topStripBg = !enabled ? colors.disabledBg : selected ? colors.primary : colors.primaryTint;
   const topStripText = selected
     ? enabled
       ? "#fff"
-      : "#1976D2"
+      : colors.primaryDark
     : !enabled
-    ? "#999"
-    : "#1976D2";
+    ? colors.textDisabled
+    : colors.primaryDark;
 
   // Check if this is an empty slot (no effect assigned)
   const isEmpty = !name || name === "Empty" || shortName === "--";
 
   return (
     <Pressable
-      style={styles.container}
+      style={{ flexDirection: "row", alignItems: "center" }}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`Select ${name} details`}
     >
-      <Card selected={selected} style={styles.pedalCard}>
-        <View style={styles.pedal}>
-          <View style={[styles.topStrip, { backgroundColor: topStripBg }]}>
-            <Text style={[styles.shortName, { color: topStripText }]}>
+      <Card selected={selected} style={{ padding: 0, overflow: "hidden" }}>
+        <View style={{ width: PEDAL_SLOT_WIDTH, height: PEDAL_SLOT_HEIGHT }}>
+          <View style={{ height: 28, justifyContent: "center", alignItems: "center", backgroundColor: topStripBg }}>
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "700",
+                textAlign: "center",
+                letterSpacing: 0.5,
+                color: topStripText,
+              }}
+            >
               {shortName}
             </Text>
           </View>
 
-          <View style={styles.face}>
+          <View
+            style={{
+              flex: 1,
+              paddingHorizontal: 10,
+              paddingTop: 8,
+              paddingBottom: 10,
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 4,
+            }}
+          >
             {!subtitle ? (
               <Text
-                style={[
-                  styles.name,
-                  selected && styles.nameSelected,
-                  !enabled && !selected && styles.nameDisabled,
-                ]}
+                style={{
+                  fontSize: 10,
+                  textAlign: "center",
+                  color: selected ? colors.primaryDark : !enabled ? colors.textDisabled : colors.text,
+                  fontWeight: selected ? "600" : "400",
+                }}
                 numberOfLines={2}
               >
                 {name}
               </Text>
             ) : (
               <Text
-                style={[
-                  styles.subtitle,
-                  selected && styles.nameSelected,
-                  !enabled && !selected && styles.nameDisabled,
-                ]}
+                style={{
+                  fontSize: 8,
+                  textAlign: "center",
+                  color: selected ? colors.primaryDark : !enabled ? colors.textDisabled : colors.textTertiary,
+                  fontWeight: selected ? "600" : "400",
+                }}
                 numberOfLines={2}
               >
                 {subtitle}
@@ -132,6 +164,7 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
               channelPolicy={channelPolicy}
               selected={selected}
               enabled={enabled}
+              colors={colors}
             />
 
             {showSwitch && onToggleEnabled ? (
@@ -142,30 +175,35 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
               >
                 {({ pressed }) => (
                   <View
-                    style={[
-                      styles.footswitchOuter,
-                      {
-                        borderColor: enabled
-                          ? "#2196F3"
-                          : isEmpty
-                          ? "#E0E0E0"
-                          : "#D0D0D0",
-                      },
-                      !isEmpty && pressed && { opacity: 0.7 },
-                    ]}
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 19,
+                      borderWidth: 2,
+                      backgroundColor: colors.surface,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      borderColor: enabled
+                        ? colors.primary
+                        : isEmpty
+                        ? colors.footswitchBorderEmpty
+                        : colors.footswitchBorderDisabled,
+                      opacity: !isEmpty && pressed ? 0.7 : 1,
+                    }}
                   >
                     <View
-                      style={[
-                        styles.footswitchInner,
-                        {
-                          borderColor: enabled
-                            ? "#1976D2"
-                            : isEmpty
-                            ? "#E0E0E0"
-                            : "#9E9E9E",
-                          backgroundColor: enabled ? "#4CAF50" : "#fff",
-                        },
-                      ]}
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: 9,
+                        borderWidth: 2,
+                        borderColor: enabled
+                          ? colors.primaryDark
+                          : isEmpty
+                          ? colors.footswitchBorderEmpty
+                          : colors.footswitchInnerDisabled,
+                        backgroundColor: enabled ? colors.success : colors.surface,
+                      }}
                     />
                   </View>
                 )}
@@ -177,91 +215,3 @@ export const PedalSlot: React.FC<PedalSlotProps> = ({
     </Pressable>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  pedalCard: {
-    padding: 0,
-    overflow: "hidden",
-  },
-  pedal: {
-    width: PEDAL_SLOT_WIDTH,
-    height: PEDAL_SLOT_HEIGHT,
-  },
-
-  topStrip: {
-    height: 28,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  shortName: {
-    fontSize: 18,
-    fontWeight: "700",
-    textAlign: "center",
-    letterSpacing: 0.5,
-  },
-
-  face: {
-    flex: 1,
-    paddingHorizontal: 10,
-    paddingTop: 8,
-    paddingBottom: 10,
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 4,
-  },
-  name: {
-    fontSize: 10,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 8,
-    textAlign: "center",
-    color: "#888",
-  },
-  nameSelected: {
-    color: "#1976D2",
-    fontWeight: "600",
-  },
-  nameDisabled: {
-    color: "#999",
-  },
-
-  footswitchOuter: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: 2,
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  footswitchInner: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    backgroundColor: "#fff",
-  },
-
-  channelIndicator: {
-    flexDirection: "row",
-    gap: 3,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  indicatorBadge: {
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1,
-  },
-  indicatorText: {
-    fontSize: 9,
-    fontWeight: "600",
-  },
-});

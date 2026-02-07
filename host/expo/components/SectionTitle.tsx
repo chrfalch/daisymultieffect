@@ -1,5 +1,6 @@
 import React from "react";
-import { Text, StyleSheet, TextStyle, StyleProp } from "react-native";
+import { Text, TextStyle, StyleProp } from "react-native";
+import { useColors } from "../hooks/useColors";
 
 interface SectionTitleProps {
   children: React.ReactNode;
@@ -10,16 +11,22 @@ export const SectionTitle: React.FC<SectionTitleProps> = ({
   children,
   style,
 }) => {
-  return <Text style={[styles.title, style]}>{children}</Text>;
+  const colors = useColors();
+  return (
+    <Text
+      style={[
+        {
+          fontSize: 14,
+          fontWeight: "600",
+          color: colors.textSecondary,
+          marginBottom: 8,
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+        },
+        style,
+      ]}
+    >
+      {children}
+    </Text>
+  );
 };
-
-const styles = StyleSheet.create({
-  title: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
-    marginBottom: 8,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-});

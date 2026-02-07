@@ -1,7 +1,8 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { Slider } from "./Slider";
 import { HStack, VStack } from "./Stack";
+import { useColors } from "../hooks/useColors";
 
 interface GainControlProps {
   inputGainDb: number;
@@ -28,10 +29,11 @@ export const GainControl: React.FC<GainControlProps> = ({
   onOutputGainChange,
   onGlobalBypassChange,
 }) => {
+  const colors = useColors();
   return (
     <VStack gap={12}>
       <HStack gap={16} align="stretch">
-        <View style={styles.sliderContainer}>
+        <View style={{ flex: 1 }}>
           <Slider
             label="Input Gain"
             description="Boost instrument level signal (0 to +24 dB)"
@@ -43,7 +45,7 @@ export const GainControl: React.FC<GainControlProps> = ({
             onValueChange={onInputGainChange}
           />
         </View>
-        <View style={styles.sliderContainer}>
+        <View style={{ flex: 1 }}>
           <Slider
             label="Output Gain"
             description="Adjust final output level (-12 to +12 dB)"
@@ -57,16 +59,24 @@ export const GainControl: React.FC<GainControlProps> = ({
         </View>
         <Pressable
           onPress={() => onGlobalBypassChange(!globalBypass)}
-          style={[
-            styles.bypassButton,
-            globalBypass && styles.bypassButtonActive,
-          ]}
+          style={{
+            backgroundColor: globalBypass ? colors.danger : colors.disabledBg,
+            paddingHorizontal: 16,
+            marginVertical: 6,
+            borderRadius: 12,
+            borderWidth: 2,
+            borderColor: globalBypass ? colors.dangerDark : colors.disabledBg,
+            justifyContent: "center",
+            alignItems: "center",
+            alignSelf: "stretch",
+          }}
         >
           <Text
-            style={[
-              styles.bypassButtonText,
-              globalBypass && styles.bypassButtonTextActive,
-            ]}
+            style={{
+              fontSize: 13,
+              fontWeight: "700",
+              color: globalBypass ? "#fff" : colors.textSecondary,
+            }}
           >
             BYPASS
           </Text>
@@ -75,32 +85,3 @@ export const GainControl: React.FC<GainControlProps> = ({
     </VStack>
   );
 };
-
-const styles = StyleSheet.create({
-  sliderContainer: {
-    flex: 1,
-  },
-  bypassButton: {
-    backgroundColor: "#E0E0E0",
-    paddingHorizontal: 16,
-    marginVertical: 6,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#E0E0E0",
-    justifyContent: "center",
-    alignItems: "center",
-    alignSelf: "stretch",
-  },
-  bypassButtonActive: {
-    backgroundColor: "#F44336",
-    borderColor: "#D32F2F",
-  },
-  bypassButtonText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#666",
-  },
-  bypassButtonTextActive: {
-    color: "#fff",
-  },
-});

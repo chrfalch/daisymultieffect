@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text } from "react-native";
+import { useColors } from "../hooks/useColors";
 
 type ConnectionStatusValue = {
   status: string;
@@ -14,45 +15,28 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
   isConnected,
   connectionStatus,
 }) => {
+  const colors = useColors();
   return (
     <>
-      <View style={styles.statusRow}>
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
         <View
-          style={[
-            styles.statusIndicator,
-            { backgroundColor: isConnected ? "#4CAF50" : "#F44336" },
-          ]}
+          style={{
+            width: 12,
+            height: 12,
+            borderRadius: 6,
+            marginRight: 8,
+            backgroundColor: isConnected ? colors.success : colors.danger,
+          }}
         />
-        <Text style={styles.statusText}>
+        <Text style={{ fontSize: 16, fontWeight: "500", color: colors.text }}>
           {isConnected ? "Connected" : "Disconnected"}
         </Text>
       </View>
       {connectionStatus && (
-        <Text style={styles.statusDetail}>{connectionStatus.status}</Text>
+        <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 12 }}>
+          {connectionStatus.status}
+        </Text>
       )}
     </>
   );
 };
-
-const styles = StyleSheet.create({
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  statusIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 8,
-  },
-  statusText: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  statusDetail: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 12,
-  },
-});

@@ -1,9 +1,10 @@
 import React from "react";
-import { Text, StyleSheet, ScrollView, Pressable } from "react-native";
+import { Text, ScrollView, Pressable } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useDaisyMultiFX } from "../../hooks/useDaisyMultiFX";
 import { useDeviceStatus } from "../../hooks/useDeviceStatus";
+import { useColors } from "../../hooks/useColors";
 import { Card } from "../../components/Card";
 import { CardTitle } from "../../components/CardTitle";
 import { GraphView } from "../../components/GraphView";
@@ -24,25 +25,29 @@ const PanelTabButton: React.FC<{
   selected: boolean;
   onPress: () => void;
 }> = ({ label, icon, selected, onPress }) => {
-  const color = selected ? "#fff" : "#1976D2";
+  const colors = useColors();
+  const color = selected ? "#fff" : colors.primaryOnTint;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={({ pressed }) => [
-        styles.panelTabButton,
-        selected && styles.panelTabButtonSelected,
-        pressed && styles.panelTabButtonPressed,
-      ]}
+      style={({ pressed }) => ({
+        backgroundColor: selected ? colors.primary : colors.primaryTint,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 16,
+        opacity: pressed ? 0.7 : 1,
+      })}
     >
       <HStack gap={6} align="center">
         <Ionicons name={icon} size={16} color={color} />
         <Text
-          style={[
-            styles.panelTabButtonText,
-            selected && styles.panelTabButtonTextSelected,
-          ]}
+          style={{
+            color,
+            fontSize: 13,
+            fontWeight: selected ? "600" : "400",
+          }}
         >
           {label}
         </Text>
@@ -52,6 +57,7 @@ const PanelTabButton: React.FC<{
 };
 
 export const EditorScreen: React.FC = () => {
+  const colors = useColors();
   const {
     isConnected,
     connectionStatus,
@@ -117,10 +123,10 @@ export const EditorScreen: React.FC = () => {
   }, [deviceStatus?.outputParams, slot?.slotIndex]);
 
   return (
-    <GestureHandlerRootView style={styles.flex}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.scrollContent}
+        style={{ flex: 1, backgroundColor: colors.background }}
+        contentContainerStyle={{ padding: 16, gap: 16 }}
       >
         <HStack justify="space-between" align="stretch" gap={16}>
           <Card flex={1}>
@@ -164,7 +170,7 @@ export const EditorScreen: React.FC = () => {
         )}
 
         {patch && (
-          <Card style={styles.graphCard}>
+          <Card style={{ paddingVertical: 8 }}>
             <GraphView
               slots={patch.slots}
               numSlots={patch.numSlots}
@@ -181,10 +187,10 @@ export const EditorScreen: React.FC = () => {
         {/* Empty State */}
         {!patch && (
           <VStack align="center">
-            <Text style={styles.emptyStateText}>
+            <Text style={{ fontSize: 16, color: colors.textSecondary, marginBottom: 8 }}>
               No patch data received yet.
             </Text>
-            <Text style={styles.emptyStateHint}>
+            <Text style={{ fontSize: 14, color: colors.textDisabled }}>
               Make sure the VST or hardware is running.
             </Text>
           </VStack>
@@ -194,7 +200,7 @@ export const EditorScreen: React.FC = () => {
       {slot && (
         <VStack padding={16}>
           <HStack justify="space-between" align="center">
-            <HStack gap={8} align="center" style={styles.headerLeft}>
+            <HStack gap={8} align="center" style={{ flex: 1, marginRight: 8 }}>
               <EffectContextMenuButton
                 slot={slot}
                 effectMeta={effectMeta}
@@ -217,19 +223,29 @@ export const EditorScreen: React.FC = () => {
             </HStack>
           </HStack>
           {!!selectedEffectDescription && (
-            <Text style={styles.effectDescription} numberOfLines={2}>
+            <Text
+              style={{ marginTop: 6, fontSize: 13, color: colors.textSecondary }}
+              numberOfLines={2}
+            >
               {selectedEffectDescription}
             </Text>
           )}
 
           {/** Keep the panel height stable by always rendering Parameters (it defines height). */}
           {/** Effect/Routing render as an overlay on top when selected. */}
-          <VStack style={[styles.paramsContainer, styles.panelBody]}>
+          <VStack
+            style={{
+              marginTop: 12,
+              paddingTop: 12,
+              borderTopWidth: 1,
+              borderTopColor: colors.separator,
+              minHeight: 300,
+              position: "relative",
+            }}
+          >
             <VStack
               pointerEvents={panelTab === "parameters" ? "auto" : "none"}
-              style={
-                panelTab === "parameters" ? undefined : styles.hiddenContent
-              }
+              style={panelTab === "parameters" ? undefined : { opacity: 0 }}
             >
               <ParametersPanel
                 slot={slot}
@@ -258,85 +274,3 @@ export const EditorScreen: React.FC = () => {
     </GestureHandlerRootView>
   );
 };
-
-const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  scrollContent: {
-    padding: 16,
-    gap: 16,
-  },
-  slotsViewToggle: {
-    marginTop: 4,
-  },
-  graphCard: {
-    paddingVertical: 8,
-  },
-  parameterPanelTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  headerLeft: {
-    flex: 1,
-    marginRight: 8,
-  },
-  effectDescription: {
-    marginTop: 6,
-    fontSize: 13,
-    color: "#666",
-  },
-  paramsContainer: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-    minHeight: 300,
-  },
-  panelBody: {
-    position: "relative",
-  },
-  hiddenContent: {
-    opacity: 0,
-  },
-  overlayPanel: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  panelTabButton: {
-    backgroundColor: "#E3F2FD",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  panelTabButtonSelected: {
-    backgroundColor: "#2196F3",
-  },
-  panelTabButtonPressed: {
-    opacity: 0.7,
-  },
-  panelTabButtonText: {
-    color: "#1976D2",
-    fontSize: 13,
-  },
-  panelTabButtonTextSelected: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 8,
-  },
-  emptyStateHint: {
-    fontSize: 14,
-    color: "#999",
-  },
-});

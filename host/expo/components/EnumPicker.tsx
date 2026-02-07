@@ -1,7 +1,6 @@
 import React from "react";
 import {
   Text,
-  StyleSheet,
   Pressable,
   Modal,
   FlatList,
@@ -9,6 +8,7 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { VStack, HStack } from "./Stack";
+import { useColors } from "../hooks/useColors";
 
 interface EnumOption {
   value: number;
@@ -30,6 +30,7 @@ export const EnumPicker: React.FC<EnumPickerProps> = ({
   options,
   onValueChange,
 }) => {
+  const colors = useColors();
   const [isOpen, setIsOpen] = React.useState(false);
 
   const selectedOption = options.find((opt) => opt.value === value);
@@ -43,21 +44,34 @@ export const EnumPicker: React.FC<EnumPickerProps> = ({
   return (
     <VStack gap={4}>
       <HStack justify="space-between" align="center">
-        <Text style={styles.label}>{label}</Text>
+        <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text }}>
+          {label}
+        </Text>
         <Pressable
           onPress={() => setIsOpen(true)}
-          style={({ pressed }) => [
-            styles.pickerButton,
-            pressed && styles.pickerButtonPressed,
-          ]}
+          style={({ pressed }) => ({
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            backgroundColor: colors.surfaceRecessed,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: colors.separator,
+            opacity: pressed ? 0.7 : 1,
+          })}
         >
           <HStack gap={8} align="center">
-            <Text style={styles.pickerValue}>{displayValue}</Text>
-            <Ionicons name="chevron-down" size={16} color="#1976D2" />
+            <Text style={{ fontSize: 14, color: colors.primaryOnTint, fontWeight: "500" }}>
+              {displayValue}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color={colors.primaryOnTint} />
           </HStack>
         </Pressable>
       </HStack>
-      {description && <Text style={styles.description}>{description}</Text>}
+      {description && (
+        <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+          {description}
+        </Text>
+      )}
 
       <Modal
         visible={isOpen}
@@ -65,37 +79,81 @@ export const EnumPicker: React.FC<EnumPickerProps> = ({
         animationType="fade"
         onRequestClose={() => setIsOpen(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setIsOpen(false)}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{label}</Text>
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: colors.overlay,
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 20,
+          }}
+          onPress={() => setIsOpen(false)}
+        >
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: 12,
+              width: "100%",
+              maxWidth: 320,
+              maxHeight: "60%",
+              overflow: "hidden",
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "600",
+                color: colors.text,
+                padding: 16,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.separator,
+                textAlign: "center",
+              }}
+            >
+              {label}
+            </Text>
             <FlatList
               data={options}
               keyExtractor={(item) => String(item.value)}
               renderItem={({ item }) => (
                 <Pressable
                   onPress={() => handleSelect(item.value)}
-                  style={({ pressed }) => [
-                    styles.optionItem,
-                    item.value === value && styles.optionItemSelected,
-                    pressed && styles.optionItemPressed,
-                  ]}
+                  style={({ pressed }) => ({
+                    paddingVertical: 14,
+                    paddingHorizontal: 16,
+                    backgroundColor:
+                      item.value === value
+                        ? colors.primaryTint
+                        : pressed
+                        ? colors.surfaceRecessed
+                        : undefined,
+                  })}
                 >
                   <HStack justify="space-between" align="center">
                     <Text
-                      style={[
-                        styles.optionText,
-                        item.value === value && styles.optionTextSelected,
-                      ]}
+                      style={{
+                        fontSize: 16,
+                        color: item.value === value ? colors.primaryOnTint : colors.text,
+                        fontWeight: item.value === value ? "500" : "400",
+                      }}
                     >
                       {item.name}
                     </Text>
                     {item.value === value && (
-                      <Ionicons name="checkmark" size={20} color="#1976D2" />
+                      <Ionicons name="checkmark" size={20} color={colors.primaryOnTint} />
                     )}
                   </HStack>
                 </Pressable>
               )}
-              ItemSeparatorComponent={() => <View style={styles.separator} />}
+              ItemSeparatorComponent={() => (
+                <View
+                  style={{
+                    height: 1,
+                    backgroundColor: colors.separator,
+                    marginHorizontal: 16,
+                  }}
+                />
+              )}
             />
           </View>
         </Pressable>
@@ -103,79 +161,3 @@ export const EnumPicker: React.FC<EnumPickerProps> = ({
     </VStack>
   );
 };
-
-const styles = StyleSheet.create({
-  label: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#333",
-  },
-  description: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 2,
-  },
-  pickerButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: "#f0f0f0",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#ddd",
-  },
-  pickerButtonPressed: {
-    backgroundColor: "#e0e0e0",
-  },
-  pickerValue: {
-    fontSize: 14,
-    color: "#1976D2",
-    fontWeight: "500",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    width: "100%",
-    maxWidth: 320,
-    maxHeight: "60%",
-    overflow: "hidden",
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-    textAlign: "center",
-  },
-  optionItem: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-  },
-  optionItemSelected: {
-    backgroundColor: "#e3f2fd",
-  },
-  optionItemPressed: {
-    backgroundColor: "#f5f5f5",
-  },
-  optionText: {
-    fontSize: 16,
-    color: "#333",
-  },
-  optionTextSelected: {
-    color: "#1976D2",
-    fontWeight: "500",
-  },
-  separator: {
-    height: 1,
-    backgroundColor: "#eee",
-    marginHorizontal: 16,
-  },
-});

@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -7,6 +7,7 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import type { DeviceStatus } from "../modules/daisy-multi-fx";
+import { useColors } from "../hooks/useColors";
 
 interface StatusMeterProps {
   deviceStatus: DeviceStatus | null;
@@ -44,9 +45,10 @@ function formatCpu(load: number): string {
 /**
  * Animated horizontal level meter bar using Reanimated
  */
-const LevelBar: React.FC<{ level: number; color: string }> = ({
+const LevelBar: React.FC<{ level: number; color: string; trackColor: string }> = ({
   level,
   color,
+  trackColor,
 }) => {
   // Map dB to 0-1 range: -60dB = 0, 0dB = 1
   const db = linearToDb(level);
@@ -63,9 +65,18 @@ const LevelBar: React.FC<{ level: number; color: string }> = ({
   }));
 
   return (
-    <View style={styles.meterBarContainer}>
+    <View
+      style={{
+        flex: 1,
+        height: 8,
+        backgroundColor: trackColor,
+        borderRadius: 4,
+        overflow: "hidden",
+        position: "relative",
+      }}
+    >
       <Animated.View
-        style={[styles.meterBarFill, { backgroundColor: color }, animatedStyle]}
+        style={[{ height: "100%", borderRadius: 4, backgroundColor: color }, animatedStyle]}
       />
     </View>
   );
@@ -74,9 +85,10 @@ const LevelBar: React.FC<{ level: number; color: string }> = ({
 /**
  * Animated CPU load bar using Reanimated
  */
-const CpuBar: React.FC<{ load: number; maxLoad: number }> = ({
+const CpuBar: React.FC<{ load: number; maxLoad: number; trackColor: string }> = ({
   load,
   maxLoad,
+  trackColor,
 }) => {
   const avgPercent = Math.max(0, Math.min(100, load * 100));
   const maxPercent = Math.max(0, Math.min(100, maxLoad * 100));
@@ -105,20 +117,34 @@ const CpuBar: React.FC<{ load: number; maxLoad: number }> = ({
   }));
 
   return (
-    <View style={styles.meterBarContainer}>
+    <View
+      style={{
+        flex: 1,
+        height: 8,
+        backgroundColor: trackColor,
+        borderRadius: 4,
+        overflow: "hidden",
+        position: "relative",
+      }}
+    >
       {/* Max load marker */}
       <Animated.View
         style={[
-          styles.cpuMaxMarker,
-          { backgroundColor: color },
+          {
+            position: "absolute",
+            top: 0,
+            width: 2,
+            height: "100%",
+            marginLeft: -1,
+            backgroundColor: color,
+          },
           maxAnimatedStyle,
         ]}
       />
       {/* Average load fill */}
       <Animated.View
         style={[
-          styles.meterBarFill,
-          { backgroundColor: color, opacity: 0.7 },
+          { height: "100%", borderRadius: 4, backgroundColor: color, opacity: 0.7 },
           avgAnimatedStyle,
         ]}
       />
@@ -127,10 +153,14 @@ const CpuBar: React.FC<{ load: number; maxLoad: number }> = ({
 };
 
 export const StatusMeter: React.FC<StatusMeterProps> = ({ deviceStatus }) => {
+  const colors = useColors();
+
   if (!deviceStatus) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.noDataText}>No device status</Text>
+      <View style={{ gap: 8 }}>
+        <Text style={{ color: colors.textSecondary, fontSize: 12, fontStyle: "italic" }}>
+          No device status
+        </Text>
       </View>
     );
   }
@@ -139,77 +169,63 @@ export const StatusMeter: React.FC<StatusMeterProps> = ({ deviceStatus }) => {
   const outputDb = linearToDb(deviceStatus.outputLevel);
 
   return (
-    <View style={styles.container}>
+    <View style={{ gap: 8 }}>
       {/* Input Level */}
-      <View style={styles.meterRow}>
-        <Text style={styles.label}>IN</Text>
-        <LevelBar level={deviceStatus.inputLevel} color="#2196F3" />
-        <Text style={styles.value}>{formatDb(inputDb)}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <Text style={{ width: 32, fontSize: 11, fontWeight: "600", color: colors.textSecondary }}>
+          IN
+        </Text>
+        <LevelBar level={deviceStatus.inputLevel} color={colors.primary} trackColor={colors.disabledBg} />
+        <Text
+          style={{
+            width: 90,
+            fontSize: 11,
+            color: colors.text,
+            textAlign: "right",
+            fontVariant: ["tabular-nums"],
+          }}
+        >
+          {formatDb(inputDb)}
+        </Text>
       </View>
 
       {/* Output Level */}
-      <View style={styles.meterRow}>
-        <Text style={styles.label}>OUT</Text>
-        <LevelBar level={deviceStatus.outputLevel} color="#4CAF50" />
-        <Text style={styles.value}>{formatDb(outputDb)}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <Text style={{ width: 32, fontSize: 11, fontWeight: "600", color: colors.textSecondary }}>
+          OUT
+        </Text>
+        <LevelBar level={deviceStatus.outputLevel} color={colors.success} trackColor={colors.disabledBg} />
+        <Text
+          style={{
+            width: 90,
+            fontSize: 11,
+            color: colors.text,
+            textAlign: "right",
+            fontVariant: ["tabular-nums"],
+          }}
+        >
+          {formatDb(outputDb)}
+        </Text>
       </View>
 
       {/* CPU Load */}
-      <View style={styles.meterRow}>
-        <Text style={styles.label}>CPU</Text>
-        <CpuBar load={deviceStatus.cpuAvg} maxLoad={deviceStatus.cpuMax} />
-        <Text style={styles.value}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <Text style={{ width: 32, fontSize: 11, fontWeight: "600", color: colors.textSecondary }}>
+          CPU
+        </Text>
+        <CpuBar load={deviceStatus.cpuAvg} maxLoad={deviceStatus.cpuMax} trackColor={colors.disabledBg} />
+        <Text
+          style={{
+            width: 90,
+            fontSize: 11,
+            color: colors.text,
+            textAlign: "right",
+            fontVariant: ["tabular-nums"],
+          }}
+        >
           {formatCpu(deviceStatus.cpuAvg)} / {formatCpu(deviceStatus.cpuMax)}
         </Text>
       </View>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    gap: 8,
-  },
-  noDataText: {
-    color: "#666",
-    fontSize: 12,
-    fontStyle: "italic",
-  },
-  meterRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  label: {
-    width: 32,
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#666",
-  },
-  meterBarContainer: {
-    flex: 1,
-    height: 8,
-    backgroundColor: "#E0E0E0",
-    borderRadius: 4,
-    overflow: "hidden",
-    position: "relative",
-  },
-  meterBarFill: {
-    height: "100%",
-    borderRadius: 4,
-  },
-  cpuMaxMarker: {
-    position: "absolute",
-    top: 0,
-    width: 2,
-    height: "100%",
-    marginLeft: -1,
-  },
-  value: {
-    width: 90,
-    fontSize: 11,
-    color: "#333",
-    textAlign: "right",
-    fontVariant: ["tabular-nums"],
-  },
-});

@@ -2,10 +2,10 @@ import React from "react";
 import {
   Pressable,
   Text,
-  StyleSheet,
   ViewStyle,
   StyleProp,
 } from "react-native";
+import { useColors } from "../hooks/useColors";
 
 interface ButtonProps {
   title: string;
@@ -14,32 +14,22 @@ interface ButtonProps {
 }
 
 export const Button: React.FC<ButtonProps> = ({ title, onPress, style }) => {
+  const colors = useColors();
   return (
     <Pressable
       style={({ pressed }) => [
-        styles.button,
-        pressed && styles.buttonPressed,
+        {
+          backgroundColor: colors.primary,
+          paddingHorizontal: 16,
+          paddingVertical: 8,
+          borderRadius: 8,
+        },
+        pressed && { opacity: 0.7 },
         style,
       ]}
       onPress={onPress}
     >
-      <Text style={styles.buttonText}>{title}</Text>
+      <Text style={{ color: "#fff", fontWeight: "500" }}>{title}</Text>
     </Pressable>
   );
 };
-
-const styles = StyleSheet.create({
-  button: {
-    backgroundColor: "#2196F3",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  buttonPressed: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "500",
-  },
-});
