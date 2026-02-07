@@ -195,11 +195,18 @@ void AudioProcessor::ApplyPatch(const PatchWireDesc &pw)
 
 void AudioProcessor::ProcessFrame(float inL, float inR, float &outL, float &outR)
 {
-    // Mono input: duplicate left channel to right.
-    // Guitar pedals have a mono instrument input on a stereo codec,
-    // so the right channel is typically silent or noise.
+    // Mono input: sum both channels so the signal is present on both L and R.
+    // Guitar pedals have a mono instrument input on a stereo codec — the
+    // signal may arrive on either channel depending on hardware wiring.
+    // Summing (not copying L→R) ensures we capture the signal regardless
+    // of which channel it's on, while the silent/noise channel contributes
+    // negligibly.
     if (monoInput_)
-        inR = inL;
+    {
+        float mono = inL + inR;
+        inL = mono;
+        inR = mono;
+    }
 
     // Global bypass: pass through with gain staging only, skip all DSP
     if (globalBypass_)

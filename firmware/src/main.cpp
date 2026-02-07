@@ -84,7 +84,7 @@ PatchWireDesc MakePassthroughPatch();
 PatchWireDesc MakeNeuralAmpTestPatch();
 
 // Audio callback: process audio through the effect chain.
-// Mono input handling (left→right copy) is done inside AudioProcessor::ProcessFrame().
+// Mono input handling (L+R sum) is done inside AudioProcessor::ProcessFrame().
 static void AudioCallback(daisy::AudioHandle::InputBuffer in,
                           daisy::AudioHandle::OutputBuffer out,
                           size_t size)

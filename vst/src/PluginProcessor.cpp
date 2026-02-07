@@ -43,6 +43,9 @@ DaisyMultiFXProcessor::DaisyMultiFXProcessor()
 
     // Create DSP components
     processor_ = std::make_unique<CoreAudioProcessor>(tempo_);
+    // VST runs inside a DAW which manages stereo routing properly;
+    // disable mono-input summing so true stereo tracks are preserved.
+    processor_->SetMonoInput(false);
     buffers_ = std::make_unique<BufferManager>();
     buffers_->BindTo(*processor_);
 
@@ -922,7 +925,8 @@ void DaisyMultiFXProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
     }
 
     // Process audio
-    // Mono input handling (left→right copy) is done inside AudioProcessor::ProcessFrame().
+    // Mono input handling is disabled for VST (DAW manages stereo routing).
+    // On firmware, AudioProcessor::ProcessFrame() sums L+R to mono.
     const int numChannels = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
     auto *leftIn = buffer.getReadPointer(0);

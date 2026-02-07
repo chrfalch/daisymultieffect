@@ -55,10 +55,10 @@ public:
     float GetInputGain() const { return inputGain_; }
     float GetOutputGain() const { return outputGain_; }
 
-    // Mono input mode: when enabled, copies left channel to right before processing.
-    // Default is true — guitar pedals have a mono instrument input on a stereo codec,
-    // so the right channel is typically silent or noise. This ensures the signal
-    // appears on both channels for stereo effects and output.
+    // Mono input mode: when enabled, sums both input channels so the signal
+    // appears on both L and R regardless of which physical channel the
+    // instrument is wired to. Default is true for guitar pedals where a mono
+    // instrument input connects to one channel of a stereo codec.
     void SetMonoInput(bool mono) { monoInput_ = mono; }
     bool GetMonoInput() const { return monoInput_; }
 
