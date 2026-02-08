@@ -6,6 +6,7 @@ import {
   Group,
 } from "@shopify/react-native-skia";
 import { getColorForType } from "../../utils/pedalColors";
+import type { ThemeColors } from "../ThemeProvider";
 import {
   PEDAL_W,
   PEDAL_H,
@@ -32,6 +33,8 @@ export interface PedalDrawProps {
   typeId: number;
   channelPolicy: number;
   sumToMono: boolean;
+  themeColors: ThemeColors;
+  isDark: boolean;
 }
 
 export const SkiaPedal: React.FC<PedalDrawProps> = React.memo(
@@ -46,38 +49,44 @@ export const SkiaPedal: React.FC<PedalDrawProps> = React.memo(
     typeId,
     channelPolicy,
     sumToMono,
+    themeColors,
+    isDark,
   }) => {
-    const colors = getColorForType(typeId);
+    const effectColors = getColorForType(typeId, isDark);
     const isEmpty = !name || name === "Empty" || shortName === "--";
 
-    // ── Colors ──
-    const borderColor = selected ? "#2196F3" : "#DDDDDD";
+    // ── Colors (theme-aware) ──
+    const borderColor = selected ? themeColors.surfaceSelectedBorder : themeColors.border;
     const borderWidth = selected ? 2.5 : 1.5;
-    const bodyBg = selected ? "#E3F2FD" : enabled ? colors.body : "#F5F5F5";
+    const bodyBg = selected
+      ? themeColors.surfaceSelected
+      : enabled
+        ? effectColors.body
+        : themeColors.surfaceSecondary;
     const stripBg = !enabled
-      ? "#E0E0E0"
+      ? (isDark ? "#555" : "#E0E0E0")
       : selected
-        ? "#2196F3"
-        : colors.strip;
+        ? themeColors.accent
+        : effectColors.strip;
     const stripTextColor = !enabled
-      ? "#999"
+      ? themeColors.textTertiary
       : selected
-        ? "#fff"
-        : colors.stripText;
+        ? themeColors.textInverse
+        : effectColors.stripText;
 
-    const nameColor = selected ? "#1976D2" : !enabled ? "#999" : "#333";
-    const subtitleColor = selected ? "#1976D2" : !enabled ? "#999" : "#888";
+    const nameColor = selected ? themeColors.accentDark : !enabled ? themeColors.textTertiary : themeColors.text;
+    const subtitleColor = selected ? themeColors.accentDark : !enabled ? themeColors.textTertiary : themeColors.textSecondary;
 
     // Footswitch colours
-    const fsOuterBorder = enabled ? "#2196F3" : isEmpty ? "#E0E0E0" : "#D0D0D0";
-    const fsInnerBorder = enabled ? "#1976D2" : isEmpty ? "#E0E0E0" : "#9E9E9E";
-    const fsInnerFill = enabled ? "#4CAF50" : "#fff";
+    const fsOuterBorder = enabled ? themeColors.accent : isEmpty ? themeColors.border : themeColors.border;
+    const fsInnerBorder = enabled ? themeColors.accentDark : isEmpty ? themeColors.border : themeColors.textTertiary;
+    const fsInnerFill = enabled ? themeColors.success : themeColors.surfacePrimary;
 
     // Channel indicator
     const policyLabel =
       channelPolicy === 1 ? "M" : channelPolicy === 2 ? "S" : "A";
-    const indColor = selected ? "#1976D2" : !enabled ? "#999" : "#666";
-    const indBg = selected ? "#E3F2FD" : !enabled ? "#F0F0F0" : "#F5F5F5";
+    const indColor = selected ? themeColors.accentDark : !enabled ? themeColors.textTertiary : themeColors.textSecondary;
+    const indBg = selected ? themeColors.surfaceSelected : !enabled ? themeColors.surfaceSecondary : themeColors.surfaceSecondary;
 
     // ── Layout positions (relative to pedal origin) ──
     const fsCenterX = x + PEDAL_W / 2;
@@ -180,7 +189,7 @@ export const SkiaPedal: React.FC<PedalDrawProps> = React.memo(
           cx={fsCenterX}
           cy={fsCenterY}
           r={FOOTSWITCH_R}
-          color="#fff"
+          color={themeColors.surfacePrimary}
           style="fill"
         />
         <Circle

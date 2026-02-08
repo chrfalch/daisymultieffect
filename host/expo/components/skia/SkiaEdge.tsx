@@ -20,8 +20,8 @@ function buildEdgePath(
   y2: number,
 ): string {
   const dx = Math.abs(x2 - x1);
-  const cpOffset = Math.max(20, dx * 0.4);
-  return `M ${x1} ${y1} C ${x1 + cpOffset} ${y1}, ${x2 - cpOffset} ${y2}, ${x2} ${y2}`;
+  const controlPointOffset = Math.max(20, dx * 0.4);
+  return `M ${x1} ${y1} C ${x1 + controlPointOffset} ${y1}, ${x2 - controlPointOffset} ${y2}, ${x2} ${y2}`;
 }
 
 /** Build a Skia path string for a wrapped (cross-row) routing edge. */
@@ -32,13 +32,13 @@ function buildWrappedEdgePath(
   yTo: number,
   yMid: number,
 ): string {
-  const cp = 16;
+  const controlPointDistance = 16;
   // Down from source → horizontal across → down to destination
   return [
     `M ${xFrom} ${yFrom}`,
-    `C ${xFrom} ${yFrom + cp}, ${xFrom} ${yMid - cp}, ${xFrom} ${yMid}`,
+    `C ${xFrom} ${yFrom + controlPointDistance}, ${xFrom} ${yMid - controlPointDistance}, ${xFrom} ${yMid}`,
     `L ${xTo} ${yMid}`,
-    `C ${xTo} ${yMid + cp}, ${xTo} ${yTo - cp}, ${xTo} ${yTo}`,
+    `C ${xTo} ${yMid + controlPointDistance}, ${xTo} ${yTo - controlPointDistance}, ${xTo} ${yTo}`,
   ].join(" ");
 }
 
@@ -50,10 +50,14 @@ export interface EdgeDrawProps {
   nodeWidth: number;
   nodeHeight: number;
   layout: GraphLayout;
+  /** Left-channel edge color */
+  colorLeft: string;
+  /** Right-channel edge color */
+  colorRight: string;
 }
 
 export const SkiaEdge: React.FC<EdgeDrawProps> = React.memo(
-  ({ edge, nodesById, nodeWidth, nodeHeight, layout }) => {
+  ({ edge, nodesById, nodeWidth, nodeHeight, layout, colorLeft, colorRight }) => {
     const from = nodesById.get(edge.from);
     const to = nodesById.get(edge.to);
     if (!from || !to) return null;
@@ -88,7 +92,7 @@ export const SkiaEdge: React.FC<EdgeDrawProps> = React.memo(
     if (!path) return null;
 
     const opacity = edge.enabled ? 0.8 : 0.25;
-    const color = edge.label === "L" ? "#1976D2" : edge.label === "R" ? "#D32F2F" : "#1976D2";
+    const color = edge.label === "R" ? colorRight : colorLeft;
     const strokeWidth = edge.label === "LR" ? 2.5 : 2;
 
     return (

@@ -5,7 +5,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useDaisyMultiFX } from "../../hooks/useDaisyMultiFX";
 import { Card } from "../../components/Card";
 import { CardTitle } from "../../components/CardTitle";
-import { GraphView } from "../../components/GraphView";
+import { SkiaGraphView } from "../../components/skia";
 import { ConnectionStatus } from "../../components/ConnectionStatus";
 import { DeviceStatusMeter } from "../../components/DeviceStatusMeter";
 import { GainControl } from "../../components/GainControl";
@@ -119,7 +119,7 @@ export default function PedalboardScreen() {
 
         {patch && (
           <Card style={{ paddingVertical: 8 }}>
-            <GraphView
+            <SkiaGraphView
               slots={patch.slots}
               numSlots={patch.numSlots}
               selectedSlotIndex={expandedSlot}

@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet } from "react-native";
+import { View } from "react-native";
 import { Canvas } from "@shopify/react-native-skia";
 import {
   Gesture,
@@ -15,6 +15,7 @@ import {
   type GraphNode,
   type GraphNodeId,
 } from "../../utils/routingGraph";
+import { useTheme } from "../ThemeProvider";
 import { SkiaPedal } from "./SkiaPedal";
 import { SkiaEdge } from "./SkiaEdge";
 import {
@@ -65,9 +66,14 @@ export const SkiaGraphView: React.FC<SkiaGraphViewProps> = ({
   onReorderSlot,
   getDisplayLabel,
 }) => {
+  const { colors: themeColors, isDark } = useTheme();
   const [containerWidth, setContainerWidth] = React.useState<number | null>(
     null,
   );
+
+  // Edge colors from theme
+  const edgeColorLeft = themeColors.accentDark;
+  const edgeColorRight = isDark ? "#EF5350" : "#D32F2F";
 
   // ── Graph layout ──
   const layout = React.useMemo<GraphLayout>(() => {
@@ -98,9 +104,6 @@ export const SkiaGraphView: React.FC<SkiaGraphViewProps> = ({
   const dragStartY = useSharedValue(0);
 
   // ── Gesture handlers ──
-  // We use a single gesture detector over the whole canvas.  Touch position
-  // determines which pedal (if any) was tapped/dragged.
-
   const findNodeAt = React.useCallback(
     (x: number, y: number): GraphNode | undefined => {
       return renderNodes.find(
@@ -165,7 +168,6 @@ export const SkiaGraphView: React.FC<SkiaGraphViewProps> = ({
         .onEnd((e) => {
           if (dragSlotIndex.value < 0) return;
 
-          // Find the target slot under the drop position
           const dropX = dragStartX.value + e.translationX + PEDAL_W / 2;
           const dropY = dragStartY.value + e.translationY + PEDAL_H / 2;
           const target = findNodeAt(dropX, dropY);
@@ -194,7 +196,7 @@ export const SkiaGraphView: React.FC<SkiaGraphViewProps> = ({
   // ── Render ──
   return (
     <View
-      style={styles.root}
+      style={{ width: "100%" }}
       onLayout={(e) => {
         const w = e.nativeEvent.layout.width;
         if (w > 0 && w !== containerWidth) setContainerWidth(w);
@@ -217,6 +219,8 @@ export const SkiaGraphView: React.FC<SkiaGraphViewProps> = ({
               nodeWidth={layout.nodeWidth}
               nodeHeight={layout.nodeHeight}
               layout={layout}
+              colorLeft={edgeColorLeft}
+              colorRight={edgeColorRight}
             />
           ))}
 
@@ -256,6 +260,8 @@ export const SkiaGraphView: React.FC<SkiaGraphViewProps> = ({
                 typeId={typeId}
                 channelPolicy={channelPolicy}
                 sumToMono={sumToMono}
+                themeColors={themeColors}
+                isDark={isDark}
               />
             );
           })}
@@ -264,9 +270,3 @@ export const SkiaGraphView: React.FC<SkiaGraphViewProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  root: {
-    width: "100%",
-  },
-});
