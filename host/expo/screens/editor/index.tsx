@@ -6,7 +6,7 @@ import { useDaisyMultiFX } from "../../hooks/useDaisyMultiFX";
 import { useDeviceStatus } from "../../hooks/useDeviceStatus";
 import { Card } from "../../components/Card";
 import { CardTitle } from "../../components/CardTitle";
-import { GraphView } from "../../components/GraphView";
+import { SkiaGraphView } from "../../components/SkiaGraphView";
 import { ConnectionStatus } from "../../components/ConnectionStatus";
 import { DeviceStatusMeter } from "../../components/DeviceStatusMeter";
 import { GainControl } from "../../components/GainControl";
@@ -165,7 +165,7 @@ export const EditorScreen: React.FC = () => {
 
         {patch && (
           <Card style={styles.graphCard}>
-            <GraphView
+            <SkiaGraphView
               slots={patch.slots}
               numSlots={patch.numSlots}
               selectedSlotIndex={expandedSlot}
