@@ -4,7 +4,9 @@ import { useLocalSearchParams } from "expo-router";
 import { useDaisyMultiFX } from "../../hooks/useDaisyMultiFX";
 import { useDeviceStatus } from "../../hooks/useDeviceStatus";
 import { ParametersPanel } from "../../screens/editor/ParametersPanel";
+import { EffectContextMenuButton } from "../../screens/editor/EffectContextMenuButton";
 import { useThemeColors } from "../../components/ThemeProvider";
+import { HStack } from "../../components/Stack";
 
 export default function SlotParamsSheet() {
   const colors = useThemeColors();
@@ -13,7 +15,7 @@ export default function SlotParamsSheet() {
   }>();
   const slotIndex = Number(slotIndexStr ?? 0);
 
-  const { patch, effectMeta, getParamName, getParamMeta, setSlotParam, getEffectName } =
+  const { patch, effectMeta, getParamName, getParamMeta, setSlotParam, setSlotType } =
     useDaisyMultiFX();
   const deviceStatus = useDeviceStatus();
 
@@ -33,7 +35,6 @@ export default function SlotParamsSheet() {
     return slotOutput?.params;
   }, [deviceStatus?.outputParams, slot?.slotIndex]);
 
-  const effectName = slot ? getEffectName(slot.typeId) : "Parameters";
   const effectDescription = React.useMemo(() => {
     if (!slot) return undefined;
     return effectMeta.find((e) => e.typeId === slot.typeId)?.description;
@@ -53,15 +54,22 @@ export default function SlotParamsSheet() {
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 16, gap: 8 }}
       >
-        <Text
-          style={{
-            fontSize: 20,
-            fontWeight: "700",
-            color: colors.text,
-          }}
-        >
-          {effectName}
-        </Text>
+        <HStack align="center" gap={12}>
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: "600",
+              color: colors.textSecondary,
+            }}
+          >
+            Effect Type
+          </Text>
+          <EffectContextMenuButton
+            slot={slot}
+            effectMeta={effectMeta}
+            setSlotType={setSlotType}
+          />
+        </HStack>
         {!!effectDescription && (
           <Text
             style={{
