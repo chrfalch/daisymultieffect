@@ -6,6 +6,7 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { useThemeColors } from "./ThemeProvider";
 
 interface SliderProps {
   label: string;
@@ -38,6 +39,7 @@ export const Slider: React.FC<SliderProps> = ({
   disabled = false,
   centerOrigin = false,
 }) => {
+  const colors = useThemeColors();
   const width = useSharedValue(0);
   const translateX = useSharedValue(0);
   const startX = useSharedValue(0);
@@ -208,21 +210,36 @@ export const Slider: React.FC<SliderProps> = ({
     <View style={styles.container}>
       <GestureDetector gesture={gesture}>
         <View
-          style={styles.sliderContainer}
+          style={[
+            styles.sliderContainer,
+            {
+              backgroundColor: colors.surfacePrimary,
+              borderColor: colors.border,
+            },
+          ]}
           onLayout={handleLayout}
           ref={viewRef}
         >
-          <Animated.View style={[styles.fill, fillStyle]} />
+          <Animated.View
+            style={[
+              styles.fill,
+              { backgroundColor: colors.sliderFill },
+              fillStyle,
+            ]}
+          />
           <View style={styles.labelContainer}>
-            <Text style={styles.label}>{label}</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
             {!!description && (
-              <Text style={styles.description} numberOfLines={1}>
+              <Text
+                style={[styles.description, { color: colors.textSecondary }]}
+                numberOfLines={1}
+              >
                 {description}
               </Text>
             )}
           </View>
           <View style={styles.valueContainer}>
-            <Text style={styles.value}>
+            <Text style={[styles.value, { color: colors.text }]}>
               {formatValue ? formatValue(displayValue) : String(displayValue)}
             </Text>
           </View>
@@ -239,10 +256,9 @@ const styles = StyleSheet.create({
   sliderContainer: {
     minHeight: 56,
     paddingVertical: 8,
-    backgroundColor: "#fff",
     borderWidth: 2,
-    borderColor: "#EEEEEE",
     borderRadius: 12,
+    borderCurve: "continuous",
     overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
@@ -252,7 +268,6 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: "#E3F2FD",
     borderRadius: 12,
   },
   labelContainer: {
@@ -261,13 +276,11 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   label: {
-    color: "#333",
     fontSize: 18,
     fontWeight: "500",
   },
   description: {
     marginTop: 2,
-    color: "#666",
     fontSize: 12,
     fontWeight: "400",
   },
@@ -276,7 +289,6 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   value: {
-    color: "#333",
     fontSize: 18,
     fontWeight: "400",
   },

@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { VStack, HStack } from "./Stack";
+import { useThemeColors } from "./ThemeProvider";
 
 interface EnumOption {
   value: number;
@@ -30,6 +31,7 @@ export const EnumPicker: React.FC<EnumPickerProps> = ({
   options,
   onValueChange,
 }) => {
+  const colors = useThemeColors();
   const [isOpen, setIsOpen] = React.useState(false);
 
   const selectedOption = options.find((opt) => opt.value === value);
@@ -43,21 +45,28 @@ export const EnumPicker: React.FC<EnumPickerProps> = ({
   return (
     <VStack gap={4}>
       <HStack justify="space-between" align="center">
-        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
         <Pressable
           onPress={() => setIsOpen(true)}
           style={({ pressed }) => [
             styles.pickerButton,
+            { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
             pressed && styles.pickerButtonPressed,
           ]}
         >
           <HStack gap={8} align="center">
-            <Text style={styles.pickerValue}>{displayValue}</Text>
-            <Ionicons name="chevron-down" size={16} color="#1976D2" />
+            <Text style={[styles.pickerValue, { color: colors.accentDark }]}>
+              {displayValue}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color={colors.accentDark} />
           </HStack>
         </Pressable>
       </HStack>
-      {description && <Text style={styles.description}>{description}</Text>}
+      {description && (
+        <Text style={[styles.description, { color: colors.textSecondary }]}>
+          {description}
+        </Text>
+      )}
 
       <Modal
         visible={isOpen}
@@ -66,8 +75,15 @@ export const EnumPicker: React.FC<EnumPickerProps> = ({
         onRequestClose={() => setIsOpen(false)}
       >
         <Pressable style={styles.modalOverlay} onPress={() => setIsOpen(false)}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{label}</Text>
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: colors.surfacePrimary },
+            ]}
+          >
+            <Text style={[styles.modalTitle, { color: colors.text, borderBottomColor: colors.borderLight }]}>
+              {label}
+            </Text>
             <FlatList
               data={options}
               keyExtractor={(item) => String(item.value)}
@@ -76,26 +92,29 @@ export const EnumPicker: React.FC<EnumPickerProps> = ({
                   onPress={() => handleSelect(item.value)}
                   style={({ pressed }) => [
                     styles.optionItem,
-                    item.value === value && styles.optionItemSelected,
-                    pressed && styles.optionItemPressed,
+                    item.value === value && { backgroundColor: colors.accentLight },
+                    pressed && { backgroundColor: colors.surfaceSecondary },
                   ]}
                 >
                   <HStack justify="space-between" align="center">
                     <Text
                       style={[
                         styles.optionText,
-                        item.value === value && styles.optionTextSelected,
+                        { color: colors.text },
+                        item.value === value && { color: colors.accentDark, fontWeight: "500" },
                       ]}
                     >
                       {item.name}
                     </Text>
                     {item.value === value && (
-                      <Ionicons name="checkmark" size={20} color="#1976D2" />
+                      <Ionicons name="checkmark" size={20} color={colors.accentDark} />
                     )}
                   </HStack>
                 </Pressable>
               )}
-              ItemSeparatorComponent={() => <View style={styles.separator} />}
+              ItemSeparatorComponent={() => (
+                <View style={[styles.separator, { backgroundColor: colors.borderLight }]} />
+              )}
             />
           </View>
         </Pressable>
@@ -108,27 +127,23 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#333",
   },
   description: {
     fontSize: 12,
-    color: "#666",
     marginTop: 2,
   },
   pickerButton: {
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: "#f0f0f0",
     borderRadius: 8,
+    borderCurve: "continuous",
     borderWidth: 1,
-    borderColor: "#ddd",
   },
   pickerButtonPressed: {
-    backgroundColor: "#e0e0e0",
+    opacity: 0.7,
   },
   pickerValue: {
     fontSize: 14,
-    color: "#1976D2",
     fontWeight: "500",
   },
   modalOverlay: {
@@ -139,8 +154,8 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: "#fff",
     borderRadius: 12,
+    borderCurve: "continuous",
     width: "100%",
     maxWidth: 320,
     maxHeight: "60%",
@@ -149,33 +164,19 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#333",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
     textAlign: "center",
   },
   optionItem: {
     paddingVertical: 14,
     paddingHorizontal: 16,
   },
-  optionItemSelected: {
-    backgroundColor: "#e3f2fd",
-  },
-  optionItemPressed: {
-    backgroundColor: "#f5f5f5",
-  },
   optionText: {
     fontSize: 16,
-    color: "#333",
-  },
-  optionTextSelected: {
-    color: "#1976D2",
-    fontWeight: "500",
   },
   separator: {
     height: 1,
-    backgroundColor: "#eee",
     marginHorizontal: 16,
   },
 });

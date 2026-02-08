@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Slider } from "./Slider";
 import { HStack, VStack } from "./Stack";
+import { useThemeColors } from "./ThemeProvider";
 
 interface GainControlProps {
   inputGainDb: number;
@@ -28,6 +29,8 @@ export const GainControl: React.FC<GainControlProps> = ({
   onOutputGainChange,
   onGlobalBypassChange,
 }) => {
+  const colors = useThemeColors();
+
   return (
     <VStack gap={12}>
       <HStack gap={16} align="stretch">
@@ -59,13 +62,24 @@ export const GainControl: React.FC<GainControlProps> = ({
           onPress={() => onGlobalBypassChange(!globalBypass)}
           style={[
             styles.bypassButton,
-            globalBypass && styles.bypassButtonActive,
+            {
+              backgroundColor: globalBypass
+                ? colors.bypassActive
+                : colors.bypassInactive,
+              borderColor: globalBypass
+                ? colors.bypassActive
+                : colors.bypassInactive,
+            },
           ]}
         >
           <Text
             style={[
               styles.bypassButtonText,
-              globalBypass && styles.bypassButtonTextActive,
+              {
+                color: globalBypass
+                  ? colors.bypassActiveText
+                  : colors.bypassInactiveText,
+              },
             ]}
           >
             BYPASS
@@ -81,26 +95,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bypassButton: {
-    backgroundColor: "#E0E0E0",
     paddingHorizontal: 16,
     marginVertical: 6,
     borderRadius: 12,
+    borderCurve: "continuous",
     borderWidth: 2,
-    borderColor: "#E0E0E0",
     justifyContent: "center",
     alignItems: "center",
     alignSelf: "stretch",
   },
-  bypassButtonActive: {
-    backgroundColor: "#F44336",
-    borderColor: "#D32F2F",
-  },
   bypassButtonText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#666",
-  },
-  bypassButtonTextActive: {
-    color: "#fff",
   },
 });

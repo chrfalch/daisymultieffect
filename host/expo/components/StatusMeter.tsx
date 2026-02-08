@@ -7,6 +7,7 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import type { DeviceStatus } from "../modules/daisy-multi-fx";
+import { useThemeColors } from "./ThemeProvider";
 
 interface StatusMeterProps {
   deviceStatus: DeviceStatus | null;
@@ -127,10 +128,14 @@ const CpuBar: React.FC<{ load: number; maxLoad: number }> = ({
 };
 
 export const StatusMeter: React.FC<StatusMeterProps> = ({ deviceStatus }) => {
+  const colors = useThemeColors();
+
   if (!deviceStatus) {
     return (
       <View style={styles.container}>
-        <Text style={styles.noDataText}>No device status</Text>
+        <Text style={[styles.noDataText, { color: colors.textSecondary }]}>
+          No device status
+        </Text>
       </View>
     );
   }
@@ -142,23 +147,27 @@ export const StatusMeter: React.FC<StatusMeterProps> = ({ deviceStatus }) => {
     <View style={styles.container}>
       {/* Input Level */}
       <View style={styles.meterRow}>
-        <Text style={styles.label}>IN</Text>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>IN</Text>
         <LevelBar level={deviceStatus.inputLevel} color="#2196F3" />
-        <Text style={styles.value}>{formatDb(inputDb)}</Text>
+        <Text style={[styles.value, { color: colors.text }]}>
+          {formatDb(inputDb)}
+        </Text>
       </View>
 
       {/* Output Level */}
       <View style={styles.meterRow}>
-        <Text style={styles.label}>OUT</Text>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>OUT</Text>
         <LevelBar level={deviceStatus.outputLevel} color="#4CAF50" />
-        <Text style={styles.value}>{formatDb(outputDb)}</Text>
+        <Text style={[styles.value, { color: colors.text }]}>
+          {formatDb(outputDb)}
+        </Text>
       </View>
 
       {/* CPU Load */}
       <View style={styles.meterRow}>
-        <Text style={styles.label}>CPU</Text>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>CPU</Text>
         <CpuBar load={deviceStatus.cpuAvg} maxLoad={deviceStatus.cpuMax} />
-        <Text style={styles.value}>
+        <Text style={[styles.value, { color: colors.text }]}>
           {formatCpu(deviceStatus.cpuAvg)} / {formatCpu(deviceStatus.cpuMax)}
         </Text>
       </View>
