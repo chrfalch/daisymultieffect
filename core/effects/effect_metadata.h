@@ -429,6 +429,35 @@ namespace Effects
     }
 
     //=========================================================================
+    // Wah (Wah-wah pedal)
+    //=========================================================================
+    namespace Wah
+    {
+        constexpr uint8_t TypeId = 28;
+        inline const NumberParamRange kPositionRange = {0.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kQFactorRange = {4.0f, 20.0f, 0.1f};
+        inline const NumberParamRange kAttackRange = {1.0f, 100.0f, 1.0f};
+        inline const NumberParamRange kReleaseRange = {10.0f, 500.0f, 1.0f};
+        inline const NumberParamRange kSensitivityRange = {0.0f, 100.0f, 1.0f};
+        
+        inline const EnumParamOption kModeOptions[] = {
+            {0, "Manual"},
+            {1, "Auto"},
+        };
+        inline const EnumParamInfo kModeEnum = {kModeOptions, 2};
+        
+        inline const ParamInfo kParams[] = {
+            {0, "Position", "Filter sweep position", ParamValueKind::Number, &kPositionRange, nullptr, "%"},
+            {1, "Q Factor", "Filter resonance (4=mild, 20=extreme)", ParamValueKind::Number, &kQFactorRange, nullptr, nullptr},
+            {2, "Mode", "Manual or Auto (envelope follower)", ParamValueKind::Enum, nullptr, &kModeEnum, nullptr, true},
+            {3, "Attack", "Envelope follower attack time", ParamValueKind::Number, &kAttackRange, nullptr, "ms"},
+            {4, "Release", "Envelope follower release time", ParamValueKind::Number, &kReleaseRange, nullptr, "ms"},
+            {5, "Sensitivity", "Envelope to position mapping", ParamValueKind::Number, &kSensitivityRange, nullptr, "%"},
+        };
+        inline const ::EffectMeta kMeta = {"Wah", "WAH", "Wah-wah pedal with adjustable Q-factor and envelope follower (auto-wah).", kParams, 6};
+    }
+
+    //=========================================================================
     // Leslie (Rotating Speaker Simulator)
     //=========================================================================
     namespace Leslie
@@ -494,6 +523,7 @@ namespace Effects
         {PitchShifter::TypeId, &PitchShifter::kMeta},
         {ShimmerReverb::TypeId, &ShimmerReverb::kMeta},
         {Leslie::TypeId, &Leslie::kMeta},
+        {Wah::TypeId, &Wah::kMeta},
     };
 
     constexpr size_t kNumEffects = sizeof(kAllEffects) / sizeof(kAllEffects[0]);

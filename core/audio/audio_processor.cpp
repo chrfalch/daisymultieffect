@@ -130,6 +130,10 @@ BaseEffect *AudioProcessor::Instantiate(uint8_t typeId, int slotIndex)
         if (leslie_next_ < kMaxLeslies)
             return &fx_leslies_[leslie_next_++];
         return nullptr;
+    case WahEffect::TypeId:
+        if (wah_next_ < kMaxWahs)
+            return &fx_wahs_[wah_next_++];
+        return nullptr;
     default:
         return nullptr;
     }

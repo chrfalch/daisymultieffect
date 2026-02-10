@@ -588,3 +588,43 @@ void LeslieEffect::ProcessStereo(float &l, float &r)
     // Advance delay write pointer
     delayWriteIdx_ = (delayWriteIdx_ + 1) % DELAY_BUF_SIZE;
 }
+
+//=============================================================================
+// WahEffect::ProcessStereo - ITCM placement for real-time performance
+//=============================================================================
+void WahEffect::ProcessStereo(float &l, float &r)
+{
+    // Auto-wah mode: derive position from input envelope
+    if (mode_ > 0.5f)
+    {
+        // Envelope follower (peak detection)
+        float inputLevel = FastMath::fmax(FastMath::fabs(l), FastMath::fabs(r));
+        
+        if (inputLevel > envelope_)
+        {
+            envelope_ = attackCoef_ * envelope_ + (1.0f - attackCoef_) * inputLevel;
+        }
+        else
+        {
+            envelope_ = releaseCoef_ * envelope_ + (1.0f - releaseCoef_) * inputLevel;
+        }
+        
+        // Map envelope to position with sensitivity control
+        // sensitivity_ controls how much envelope affects position
+        float envelopePosition = envelope_ * sensitivity_ * 10.0f; // Scale up for typical guitar levels
+        envelopePosition = FastMath::fclamp(envelopePosition, 0.0f, 1.0f);
+        
+        // Update filter if position changed significantly (avoid unnecessary updates)
+        float positionDelta = FastMath::fabs(envelopePosition - position_);
+        if (positionDelta > 0.001f)
+        {
+            position_ = envelopePosition;
+            updateFilter();
+        }
+    }
+    
+    // Process through bandpass filter
+    l = filterL_.Process(l);
+    r = filterR_.Process(r);
+}
+
