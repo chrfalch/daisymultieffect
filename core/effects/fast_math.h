@@ -398,4 +398,13 @@ namespace FastMath
         return (x < 0.0f) ? -x : x;
     }
 
+    /**
+     * Fast floor function - returns largest integer value not greater than x
+     */
+    inline float ffloor(float x)
+    {
+        int i = static_cast<int>(x);
+        return static_cast<float>(i - (x < static_cast<float>(i)));
+    }
+
 } // namespace FastMath

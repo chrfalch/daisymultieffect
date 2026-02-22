@@ -26,6 +26,7 @@
 #include "effects/pitch_shifter.h"
 #include "effects/shimmer_reverb.h"
 #include "effects/leslie.h"
+#include "effects/tape_delay.h"
 
 // Platform-agnostic audio processor.
 // Manages effect instances and processes audio frames.
@@ -161,6 +162,14 @@ public:
     static constexpr int GetMaxPitchShifters() { return kMaxPitchShifters; }
     static constexpr int GetMaxShimmerReverbs() { return kMaxShimmerReverbs; }
     static constexpr int GetMaxLeslies() { return kMaxLeslies; }
+    static constexpr int GetMaxTapeDelays() { return kMaxTapeDelays; }
+
+    // Tape delay buffer binding (same as regular delay)
+    void BindTapeDelayBuffers(int index, float *bufL, float *bufR)
+    {
+        if (index >= 0 && index < kMaxTapeDelays)
+            fx_tapedelays_[index].BindBuffers(bufL, bufR);
+    }
 
 private:
     BaseEffect *Instantiate(uint8_t typeId, int slotIndex);
@@ -187,6 +196,7 @@ private:
     static constexpr int kMaxPitchShifters = 4;
     static constexpr int kMaxShimmerReverbs = 2;
     static constexpr int kMaxLeslies = 2; // Leslie effects are CPU-intensive
+    static constexpr int kMaxTapeDelays = 2; // Tape delays use Perlin noise
 
     DelayEffect fx_delays_[kMaxDelays];
     StereoSweepDelayEffect fx_sweeps_[kMaxSweeps];
@@ -206,6 +216,7 @@ private:
     PitchShifterEffect fx_pitchshifters_[kMaxPitchShifters];
     ShimmerReverbEffect fx_shimmerreverbs_[kMaxShimmerReverbs];
     LeslieEffect fx_leslies_[kMaxLeslies];
+    TapeDelayEffect fx_tapedelays_[kMaxTapeDelays];
 
     // Pool counters
     int delay_next_ = 0;
@@ -226,6 +237,7 @@ private:
     int pitchshifter_next_ = 0;
     int shimmerreverb_next_ = 0;
     int leslie_next_ = 0;
+    int tapedelay_next_ = 0;
 
     // Input/output gain staging
     // Default: +18dB input boost to bring instrument level signals
