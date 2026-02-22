@@ -26,6 +26,7 @@
 #include "effects/pitch_shifter.h"
 #include "effects/shimmer_reverb.h"
 #include "effects/leslie.h"
+#include "effects/looper.h"
 
 // Platform-agnostic audio processor.
 // Manages effect instances and processes audio frames.
@@ -161,6 +162,14 @@ public:
     static constexpr int GetMaxPitchShifters() { return kMaxPitchShifters; }
     static constexpr int GetMaxShimmerReverbs() { return kMaxShimmerReverbs; }
     static constexpr int GetMaxLeslies() { return kMaxLeslies; }
+    static constexpr int GetMaxLoopers() { return kMaxLoopers; }
+
+    // Looper buffer binding (L/R buffers, MAX_SAMPLES floats each)
+    void BindLooperBuffers(int index, float *bufL, float *bufR)
+    {
+        if (index >= 0 && index < kMaxLoopers)
+            fx_loopers_[index].BindBuffers(bufL, bufR);
+    }
 
 private:
     BaseEffect *Instantiate(uint8_t typeId, int slotIndex);
@@ -187,6 +196,7 @@ private:
     static constexpr int kMaxPitchShifters = 4;
     static constexpr int kMaxShimmerReverbs = 2;
     static constexpr int kMaxLeslies = 2; // Leslie effects are CPU-intensive
+    static constexpr int kMaxLoopers = 1; // Loopers are memory-intensive (23MB per instance)
 
     DelayEffect fx_delays_[kMaxDelays];
     StereoSweepDelayEffect fx_sweeps_[kMaxSweeps];
@@ -206,6 +216,7 @@ private:
     PitchShifterEffect fx_pitchshifters_[kMaxPitchShifters];
     ShimmerReverbEffect fx_shimmerreverbs_[kMaxShimmerReverbs];
     LeslieEffect fx_leslies_[kMaxLeslies];
+    LooperEffect fx_loopers_[kMaxLoopers];
 
     // Pool counters
     int delay_next_ = 0;
@@ -226,6 +237,7 @@ private:
     int pitchshifter_next_ = 0;
     int shimmerreverb_next_ = 0;
     int leslie_next_ = 0;
+    int looper_next_ = 0;
 
     // Input/output gain staging
     // Default: +18dB input boost to bring instrument level signals

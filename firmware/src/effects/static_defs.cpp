@@ -3,6 +3,7 @@
 #include "effects/shimmer_reverb.h"
 #include "effects/pitch_shifter.h"
 #include "effects/stereo_sweep_delay.h"
+#include "effects/looper.h"
 #include "audio/audio_processor.h"
 
 #include "dev/sdram.h"
@@ -42,6 +43,12 @@ DSY_SDRAM_BSS float g_shimRevApL[kMaxShimmerReverbs][2][ShimmerReverbEffect::All
 DSY_SDRAM_BSS float g_shimRevApR[kMaxShimmerReverbs][2][ShimmerReverbEffect::Allpass::MAX_DELAY];
 DSY_SDRAM_BSS float g_shimRevPitchBuf[kMaxShimmerReverbs][PitchShifterDsp::kBufSize];
 
+// LooperEffect: 1 instance x 2 channels x MAX_SAMPLES
+// Duration configured in looper.h via LOOPER_DURATION_SECONDS (currently 30s = ~11.5MB)
+static constexpr int kMaxLoopers = 1;
+DSY_SDRAM_BSS float g_looperBufL[kMaxLoopers][LooperEffect::MAX_SAMPLES];
+DSY_SDRAM_BSS float g_looperBufR[kMaxLoopers][LooperEffect::MAX_SAMPLES];
+
 // ---- Single entry point for binding all SDRAM buffers ----
 void BindProcessorBuffers(AudioProcessor &processor)
 {
@@ -71,4 +78,7 @@ void BindProcessorBuffers(AudioProcessor &processor)
         float *apPtrsR[2] = {g_shimRevApR[i][0], g_shimRevApR[i][1]};
         processor.BindShimmerReverbBuffers(i, g_shimRevPre[i], combPtrsL, combPtrsR, apPtrsL, apPtrsR, g_shimRevPitchBuf[i]);
     }
+
+    for (int i = 0; i < kMaxLoopers; i++)
+        processor.BindLooperBuffers(i, g_looperBufL[i], g_looperBufR[i]);
 }
